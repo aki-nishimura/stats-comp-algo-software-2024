@@ -1,0 +1,141 @@
+---
+title: "Statistical Computing, Algorithm, and Software Development"
+subtitle: "an essential triad for modern large-scale applications"
+author: "Aki Nishimura"
+date: "`r Sys.Date()`"
+output:
+  xaringan::moon_reader:
+    css: ["default", "default-fonts", "extra.css"]
+    lib_dir: libs
+    nature:
+      highlightStyle: github
+      slideNumberFormat: "%current%"
+      countIncrementalSlides: false
+      beforeInit: "macros.js"
+    includes:
+      before_body: mathjax_config.html
+---
+
+```{r setup, include = FALSE}
+source(file.path("..", "R", "util.R"))
+
+required_packages <- c('Matrix')
+install_and_load_packages(required_packages)
+
+# Print outputs without "##"
+knitr::opts_chunk$set(comment = '')
+```
+
+
+# What's wrong with Statistics
+
+How long does matrix multiplication take in base R
+
+```{r, eval=FALSE}
+n <- 4096L
+A <- matrix(rnorm(n * n), nrow = n, ncol = n)
+B <- matrix(rnorm(n * n), nrow = n, ncol = n)
+system.time(A %*% B)
+```
+
+... as opposed to Anaconda Python?
+
+```{python, eval=FALSE}
+import numpy as np
+n = 4096
+A = np.random.randn(n, n)
+B = np.random.randn(n, n)
+%timeit A.dot(B)
+```
+
+---
+
+# What's wrong with Statistics
+
+```{r}
+n_obs <- 5
+n_pred <- 3
+col_index <- c(1, 1, 1, 2, 2, 3)
+row_index <- c(1, 3, 5, 2, 4, 1)
+sparseMatrix(i = row_index, j = col_index, x = 1)
+```
+
+---
+
+# What's wrong with Statistics
+
+```{r}
+n_obs <- 10^6
+n_pred <- 10^4
+density <- .01
+n_nonzero <- as.integer(n_obs * n_pred * density)
+```
+
+```{r, eval=FALSE}
+# Simulate sparse binary design matrix
+row_index <- sample.int(n_obs, n_nonzero, replace = TRUE)
+col_index <- sample.int(n_pred, n_nonzero, replace = TRUE)
+X <- sparseMatrix(i = row_index, j = col_index, x = 1)
+```
+
+--
+How much memory to store $X$ in dense format?
+
+```{r}
+memory_req_in_gb <- 8 * n_obs * n_pred / 1024^3
+sprintf("Dense storage will require %.2gGB.", memory_req_in_gb)
+```
+
+---
+
+# What's wrong with Statistics
+
+```{r, eval=FALSE}
+X <- sparseMatrix(i = row_index, j = col_index, x = 1)
+
+# Simulate (completely random) survival time
+failure_time <- rexp(n_obs)
+censoring_time <- rexp(n_obs)
+observed <- rbinom(n_obs, 1, prob = .7)
+y <- data.frame(
+  time = ifelse(observed, failure_time, censoring_time),
+  status = observed
+)
+y <- as.matrix(y)
+
+glmnet(X, y, family = 'cox') # Older versions throw errors
+```
+
+---
+
+# Words from Joel Spolsky, <br> $\qquad$co-founder of Stack Overflow
+
+.center[
+_"Nobody would be surprised if you told them it was hard to do open heart surgery. OK, fine, so maybe software isn't open heart surgery. But it has about the same number of moving parts, it's probably just as complicated, and it's critical in a different way._
+
+_But there's something weird about designing software specifically: Everybody thinks they know how to do it, even when they have no training. They just think, Oh sure, I can do that!"_
+]
+
+---
+class: middle
+
+# So, what's your point, dude?
+
+Software is hard (but thanks Hadley for your help).
+
+--
+
+Computing is hard (who's going to be a Hadley here?)
+
+--
+
+Statisticians don't even know what they don't know.
+
+--
+
+Statisticians' needs left out while soft/hardware evolves.
+
+--
+
+We gotta start changing this.
+
