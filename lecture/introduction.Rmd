@@ -91,8 +91,10 @@ sprintf("Dense storage will require %.2gGB.", memory_req_in_gb)
 # What's wrong with Statistics
 
 ```{r, eval=FALSE}
-X <- sparseMatrix(i = row_index, j = col_index, x = 1)
+remotes::install_version("glmnet", version = "4.0.2") # Released 2020-06-16
+```
 
+```{r, eval=FALSE}
 # Simulate (completely random) survival time
 failure_time <- rexp(n_obs)
 censoring_time <- rexp(n_obs)
@@ -102,8 +104,38 @@ y <- data.frame(
   status = observed
 )
 y <- as.matrix(y)
+```
 
-glmnet(X, y, family = 'cox') # Older versions throw errors
+```{r generate_smaller_dataset_for_actual_evaluation, include=FALSE}
+###
+# This chunk generates a smaller dataset for the actual evaluation to save on execution time.
+###
+set.seed(615)
+
+n_obs <- 100
+n_pred <- 10
+density <- .05
+n_nonzero <- as.integer(n_obs * n_pred * density)
+
+# Simulate sparse binary design matrix
+row_index <- sample.int(n_obs, n_nonzero, replace = TRUE)
+col_index <- sample.int(n_pred, n_nonzero, replace = TRUE)
+X <- sparseMatrix(i = row_index, j = col_index, x = 1)
+
+# Simulate (completely random) survival time
+n_obs <- nrow(X)
+failure_time <- rexp(n_obs)
+censoring_time <- rexp(n_obs)
+observed <- rbinom(n_obs, 1, prob = .7)
+y <- data.frame(
+  time = ifelse(observed, failure_time, censoring_time),
+  status = observed
+)
+y <- as.matrix(y)
+```
+
+```{r, error=TRUE}
+glmnet::glmnet(X, y, family = 'cox')
 ```
 
 ---
