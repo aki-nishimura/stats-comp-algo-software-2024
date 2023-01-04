@@ -24,6 +24,12 @@ install_and_load_packages(required_packages)
 
 # Print outputs without "##"
 knitr::opts_chunk$set(comment = '')
+
+# Show error message in red
+knitr::knit_hooks$set(error = function(x, options) {
+  paste0("<pre style=\"color: #DA0000;\"><code>", x, "</code></pre>")
+    # reddish-color matching RStudio's
+})
 ```
 
 
