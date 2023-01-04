@@ -1,0 +1,11 @@
+*.html
+*.DS_Store
+*_files/
+*_cache/
+*.R_history
+.Rproj.user
+.RData
+.Ruserdata
+
+lecture/libs/*
+lecture/*.pdf
