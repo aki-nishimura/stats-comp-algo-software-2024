@@ -40,6 +40,39 @@ Here's what a prominent statistician calls "software":
 
 ---
 
+```{css, echo=FALSE}
+.float-parent-element { 
+  width: 100%;
+} 
+.float-left-child-element { 
+  float: left; 
+  width: 32%; 
+  margin-right: 1rem;
+} 
+.float-right-child-element {
+  float: left; 
+  width: 65%;
+}
+```
+
+# Problems with stats software landscape
+
+![:vspace 1em]
+
+<div class="float-parent-element">
+  <div class="float-left-child-element">
+    <p style="margin-top: 2.5rem">
+    <b>Definition:</b> <br>
+    <i>Bus factor</i> is the minimum number of team members who, if run over by a bus, would put the project in jeopardy.
+    </p>
+  </div>
+  <div class="float-right-child-element">
+    <img src="figure/bus_factor.png" style="width: 100%" />
+  </div>
+</div>
+
+---
+
 # What's wrong with Statistics
 
 How long does matrix multiplication take in base R
