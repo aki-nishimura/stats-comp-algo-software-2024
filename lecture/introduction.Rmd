@@ -40,6 +40,15 @@ Here's what a prominent statistician calls "software":
 
 ---
 
+# Problems with stats software landscape
+
+Also classic&hellip; 
+
+![:vspace 2em]
+![:image 85%](figure/cran_removed_package.png)
+
+---
+
 ```{css, echo=FALSE}
 .float-parent-element { 
   width: 100%;
