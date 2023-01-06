@@ -106,7 +106,7 @@ Also classic&hellip;
 
 ---
 
-# What's wrong with Statistics
+# Problems with stats software landscape
 
 How long does matrix multiplication take in base R
 
@@ -129,7 +129,7 @@ B = np.random.randn(n, n)
 
 ---
 
-# What's wrong with Statistics
+# Problems with stats software landscape
 
 ```{r}
 n_obs <- 5
@@ -141,7 +141,7 @@ sparseMatrix(i = row_index, j = col_index, x = 1)
 
 ---
 
-# What's wrong with Statistics
+# Problems with stats software landscape
 
 ```{r}
 n_obs <- 10^6
@@ -167,10 +167,11 @@ sprintf("Dense storage will require %.2gGB.", memory_req_in_gb)
 
 ---
 
-# What's wrong with Statistics
+# Problems with stats software landscape
 
 ```{r, eval=FALSE}
-remotes::install_version("glmnet", version = "4.0.2") # Released 2020-06-16
+remotes::install_version("glmnet", version = "4.0.2") 
+  # Released 2020-06-16
 ```
 
 ```{r, eval=FALSE}
@@ -184,6 +185,8 @@ y <- data.frame(
 )
 y <- as.matrix(y)
 ```
+
+--
 
 ```{r generate_smaller_dataset_for_actual_evaluation, include=FALSE}
 ###
@@ -221,22 +224,23 @@ glmnet::glmnet(X, y, family = 'cox')
 
 # Words from Joel Spolsky, <br> $\qquad$co-founder of Stack Overflow
 
-.center[
-_"Nobody would be surprised if you told them it was hard to do open heart surgery. OK, fine, so maybe software isn't open heart surgery. But it has about the same number of moving parts, it's probably just as complicated, and it's critical in a different way._
+"Nobody would be surprised if you told them it was hard to do open heart surgery. OK, fine, so maybe software isn't open heart surgery. But it has about the same number of moving parts, it's probably just as complicated, and it's critical in a different way.
 
-_But there's something weird about designing software specifically: Everybody thinks they know how to do it, even when they have no training. They just think, Oh sure, I can do that!"_
-]
+But there's something weird about designing software specifically: Everybody thinks they know how to do it, even when they have no training. They just think, Oh sure, I can do that!"
+
+<!-- https://www.salon.com/2004/12/09/spolsky/ -->
 
 ---
 class: middle
 
+![:vspace -1em]
 # So, what's your point, dude?
 
 Software is hard (but thanks Hadley for your help).
 
 --
 
-Computing is hard (who's going to be a Hadley here?)
+Computing is hard (can we have a Hadley here?).
 
 --
 
@@ -244,7 +248,8 @@ Statisticians don't even know what they don't know.
 
 --
 
-Statisticians' needs left out while soft/hardware evolves.
+Statisticians have a role to play in the era of "Big Data" <br> 
+but don't have skills necessary to directly contribute.
 
 --
 
