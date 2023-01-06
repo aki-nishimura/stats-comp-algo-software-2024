@@ -74,7 +74,7 @@ Also classic&hellip;
 }
 ```
 
-# Problems with stats software landscape
+# What constitutes proper software?
 
 ![:vspace 1em]
 
@@ -89,6 +89,20 @@ Also classic&hellip;
     <img src="figure/bus_factor.png" style="width: 100%" />
   </div>
 </div>
+
+---
+
+# What constitutes proper software?
+
+![:vspace 1em]
+![:image 80%](figure/when_I_wrote_this_code.jpeg)
+
+---
+
+# What constitutes proper software?
+
+![:vspace 1em]
+![:image 100%](figure/software_maintenance_costs.jpeg)
 
 ---
 
