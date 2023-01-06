@@ -49,6 +49,16 @@ Also classic&hellip;
 
 ---
 
+# What constitutes proper software?
+
+![](figure/oed_software_definition_header.png)
+
+--
+
+1. _Academia._ ~~Mess~~ Code written by grad students to get results necessary for publishing and graduating. Often too messy for others to validate its output. (But who cares as long as the paper gets published.) Mostly of zero, and very occasionally of $\epsilon > 0$, utility to others.
+
+---
+
 ```{css, echo=FALSE}
 .float-parent-element { 
   width: 100%;
