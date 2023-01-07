@@ -8,7 +8,7 @@ output:
     css: ["default", "default-fonts", "extra.css"]
     lib_dir: libs
     nature:
-      highlightStyle: github
+      highlightStyle: googlecode
       slideNumberFormat: "%current%"
       countIncrementalSlides: false
       beforeInit: "macros.js"
