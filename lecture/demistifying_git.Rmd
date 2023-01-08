@@ -20,6 +20,14 @@ output:
 ![:image 56%](figure/xkcd_this_is_git.png)
 
 ---
+class: middle
+
+> “Whoah, I’ve just read this quick tuto[rial] about git and oh my god it is cool. I feel now super comfortable using it, and I’m not afraid at all to break something.” 
+&ensp;&mdash;&thinsp; Said no one ever.
+
+<p style="margin-left: 11em; margin-top: 1.5em;"> (From Pierre de Wulf's blog) </p>
+
+---
 layout: true
 
 # Brief hisotry of version control systems
