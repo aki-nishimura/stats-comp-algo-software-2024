@@ -9,6 +9,7 @@ output:
     lib_dir: libs
     nature:
       highlightStyle: googlecode
+      highlightSpans: true
       slideNumberFormat: "%current%"
       countIncrementalSlides: false
       beforeInit: "macros.js"
@@ -234,7 +235,7 @@ Let's try just one more commit:
 Hello, World! -- Bar
 Hello, again! -- Bar
 
-❯ git add -u # -u for "update"; same result as `git add bar.txt`
+❯ git add -u # -u for "update"; same result as \`git add bar.txt`
 ❯ git commit -m 'More nonsense'
 [master 91953c1] More nonsense
  1 file changed, 1 insertion(+)
@@ -284,11 +285,11 @@ Git knows not to make a new file for unchanged `foo.txt`:
 ```{bash, eval=FALSE}
 ❯ git cat-file -p 7a09a0c
 100644 blob d66fb3861381992a7f6a7a4f02050baea5472b4c	bar.txt
-100644 blob 8ab686eafeb1f44702738c8b0f24f2567c36da6d	foo.txt
+100644 blob `8ab686eafeb1f44702738c8b0f24f2567c36da6d`	foo.txt
 
 ❯ git cat-file -p 224b432 # Previous snapshot
 100644 blob f6e31e74619a2c9faafe04295a5ebed850c3b8d9	bar.txt
-100644 blob 8ab686eafeb1f44702738c8b0f24f2567c36da6d	foo.txt
+100644 blob `8ab686eafeb1f44702738c8b0f24f2567c36da6d`	foo.txt
 ```
 
 ---
