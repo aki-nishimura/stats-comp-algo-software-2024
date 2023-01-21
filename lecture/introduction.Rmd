@@ -119,7 +119,7 @@ system.time(A %*% B)
 
 ... as opposed to Anaconda Python?
 
-```{python, eval=FALSE}
+```{python, eval=FALSE, python.reticulate=FALSE}
 import numpy as np
 n = 4096
 A = np.random.randn(n, n)
