@@ -106,6 +106,13 @@ Also classic&hellip;
 
 ---
 
+# What constitutes proper software?
+
+![:vspace 2.5em]
+![:image 100%](figure/clean_code.png)
+
+---
+
 # Problems with stats software landscape
 
 How long does matrix multiplication take in base R
