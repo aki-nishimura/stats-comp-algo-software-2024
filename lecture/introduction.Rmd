@@ -255,10 +255,16 @@ Statisticians don't even know what they don't know.
 
 --
 
+Statisticians think: <br> 
+&emsp; "I do statistics &mdash; let engineers write software." <br>
+--
+&emsp; "It works on small data, it should work on bigger one."
+
+--
+
 Statisticians have a role to play in the era of "Big Data" <br> 
 but don't have skills necessary to directly contribute.
 
 --
 
-We gotta start changing this.
-
+_We gotta start changing this._
