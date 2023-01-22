@@ -268,3 +268,110 @@ but don't have skills necessary to directly contribute.
 --
 
 _We gotta start changing this._
+
+---
+
+# Thoughts behind the course design
+
+![:vspace 2ex]
+
+<!-- I wanted to address some of the misconception/confusions, which have been detrimental to the discipline, and actually teach statistical computing. -->
+
+Misconception/confusions around "statistical computing":
+
+--
+
+![:vspace -.5ex]
+
+* programming $=$ computing ? <!-- Computing: use of computers to solve mathematical equations. -->
+--
+
+* algorithms $=$ computing ? <!-- Computing involves practical implementations of algorithms. -->
+--
+
+![:vspace 3ex]
+
+Most essential skill sets for our students?
+<!-- (that are not being taught in our current curriculum) -->
+
+--
+
+![:vspace -.5ex]
+$$
+\begin{aligned}
+&\hspace{-2.6em}\text{software dev} \\
+  &\hspace{-1.5em}\geq \text{computing} \\
+  &\geq \text{algorithm}.
+\end{aligned}
+$$
+
+--
+
+![:vspace 3ex]
+$\Rightarrow$ Why not teach all these skills through developing <br> &emsp;&nbsp; a computationally-intensive statistical software?
+
+<!-- (Additional benefits of this idea: many resources talk about effective software development, but often it's not obvious how to apply them to statistical software, especially computationally-oriented ones. And I get to share some of the best practices I have developed over years.) -->
+
+---
+layout: true
+
+# Course contents and aims
+
+---
+
+Learning software dev tools (Git, Github, unix tools, etc) for real by actively using them throughout the course.
+
+--
+
+![:vspace 2ex]
+
+Minimal intro to algorithms: ![:vspace -.5ex]
+--
+
+- Can't discuss their implementations w/o knowing a bit.
+- Helps use existing packages more effectively.
+- Provides foundation for further learning.
+
+--
+
+![:vspace 2ex]
+
+Minimal intro to finite prec arithmetic & numerical issues: ![:vspace -.5ex]
+--
+
+- Numerical instabilities do arise in practice; <br> worth knowing what causes and how to avoid them.
+- Essential for developers of computational software.
+
+---
+
+![:vspace 5ex]
+
+How to optimize code for large-scale applicaitons: ![:vspace -.5ex]
+
+--
+
+* Learn when/what/how (not) to optimize. ![:vspace -.5ex]
+
+--
+
+  - Linking code to right software libralies
+  - Introduciton to Rcpp
+  - Parallelization opportunities (or lack thereof)
+
+--
+
+* Understand what affects code's performance, <br> rather than blindly reciting e.g. "C(++) is faster than R."
+
+---
+
+How to develop reliable and extensible software:
+
+--
+
+![:vspace -.75ex]
+<div class="row">
+  <img class="column" src="figure/hiperglm_git_history_3.png" style="width:32.5%;">
+  <img class="column" src="figure/hiperglm_git_history_2.png" style="width:32.5%;">
+  <img class="column" src="figure/hiperglm_git_history_1.png" style="width:32.5%;">
+</div>
+
