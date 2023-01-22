@@ -101,15 +101,15 @@ Also classic&hellip;
 
 # What constitutes proper software?
 
-![:vspace 1em]
-![:image 100%](figure/software_maintenance_costs.jpeg)
+![:vspace 2.5em]
+![:image 100%](figure/clean_code.png)
 
 ---
 
 # What constitutes proper software?
 
-![:vspace 2.5em]
-![:image 100%](figure/clean_code.png)
+![:vspace 1em]
+![:image 100%](figure/software_maintenance_costs.jpeg)
 
 ---
 
