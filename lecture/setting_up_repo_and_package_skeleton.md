@@ -34,7 +34,7 @@
   * (After forgetting to do so,) Roxygenize again
 - Decide, out of whim, to change the package name from `hiperLogit` to `hiperglm`
   * Gotta replace all the "logit" word from the repo: `git grep --ignore-case logit`
-  * Also need to change all the file names: find * -iname "*logit*"
+  * Also need to change all the file names: `find * -iname "*logit*"`
   * Rename git repo
   * Change remote url `git remote set-url origin ...`
 - Clean up the git history via `git rebase -i` before pushing
