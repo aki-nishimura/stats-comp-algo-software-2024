@@ -23,9 +23,6 @@ knitr::opts_chunk$set(comment = '')
 ```
 
 ---
-layout: true
-
-# Gradient descent algorithm
 
 <script type="text/x-mathjax-config">
 MathJax.Hub.Config({
@@ -41,7 +38,7 @@ MathJax.Hub.Config({
 });
 </script>
 
----
+# Numerical optimization of utility/loss func
 
 **Problem:** 
 Find a minimizer $\bx^*$ of _objective_ function $f(\bx)$.<br>
@@ -62,6 +59,8 @@ $$f(\nextState) < f(\currState).$$
 
 ---
 
+# Searching for next state along a line
+
 Let $\searchDirec \ (\| \searchDirec \| = 1)$ be a search direction and $\stepsize > 0$ a stepsize:
 $$\nextState = \currState + \stepsize \searchDirec.$$
 
@@ -77,9 +76,16 @@ f(\nextState)
 \end{aligned}
 $$
 
+--
+
 For $f(\nextState) < f(\currState)$, we want $\left\langle \nabla f(\currState), \searchDirec \right\rangle < 0$. 
 --
 In fact, the last quantity is minimized when $\searchDirec = - \nabla f(\currState) / \| \nabla f(\currState) \|$.
+
+---
+layout: true
+
+# Gradient descent algorithm
 
 ---
 
@@ -88,13 +94,13 @@ In other words, for small stepsize $\stepsize$, the direction $\searchDirec =$ $
 --
 
 Based on this observation, the _gradient descent_ searches for a suitable $\nextState$ along the line
-$$\{ \currState - t \nabla f(\currState) : t > 0 \}.$$
+$$\{ \currState - s' \nabla f(\currState) : s' > 0 \}.$$
 
 --
 
 The ideal stepsize choice would be
 $$\DeclareMathOperator*{\argmin}{argmin} 
-\stepsize = \argmin_{t > 0} f\big(\currState - t \nabla f(\currState)\big),$$
+\stepsize = \argmin_{s' > 0} f\big(\currState - s' \nabla f(\currState)\big),$$
 ![:vspace -1ex]
 
 --
@@ -201,6 +207,7 @@ We will then have the following results (which ignore all the gory technical det
 $$| f(\nextState) - f(\bx^*)| \leq c \,| f(\currState) - f(\bx^*) |$$
 $$\| \nextState - \bx^* \| \leq r \, \| \currState - \bx^* \|.$$
 
+--
 
 **Newton's method:** For some $C$ and $R$,
 $$| f(\nextState) - f(\bx^*)| \leq C \, | f(\currState) - f(\bx^*) |^2$$
