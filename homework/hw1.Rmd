@@ -1,8 +1,10 @@
 
 
 ---
-title: "Homework: Setup and Warm-up"
-output: html_notebook
+title: 'Homework: Setup and Warm-up'
+output:
+  html_notebook: 
+    code_folding: none
 ---
 
 
