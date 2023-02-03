@@ -2,7 +2,7 @@
 *.DS_Store
 *_files/
 *_cache/
-*.R_history
+.Rhistory
 .Rproj.user
 .RData
 .Ruserdata
