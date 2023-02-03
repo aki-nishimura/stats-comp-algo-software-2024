@@ -21,20 +21,6 @@ for (pkg in required_packages) {
 }
 
 knitr::opts_chunk$set(echo = TRUE)
-
-# Reduce space before code chunks and increase after 
-knitr::knit_hooks$set(
-  adjust_spacing_around_code = function(before, options, envir) {
-    if (before) {
-      ## code to be run before a chunk
-      sprintf('<p style="margin-top: -3.5ex;"> </p>')
-    } else {
-      ## code to be run after a chunk
-      sprintf('<p style="margin-top: 2ex;"> </p>')
-    }
-  }
-)
-knitr::opts_chunk$set(adjust_spacing_around_code = TRUE)
 ```
 
 
