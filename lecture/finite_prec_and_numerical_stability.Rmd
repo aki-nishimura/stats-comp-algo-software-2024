@@ -968,11 +968,6 @@ layout: false
 
 # References
 
-.pull-left[
-  ![:vspace 2.2ex]
-  ![:image 100%](figure/reference/sci_computing_intro_survey_by_michael_heath.jpeg)
-]
-
-.pull-right[
-  ![:image 90%](figure/reference/trefethen_and_bau_linalg_book.jpg)
+.center[
+  ![:image 50%](figure/reference/sci_computing_intro_survey_by_michael_heath.jpeg)
 ]
