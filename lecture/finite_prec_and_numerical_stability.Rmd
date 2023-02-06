@@ -254,7 +254,7 @@ layout: true
 
 ---
 
-Numerical differentiation is one practical situation in which you clearly observe an effect of finite-precision.
+Numerical differentiation is another practical situation in which you clearly observe an effect of finite-precision.
 
 --
 
@@ -395,7 +395,9 @@ options(digits = 3)
 lm_coef[7:12]
 ```
 
-Except for one coef estimate being `NA`:
+--
+
+&hellip; except for one coef estimate being `NA`:
 ![:vspace -1ex]
 
 ```{r}
@@ -646,13 +648,11 @@ layout: false
 
 # Conditioning of problem
 
-Think of a _problem_, machine implementation of which is an _algorithm_, as a map: $\, \bx \to f(\bx)$ (e.g. $\boldsymbol{x} \to \boldsymbol{A}^{-1} \boldsymbol{x}$).
+Think of a _problem_, machine implementation of which is an _algorithm_, as a map: $\, \bx \to \bf(\bx)$ &thinsp;(e.g. $\boldsymbol{x} \to \boldsymbol{A}^{-1} \boldsymbol{x}$).
 
 --
 
-**Question:** How sensitive is a problem $f(\bx)$ to small perturbation in the input $\bx$?
-
---
+**Question:** How sensitive is a problem $\bf(\bx)$ to small perturbation in the input $\bx$?
 
 Measure of this sensitivity is called a _condition number_.
 
@@ -667,7 +667,7 @@ Measure of this sensitivity is called a _condition number_.
 
 # Condition number
 
-_Relative condition number_ is defined as
+_(Relative) condition number_ is defined as
 
 $$\kappa := \lim_{\| \bdelta \bx \| \to 0} \sup_{\bdelta \bx} 
 \frac{
@@ -765,12 +765,14 @@ In other words, $\lambda_1$ and $\lambda_p$ are the max amount of <br>dilation a
 ### Review: eigen/singular value decomposition 
 
 More generally, any $\bA \in \mathbb{R}^{n \times p}$ admits the singular value decomposition:
-![:vspace -.75ex]
+![:vspace -1.5ex]
 
 $$
 \bA = \bm{V} \boldsymbol{\Gamma} \bm{U}^\intercal, \text{ where}
 $$
-* $\bm{V} \in \mathbb{U}^{n \times p}$ and $\bm{U} \in \mathbb{R}^{p \times p}$ orthogonal;
+
+![:vspace -.5ex]
+* $\bm{V} \in \mathbb{R}^{n \times p}$ and $\bm{U} \in \mathbb{R}^{p \times p}$ orthogonal;
 * $\boldsymbol{\Gamma} = \textrm{diag}(\gamma_1, \ldots, \gamma_p) \,$ for $\, \gamma_1 \geq \ldots \geq \gamma_p \geq 0$.
 
 --
