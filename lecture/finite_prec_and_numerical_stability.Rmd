@@ -558,11 +558,32 @@ $$\by_1 \given \by_2
 
 Let's now try to interpolate the function:
 
+![:vspace -1ex]
+
 ```{r}
+#' Compute covariance from distance matrix
+sq_exp_cov <- function(dist, range) {
+  return(exp(-(dist / range)^2))
+}
 #' Compute the conditional mean of `y_1` given `y_2`
 gauss_cond_mean <- function(y_2, mu_1, mu_2, cov_12, cov_22) {
   return(mu_1 + cov_12 %*% solve(cov_22, y_2 - mu_2))
 }
+```
+
+--
+
+![:vspace -2ex]
+```{r}
+loc_obs <- c(seq(0, .4, .01), seq(.6, 1, .01))
+loc_new <- seq(.41, .59, .01)
+n_obs <- length(loc_obs)
+n_new <- length(loc_new)
+
+dist_obs <- as.matrix(dist(loc_obs))
+dist_new <- as.matrix(dist(loc_new))
+cross_dist <- as.matrix(dist(c(loc_new, loc_obs)))
+cross_dist <- cross_dist[1:n_new, (n_new + 1):(n_new + n_obs)]
 ```
 
 ---
@@ -571,17 +592,14 @@ Let's now try to interpolate the function:
 
 ![:vspace -1ex]
 
-```{r, eval=FALSE}
-loc_new <- seq(.41, .59, .01)
-n_new <- length(loc_new)
-
-dist_new <- as.matrix(dist(loc_new))
-Sigma_new <- sq_exp_cov(dist_new, corr_range)
-cross_dist <- as.matrix(dist(c(loc_new, loc_obs)))
-cross_dist <- cross_dist[1:n_new, (n_new + 1):(n_new + n_obs)]
-Sigma_cross <- sq_exp_cov(cross_dist, corr_range)
+```{r}
 mean_obs <- rep(0, n_obs)
 mean_new <- rep(0, n_new)
+
+corr_range <- .2
+Sigma_obs <- sq_exp_cov(dist_obs, corr_range)
+Sigma_new <- sq_exp_cov(dist_new, corr_range)
+Sigma_cross <- sq_exp_cov(cross_dist, corr_range)
 ```
 
 ![:vspace -.5ex]
@@ -602,18 +620,16 @@ y_predicted <- gauss_cond_mean(
 Let's now try to interpolate the function:
 ![:vspace -1ex]
 
-```{r}
-loc_new <- seq(.41, .59, .01)
-n_new <- length(loc_new)
-
-dist_new <- as.matrix(dist(loc_new))
-Sigma_new <- sq_exp_cov(dist_new, corr_range)
-cross_dist <- as.matrix(dist(c(loc_new, loc_obs)))
-cross_dist <- cross_dist[1:n_new, (n_new + 1):(n_new + n_obs)]
-Sigma_cross <- sq_exp_cov(cross_dist, corr_range)
+```{r, eval=FALSE}
 mean_obs <- rep(0, n_obs)
 mean_new <- rep(0, n_new)
+
+corr_range <- .2
+Sigma_obs <- sq_exp_cov(dist_obs, corr_range)
+Sigma_new <- sq_exp_cov(dist_new, corr_range)
+Sigma_cross <- sq_exp_cov(cross_dist, corr_range)
 ```
+
 ![:vspace -.5ex]
 
 Ready, set, ... go! (Oops.)
