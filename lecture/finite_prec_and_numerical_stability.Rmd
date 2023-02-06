@@ -164,14 +164,10 @@ set.seed(1918)
 ```
 
 ```{r}
-n_obs <- 5 # just to save memory
 n_pred <- 10^6
 n_category <- 3
 
-X <- matrix(
-  rnorm(n_obs * n_pred), 
-  n_obs, n_pred
-)
+x_1 <- rnorm(n_pred)
 reg_coef <- matrix(
   rnorm(n_pred * n_category), 
   n_pred, n_category
@@ -184,7 +180,7 @@ reg_coef <- matrix(
 
 ![:vspace -3.1ex]
 ```{r, eval=FALSE}
-category_logp <- as.vector(X[1, ] %*% reg_coef)
+category_logp <- as.vector(t(x_1) %*% reg_coef)
 category_prob <- exp(category_logp) / sum(exp(category_logp))
 ```
 
@@ -192,7 +188,7 @@ category_prob <- exp(category_logp) / sum(exp(category_logp))
 
 ![:vspace -3.1ex]
 ```{r}
-category_logp <- as.vector(X[1, ] %*% reg_coef)
+category_logp <- as.vector(t(x_1) %*% reg_coef)
 category_prob <- exp(category_logp) / sum(exp(category_logp))
 category_prob
 ```
@@ -201,7 +197,7 @@ category_prob
 
 ![:vspace -3.1ex]
 ```{r}
-category_logp <- as.vector(X[1, ] %*% reg_coef)
+category_logp <- as.vector(t(x_1) %*% reg_coef)
 category_prob <- exp(category_logp) / sum(exp(category_logp))
 category_logp
 ```
