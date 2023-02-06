@@ -287,6 +287,8 @@ BUT these methods aren't necessarily better in practice.
 **Note:** For functions with multivariate inputs, we have 
 $f(\boldsymbol{x} + \Delta x \, \boldsymbol{e}_i) = f(\boldsymbol{x}) + \Delta x \, \partial_i f(\boldsymbol{x}) + \ldots$.
 
+<!-- More examples of floating point errors can be found at https://jvns.ca/blog/2023/01/13/examples-of-floating-point-problems/?utm_source=programmingdigest&utm_medium&utm_campaign=1500, including the issue with a naive one-pass algorithm for calculating variance (which can be remedied via Welford’s method). -->
+
 ---
 layout: false
 class: inverse, middle, center
