@@ -176,7 +176,14 @@ reg_coef <- matrix(
   rnorm(n_pred * n_category), 
   n_pred, n_category
 )
+```
 
+---
+
+---
+
+![:vspace -3.1ex]
+```{r, eval=FALSE}
 category_logp <- as.vector(X[1, ] %*% reg_coef)
 category_prob <- exp(category_logp) / sum(exp(category_logp))
 ```
@@ -185,6 +192,8 @@ category_prob <- exp(category_logp) / sum(exp(category_logp))
 
 ![:vspace -3.1ex]
 ```{r}
+category_logp <- as.vector(X[1, ] %*% reg_coef)
+category_prob <- exp(category_logp) / sum(exp(category_logp))
 category_prob
 ```
 
@@ -192,6 +201,8 @@ category_prob
 
 ![:vspace -3.1ex]
 ```{r}
+category_logp <- as.vector(X[1, ] %*% reg_coef)
+category_prob <- exp(category_logp) / sum(exp(category_logp))
 category_logp
 ```
 
