@@ -12,9 +12,7 @@ output:
       countIncrementalSlides: false
       beforeInit: "macros.js"
     includes:
-      in_header: 
-        - mathjax_config.html
-        - mathjax_config.tex
+      in_header: mathjax_config.html
 ---
 
 exclude: true
