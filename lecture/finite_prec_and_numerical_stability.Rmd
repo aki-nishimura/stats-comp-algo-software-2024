@@ -298,7 +298,12 @@ $f(\boldsymbol{x} + \Delta x \, \boldsymbol{e}_i) = f(\boldsymbol{x}) + \Delta x
 layout: false
 class: inverse, middle, center
 
-# (ill)conditing and numerical (in)stability
+# (ill)conditing and numerical (in)stability 
+
+<div style="display:none">
+$\DeclareMathOperator*{\argmax}{argmax}$
+$\DeclareMathOperator*{\argmin}{argmin}$
+</div>
 
 ---
 layout: true
