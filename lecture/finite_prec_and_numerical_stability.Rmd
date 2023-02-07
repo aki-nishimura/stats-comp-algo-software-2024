@@ -781,12 +781,24 @@ $$
 --
 
 **Note:** ![:vspace -.75ex]
-* $\gamma_1 = \displaystyle \max_{\| \bv \| = 1} \| \bA \bv \| = \| \bA \|$ where $\| \bA \|$ is the _matrix norm_.
---
-
 * If $\bX = \bm{V} \boldsymbol{\Gamma} \bm{U}^\intercal$, then $\bX^\intercal \bX = \bm{U} \boldsymbol{\Gamma}^2 \bm{U}^\intercal$. 
 --
 ("SVD on design matrix is equivalent to eigen on empirical cov.")
+
+---
+
+### Review: eigen/singular value decomposition 
+
+The largest eigen/singular values of $\bA$ in particular cocides with its _matrix norm_:
+
+$$\| \bA \| := \max_{\| \bv \| = 1} \| \bA \bv \| = \max_{\bv \neq \bm{0}} \frac{\| \bA \bv \|}{\| \bv \|} = \gamma_\max (\bA).$$
+
+(It follows from the definition that $\| \bA \bv \| / \| \bv \| \leq \| \bA \|$.)
+
+--
+
+For invertable $\bA$, we have
+$$\| \bA^{-1} \| = \gamma_\max (\bA^{-1}) = \gamma_\min^{-1} (\bA).$$
 
 ---
 
@@ -833,8 +845,7 @@ $$\kappa(\bA) := \| \bA \| \| \bA^{-1} \|.$$
 
 ![:vspace -2ex]
 ## Note:
-* $\| \bA^{-1} \| = \gamma_{\min}^{-1}(\bA)$
-* $\kappa(\bA) = \gamma_{\max}(\bA) / \gamma_{\min}(\bA)$, the ratio of the largest to smallest eigen/singular values. 
+* $\kappa(\bA) = \gamma_{\max}(\bA) / \gamma_{\min}(\bA)$, the ratio of the largest to "dilation factors" of the matvec operation $\bv \to \bA \bv$. 
 
 <!-- **Question:** How accurate can $\bx = \bA^{-1} \boldsymbol{b}$ be? Or, to put it another way, what is \kappa(\bA^{-1})? -->
 
