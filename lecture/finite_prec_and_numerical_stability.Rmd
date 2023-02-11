@@ -936,6 +936,12 @@ where $\epsilon_{\textrm{machine}} \approx 10^{-16} \approx 2^{-52}$ (for most p
 
 Similar (though not quite the same) results hold for algorithms to solve for the minimizer $\bx^*$ of $\| \bA \bx - \boldsymbol{b} \|^2$.
 
+--
+
+Such algorithms are called _stable_ &mdash; i.e. stable algorithms, if the problem is sufficiently well-conditioned, can compute a numerical solution close to the analytical one.
+
+<!-- So, conditioning is a purely mathematical property of the problem and stability is a property of an algorithm. -->
+
 ---
 class: inverse, middle, center
 
