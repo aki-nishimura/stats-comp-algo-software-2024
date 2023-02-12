@@ -1,0 +1,153 @@
+---
+title: "Homework: Finite Precision Arithmetic & Gradient Descent"
+output:
+  html_notebook: 
+    code_folding: none
+    highlight: textmate
+---
+
+
+```{r setup, include=FALSE}
+rm(list = ls())
+source(file.path("..", "R", "colors.R"))
+source(file.path("..", "R", "util.R"))
+
+required_packages <- c('Matrix')
+install_and_load_packages(required_packages)
+```
+
+
+# Exercise 1: One-pass algorithm for calculating variance
+
+Let's say you are running a Monte Carlo simulation to estimate the mean and variance of some random variable $\boldsymbol{\theta}$. 
+Imagine that $\boldsymbol{\theta}$ is high-dimensional, so you don't want to keep all the Monte Carlo samples $\boldsymbol{\theta}_i$ due to the memory burden.
+(If $\boldsymbol{\theta}$ is $10^6$-dimensional, for example, storing 1,000 Monte Carlo samples would require 8GB of memory.)
+And it occurs to you that you can write a "one-pass" algorithm to calculate the sample mean and sample second moment of $\boldsymbol{\theta}$ by only keeping track of running totals of Monte Carlo samples. 
+You can then, in theory, calculate the sample variance from these quantities.
+
+The above idea is implemented and applied below. 
+Try it and see what you get. 
+Does the estimate make sense? If not, why?
+How does the estimate change if you change the seed?
+
+**Bonus question:** 
+What is, roughly speaking, the distribution of the estimator `sample_var_with_question_mark` under repeated Monte Carlo simulations (i.e. without a fixed seed)?
+
+```{r}
+set.seed(140778)
+
+running_sum <- 0
+running_sum_sq <- 0
+
+n_sample <- 10^3
+for (i in 1:n_sample) {
+  theta <- 1e10 + rnorm(1)
+  running_sum <- running_sum + theta
+  running_sum_sq <- running_sum_sq + theta^2
+}
+sample_mean <- running_sum / n_sample
+sample_sec_mom <- running_sum_sq / n_sample
+
+sample_var_with_question_mark <- (sample_sec_mom - (sample_mean)^2)
+```
+
+## Things to commit/submit
+Answers to the questions above.
+
+
+# Exercise 2: Numerical differentiation & potential caveats
+
+You have learned in the class that the centered difference $\frac{f(x + \Delta x) - f(x - \Delta x)}{2 \Delta x}$ approximates the derivative $f'(x)$ up to an $O(\Delta x^2)$ error.
+To numerically verify this, we design the following experiment using a log of logistic function (i.e. $f(x) = \log\{ \exp(x) / (1 + \exp(x)) \}$) as an example.
+We evaluate its derivative using an analytical formula and compare it to the centered difference approximations as $\Delta x$ varies from $2^{-1}$ to $2^{-52}$.
+Using the starter code provided below, plot the relative error of the numerical approximation in a log-log scale.
+What do you expect the slope of the plotted line to be?
+
+```{r, eval=FALSE}
+#' Approximate derivative via centered-difference approximation
+approximate_deriv <- function(func, x, dx) {
+  # Fill in
+}
+
+log_logistic_func <- function(x) {
+  # Fill in
+}
+
+log_logistic_deriv <- function(x) {
+  # Fill in
+}
+
+# Calculate and plot the relative errors of finite difference approximations
+set.seed(615)
+x <- rnorm(1)
+
+log2_dx <- - seq(1, 52)
+numerical_deriv <- sapply(
+  2^log2_dx, function(dx) approximate_deriv(log_logistic_func, x, dx)
+)
+analytical_deriv <- log_logistic_deriv(x)
+rel_err <- abs(
+  (analytical_deriv - numerical_deriv) / analytical_deriv
+)
+
+fontsize <- 1.2
+plot(
+  log2_dx, log2(rel_err),
+  frame = FALSE, # Remove the ugly box
+  col = jhu_color$spiritBlue,
+  xlab = "log2 stepsize for finite difference",
+  ylab = "log2 rel errors",
+  xlim = rev(range(log2_dx)),
+  cex.lab = fontsize,
+  cex.axis = fontsize,
+  type = 'l'
+)
+
+```
+
+**Questions:**
+Does the relative error plot agree with what the mathematical theory predicts? Explain the observed phenomenon.
+
+Also, what is the slope in the "latter part" of your plotted line, roughly speaking? 
+Explain why we observe such a slope in the relative error. 
+(Hint: Consider a machine with 10 decimal digits of accuracy. What happens if we numerically differentiate $f(x) = x$ at $x = 1$ with $\Delta x = 0.1, 0.01, 0.001, \ldots$.)
+
+## Things to commit/submit
+Answers to the questions above.
+
+
+# Exercise 3: Continuing development of `hiperglm` &mdash; finding MLE via `stats::optim()` and testing it
+
+We will continue the development of the `hiperglm` package. 
+
+As discussed, our plan is to first implement an MLE finder via a pre-packaged general-purpose BFGS optimizer, against which we can then use to benchmark our custom implementation of iteratively reweighted least squares. 
+The idea is that using the pre-packaged function is less error-prone, especially since the gradient function is easy to unit-test.
+
+To be extra safe, we are going to test the MLE finder via BFGS against an even simpler algorithm: the least square for a linear model via the analytical expression $\hat{\boldsymbol{\beta}}_\textrm{mle} = (\boldsymbol{X}^\intercal \boldsymbol{X})^{-1} \boldsymbol{X}^\intercal \boldsymbol{y}$.
+Complete the following steps toward this goal.
+Remember that you can use [`devtools::load_all()`](https://r-pkgs.org/code.html#sec-code-load-all) to help your [package development process](https://r-pkgs.org/code.html#constant-health-checks). 
+
+0. Make and check out (`git branch` and `git checkout`) a development branch (call it `dev` or `develop`) where you will commit the work below.
+1. Set up the use of `testthat`.
+2. Copy the helper functions `are_all_close()` and `simulate_data()` from the instructor's repo.
+3. Test the `are_all_close()` function. 
+Write a test to cover at least three cases: the function 1) correctly returns `TRUE`, 2) correctly returns `FALSE` because the relative error is above `rel_tol`, and 3) correctly returns `FALSE` because the absolute error is above `abs_tol`. 
+Make sure that the logic of the test is clear and easy to understand &mdash; tests are there to clarify and validate the code's behavior; unreadable tests defeat the purpose.
+<br> _Remark:_ This is just an exercise, but in general there is nothing strange about testing a function you use to test another function. It is perfectly reasonable to consider testing any functions complicated enough to potentially contain insiduous bugs.
+4. Set up the (currently failing) test to compare the MLE estimated via pseudo-inverse and via BFGS. 
+5. Implement the MLE finder via peudo-inverse. 
+Please, pretty please, do not calculate an inverse of a matrix. 
+(Otherwise, it's fine to use `solve()` instead of `chol()`.)
+6. Implement the MLE finder via BFGS:
+    a. Implement functions to calculate the log-likelihood and gradient under a linear model. 
+    This function technically requires an estimate of the residual variance, but its value does not affect the MLE for the coefficients and hence is irrelevant for our purpose. 
+    You can just specify it as an optional parameter e.g. as `function(..., noise_var = 1)`.
+    b. Test your gradient calculation by comparing it against a numerical one.
+    Along the way, you should implement a helper function to approximate the gradient of a given function via finite difference.
+    c. Plug in the now tested-and-true log-likelihood and gradient functions to `stats::optim()` to find MLE.
+7. Run `devtools::test()` and check that the then-failing test from Step 2 now passes.
+8. Open a pull request from your development branch to the main/master one. 
+    
+## Things to commit/submit
+
+Hyperlink to the pull request.
