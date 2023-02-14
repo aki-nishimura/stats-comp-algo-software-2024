@@ -193,11 +193,14 @@ Please, pretty please, do not calculate an inverse of a matrix.
     This function technically requires an estimate of the residual variance, but its value does not affect the MLE for the coefficients and hence is irrelevant for our purpose. 
     You can just specify it as an optional parameter e.g. as `function(..., noise_var = 1)`.
     b. Test your gradient calculation by comparing it against a numerical one.
-    Along the way, you should implement a helper function to approximate the gradient of a given function via finite difference.
+    For this purpose, use the function from Exercise 2, Part B to approximate the gradient of a given function via finite difference.
+    <br> _Remark:_ Technically, this test checks only for consistency between the log-likelihood and gradient function.
+    It is possible to have both functions wrong but consistent with each other so that the test passes.
+    This test nonetheless can catch many bugs and, since the gradient calculation tends to be more error prone, it's good to make sure there is no mistake there. 
     c. Plug in the now tested-and-true log-likelihood and gradient functions to `stats::optim()` to find MLE.
 7. Run `devtools::test()` and check that the then-failing test from Step 2 now passes.
 8. Open a pull request from your development branch to the main/master one. 
     
 ## Things to commit/submit
 
-Hyperlink to the pull request.
+Link to the pull request.
