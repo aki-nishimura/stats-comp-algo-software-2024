@@ -162,7 +162,8 @@ testthat::expect_true(are_all_close(
 
 
 ## Things to commit/submit
-Answers to the questions above.
+For Part A, completed code and answers to the questions.
+For Part B, completed code that passes the test.
 
 
 # Exercise 3: Continuing development of `hiperglm` &mdash; finding MLE via `stats::optim()` and testing it
