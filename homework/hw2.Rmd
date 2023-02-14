@@ -12,7 +12,7 @@ rm(list = ls())
 source(file.path("..", "R", "colors.R"))
 source(file.path("..", "R", "util.R"))
 
-required_packages <- c('Matrix')
+required_packages <- c('Matrix', 'testthat')
 install_and_load_packages(required_packages)
 ```
 
@@ -55,7 +55,9 @@ sample_var_with_question_mark <- (sample_sec_mom - (sample_mean)^2)
 Answers to the questions above.
 
 
-# Exercise 2: Numerical differentiation & potential caveats
+# Exercise 2: Numerical differentiation
+
+## Part A: Potential caveats of numerical differentiation
 
 You have learned in the class that the centered difference $\frac{f(x + \Delta x) - f(x - \Delta x)}{2 \Delta x}$ approximates the derivative $f'(x)$ up to an $O(\Delta x^2)$ error.
 To numerically verify this, we design the following experiment using a log of logistic function (i.e. $f(x) = \log\{ \exp(x) / (1 + \exp(x)) \}$) as an example.
@@ -111,6 +113,53 @@ Does the relative error plot agree with what the mathematical theory predicts? E
 Also, what is the slope in the "latter part" of your plotted line, roughly speaking? 
 Explain why we observe such a slope in the relative error. 
 (Hint: Consider a machine with 10 decimal digits of accuracy. What happens if we numerically differentiate $f(x) = x$ at $x = 1$ with $\Delta x = 0.1, 0.01, 0.001, \ldots$.)
+
+## Part B: Extention to multivariate functions
+
+As mentioned in the lecture, the finite difference method extends to a function with multivariate input $f: \mathbb{R}^d \to \mathbb{R}$ and can be used to approximate the gradient $\nabla f(\boldsymbol{x})$.
+The extension relies on the fact $f(\boldsymbol{x} + \Delta x \, \boldsymbol{e}_i) = f(\boldsymbol{x}) + \Delta x \, \partial_i f(\boldsymbol{x}) + \ldots$ for $i = 1, \ldots, d$.
+
+Using the starter code provided below, implement a function to approximate $\nabla f(\boldsymbol{x})$ via the centered difference method.
+To test this function, take a quadratic function $f(x) = - \boldsymbol{x}^\intercal \boldsymbol{\Phi} \boldsymbol{x} / 2$ with positive definite $\boldsymbol{\Phi}$ as an example.
+First derive an analytical expression for its gradient.
+Then compare a numerically approximated gradient to one computed via an analytical formula.
+
+(In deriving an analytical formula for the gradient, you might find these hints helpful: 
+1) any positive definite $\boldsymbol{\Phi}$ admits a "square-root" decomposition $\boldsymbol{\Phi} = \boldsymbol{A}^\intercal \boldsymbol{A}$ and hence $\boldsymbol{x}^\intercal \boldsymbol{\Phi} \boldsymbol{x} = \| \boldsymbol{A} \boldsymbol{x} \|^2$; and
+2) by the chain rule, the gradient of $g(\boldsymbol{y})$ for $\boldsymbol{y} = \boldsymbol{A} \boldsymbol{x}$ with respect to $\boldsymbol{x}$ is $\nabla_{\boldsymbol{x}} \left( g \circ \boldsymbol{A} \right) (\boldsymbol{x}) = \boldsymbol{A}^\intercal \nabla_{\boldsymbol{y}} g(\boldsymbol{y})$.)
+
+```{r, eval=FALSE}
+approx_grad <- function(func, x, dx = .Machine$double.eps^(1/3)) {
+  numerical_grad <- rep(0, length(x))
+  # Fill in
+  return(numerical_grad)
+}
+
+set.seed(410)
+n_param <- 4
+X <- matrix(rnorm(2 * n_param^2), nrow = 2 * n_param, ncol = n_param)
+Sigma_inv <- t(X) %*% X
+  
+#' Calculate log-density of centered Gaussian up to an additive factor
+gaussian_logp <- function(x, Sigma_inv) {
+  logp <- - .5 * t(x) %*% Sigma_inv %*% x
+  return(logp)
+}
+
+gaussian_grad <- function(x, Sigma_inv) {
+  grad <- rep(0, length(x)) # Replace with an actual formula
+  return(grad)
+}
+
+x <- c(3, 1, 4, 1)
+
+analytical_grad <- gaussian_grad(x, Sigma_inv)
+numerical_grad <- approx_grad(function(x) gaussian_logp(x, Sigma_inv), x)
+testthat::expect_true(are_all_close(
+  analytical_grad, numerical_grad, abs_tol = Inf, rel_tol = 1e-3
+))
+```
+
 
 ## Things to commit/submit
 Answers to the questions above.
