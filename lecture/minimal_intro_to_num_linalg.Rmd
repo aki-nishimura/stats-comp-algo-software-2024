@@ -1175,10 +1175,12 @@ Now, what's the cost of solving $\bm{L} \bm{z} = \bm{b}$ via forward sub?
 ![:vspace -1ex]
 
 $$\begin{aligned}
-z_1 &= \frac{b_1}{\ell_{11}} \\
-z_2 &= \frac{b_1 - \ell_{21} z_1}{\ell_{22}} \\
-&\hspace{1ex}\vdots \\
-z_p &= \frac{b_p - \sum_{k = 1}^{p - 1} \ell_{pk} z_k}{\ell_{pp}}. 
+z_1 &= b_1 / \ell_{11} \\[3pt]
+z_2 &= (b_1 - \ell_{21} z_1) / \ell_{22} \\[-10pt]
+&\hspace{1ex}\vdots \\[-10pt]
+z_j &= (b_j - \textstyle \sum_{k = 1}^{j - 1} \ell_{jk} z_k) / \ell_{jj} \\[-10pt]
+&\hspace{1ex}\vdots \\[-10pt]
+z_p &= (b_p - \textstyle \sum_{k = 1}^{p - 1} \ell_{pk} z_k) / \ell_{pp}. 
 \end{aligned}$$
 
 --
