@@ -12,8 +12,9 @@ From the previous assignments, you should now have a `hiperglm` package that  im
 In this assignment, we will extend the package to support the logistic model.
 We will work toward implementing Newton's method for finding MLE and test its output against BFGS's.
 
-Remember to commit your work on the `develop` branch.
-Then open a pull request into your main branch after completing the assignment and request a review from the TA.
+Before you start this assignment, remember to first address all the feedback from the previous assignment and merge your previous work to the main branch. 
+Then create a new `logit-model` branch from there, check out the `logit-model` branch, and commit all your work for this assignment there.
+Finally, open a pull request into your main branch after completing the assignment and request a review from the TA.
 
 1. Update the helper function `simulate_data()` to support binary outcomes: do this by copying the updated function from the master branch of the instructor's repo.
 Supporting a non-binary binomial outcome is optional; you are allowed to implement everything assuming that the `outcome` input for the logistic model is always binary.
