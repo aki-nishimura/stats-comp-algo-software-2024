@@ -18,7 +18,8 @@ Finally, open a pull request into your main branch after completing the assignme
 
 1. Update the helper function `simulate_data()` to support binary outcomes: do this by copying the updated function from the master branch of the instructor's repo.
 Supporting a non-binary binomial outcome is optional; you are allowed to implement everything assuming that the `outcome` input for the logistic model is always binary.
-Even if you want to try implementing the more general case, you might consider starting with the binary case and extending it after completing Step 7.
+In case you decide to try supporting the more general case, _please still start with the binary case, only extend it after completing Step 7, and keep the extension work in separate commits_.
+This is not only a reasonable development approach, but will also help us keep this optional part separate when grading the assignment.
 2. Copy from the instructor's repo the (currently failing) test of the Newton's method output against BFGS in `test-mle-finder.R`.  
 3. Implement an MLE finder via BFGS for the logistic model:
     a. Implement functions to calculate the log-likelihood and its gradient under the logistic model.
