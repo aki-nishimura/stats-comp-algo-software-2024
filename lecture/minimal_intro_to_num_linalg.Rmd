@@ -1322,11 +1322,10 @@ $$(\bm{Q}_2 \bm{Q}_1)^\intercal \bm{Q}_2 \bm{Q}_1 = \bm{Q}_1^\intercal \bm{Q}_2^
 --
 
 * If $\bm{Q}$ is orthogonal, then so is $\bm{Q}^\intercal$. 
---
-(Because $\bm{Q}^\intercal = \bm{Q}^{-1}$.)
+(Because $\bm{Q} \bm{Q}^\intercal = \bm{I}$.)
 --
 
-* If $\bm{Q} = [\, \bm{q}_1 \, | \ldots | \, \bm{q}_n \,] \in \mathbb{R}^{n \times n}$ is orthog, then a "reduced" matrix $\bm{Q}_{n \times p} = [\, \bm{q}_1 \, | \ldots | \, \bm{q}_p \,]$ for $p < n$ is again orthog.
+* If $\bm{Q} = [\, \bm{q}_1 \, | \ldots | \, \bm{q}_n \,] \in \mathbb{R}^{n \times n}$ is orthog, then a "reduced" matrix $\bm{Q}_{n \times p} = [\, \bm{q}_1 \, | \ldots | \, \bm{q}_p \,]$ satisfies $\bm{Q}_{n \times p}^\intercal \bm{Q}_{n \times p} = \bm{I}_{p \times p}$.
 
 ---
 
