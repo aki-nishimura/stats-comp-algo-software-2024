@@ -1383,9 +1383,23 @@ Now we obtain the decomposition in the desired form:
 
 $$\bX = \bm{Q} \bm{R} = \bm{Q}_{n \times p} \bm{R}_{p \times p}.$$
 
-![:vspace -.5ex]
+![:vspace -1.5ex]
 
 --
+
+**Notes:**
+
+* Note analogy with LU decomp &mdash; applying a seq of transformations, whose prod has the same structure.
+--
+
+* Computing the $\bm{Q}^\intercal \by = \bm{Q}_p \ldots \bm{Q}_1 \by$ part of $\hat{\bm{\beta}} = \bm{R}^{-1} \bm{Q}^\intercal \by$ in practice can be done via matvecs $\bv \to (\bm{I} - 2 \bu_j \bu_j^\intercal ) \, \bv$.
+--
+
+  * Most obvious in concept may _not_ be most efficient in implementation.
+  * Some operations are best abstracted away and done implicitly &mdash;
+  e.g. `qr()` returns a `qr` class with associated S3 methods.
+  
+---
 
 Computational complexity of solving least-sq via QR?
 
@@ -1415,20 +1429,6 @@ The $- \frac{2}{3} p^3$ part reduces the cost a bit, but only when $n \approx p$
 See Trefethen Algorithm 10.2:
 2 (n - j) for inner prod, (n - j) multiply, (n - j) add for j = 1, \ldots, p, for the grand total of $4np - 2 p^2$?
 -->
-
----
-
-**Notes:**
-
-* Note analogy with LU decomp &mdash; applying a seq of transformations, whose prod has the same structure.
---
-
-* Computing the $\bm{Q}^\intercal \by = \bm{Q}_p \ldots \bm{Q}_1 \by$ part of $\hat{\bm{\beta}} = \bm{R}^{-1} \bm{Q}^\intercal \by$ in practice can be done via matvecs $\bv \to (\bm{I} - 2 \bu_j \bu_j^\intercal ) \, \bv$.
---
-
-  * Most obvious in concept may _not_ be most efficient in implementation.
-  * Some operations are best abstracted away and done implicitly &mdash;
-  e.g. `qr()` returns a `qr` class with associated S3 methods.
   
 ---
 layout: false
