@@ -1,0 +1,1235 @@
+---
+title: "Hardware aware computing"
+subtitle: "Know thy computer and design _actually_&#8239; fast algorithms"
+author: "Aki Nishimura"
+date: "`r Sys.Date()`"
+output:
+  xaringan::moon_reader:
+    css: ["default", "default-fonts", "extra.css"]
+    lib_dir: libs
+    nature:
+      highlightStyle: github
+      highlightSpans: true
+      slideNumberFormat: "%current%"
+      countIncrementalSlides: false
+      beforeInit: "macros.js"
+    includes:
+      in_header: mathjax_config.html
+---
+
+exclude: true
+
+```{r setup, include = FALSE}
+source(file.path("..", "R", "util.R"))
+
+required_packages <- c('Rcpp', 'RcppEigen', 'RcppArmadillo', 'microbenchmark')
+install_and_load_packages(required_packages)
+```
+
+```{r, include=FALSE}
+# Cache Rcpp compilations
+knitr::opts_chunk$set(cache = TRUE)
+
+# Temporarily suppress warnings because compilations generate a lot of them
+default_warn_opt <- getOption("warn") 
+options(warn = -1) 
+
+# Print outputs without "##"
+knitr::opts_chunk$set(comment = '')
+```
+
+---
+layout: true
+
+# Word of wisdom on optimization
+
+---
+
+<p style="margin-top:12ex; font-size:25pt; font-family:garamond;", class="center">
+"Premature optimization is the root of all evil."
+</p>
+
+<p style="margin-top:1.2ex; line-height:1.2em; font-size:25pt; font-family:'Times New Roman';", class="right"> &mdash; Donald Knuth &emsp;&emsp;</p>
+
+---
+
+<p style="margin-top:10ex; line-height:1.2em; font-size:24pt; font-family:garamond;">
+"We should forget about small efficiencies, say about 97% of the time: premature optimization is the root of all evil. Yet we should not pass up our opportunities in that critical 3%."
+</p>
+
+<p style="margin-top:1.2ex; line-height:1.2em; font-size:24pt; font-family:'Times New Roman';", class="right"> &mdash; Donald Knuth &emsp;&emsp;</p>
+
+---
+
+<p style="margin-top:3ex; font-size:24pt; line-height:1.2em; font-family:garamond;">
+"Programmers waste enormous amounts of time thinking about, or worrying about, the speed of noncritical parts of their programs, and these attempts at efficiency actually have a strong negative impact when debugging and maintenance are considered. 
+</p>
+<p style="margin-top:1ex; line-height:1.2em; font-size:24pt; font-family:garamond;">
+We should forget about small efficiencies, say about 97% of the time: premature optimization is the root of all evil. Yet we should not pass up our opportunities in that critical 3%."
+</p>
+
+<p style="margin-top:0ex; font-size:24pt; font-family:'Times New Roman';", class="right"> &mdash; Donald Knuth &emsp;&emsp;</p>
+
+---
+layout:false
+class: center, middle, inverse
+
+# Same functionality, varying performance
+
+## (I mean, duh. But&hellip; umm, why?)
+
+---
+
+# "Vectorize!" but what does it mean, really?
+
+e.g. `axpy` from _Basic Linear Algebra Subprograms_ (BLAS):
+$$\bm{y} \gets a \bm{x} + \bm{y}$$
+--
+
+```{r}
+axpy <- function(a, x, y) {
+  for (i in 1:length(x)) {
+    y[i] <- a * x[i] + y[i] 
+  }
+  return(y)
+}
+
+axpy_vec <- function(a, x, y) {
+  y <- a * x + y
+  return(y)
+}
+```
+
+---
+
+# "Vectorize!" but what does it mean, really?
+
+```{r}
+n <- 10^6
+a <- 3.14
+x <- rep(1, n)
+y <- rep(0.00159, n)
+```
+
+--
+
+```{r, eval=FALSE}
+bench::mark(axpy(a, x, y))
+```
+
+```{r, echo=FALSE}
+summarize_benchmark(
+  bench::mark(axpy(a, x, y))
+)
+```
+
+```{r, eval=FALSE}
+bench::mark(axpy_vec(a, x, y))
+```
+
+```{r, echo=FALSE}
+summarize_benchmark(
+  bench::mark(axpy_vec(a, x, y))
+)
+```
+
+---
+layout: true
+
+# "Compiled code is faster" but why?
+
+```{r}
+sourceCpp(file.path('src', 'axpy_c.cpp'))
+```
+<p style="margin-top: -.5ex;"> </p>
+
+---
+
+```{r, comment='', echo=FALSE, cache=FALSE}
+cat(readLines(file.path('src', 'axpy_c.cpp')), sep = '\n')
+```
+
+---
+
+```{r, comment='', echo=FALSE}
+cat("#include <Rcpp.h> // Enable use of R objects in C++
+using Rcpp::NumericVector; // Avoid having to type 'Rcpp::...'
+  // 'using namespace Rcpp;' also possible but not recommended
+
+// [[Rcpp::export]] // Make it available to R
+NumericVector axpy_c(double a, NumericVector& x, NumericVector& y) {
+  int n = x.size();
+  for (int i = 0; i < n; ++i) { // C arrays use '0-based' indexing
+    y[i] += a * x[i];
+  }
+  return y; // Returning specified 'NumericVector' type
+}")
+```
+
+---
+
+```{r, comment='', echo=FALSE, cache=FALSE}
+cat(readLines(file.path('src', 'axpy_c.cpp')), sep = '\n')
+```
+
+--
+
+```{r, eval=FALSE}
+bench::mark(axpy_c(a, x, y))
+```
+
+```{r, echo=FALSE}
+summarize_benchmark(
+  bench::mark(axpy_c(a, x, y))
+)
+```
+
+---
+
+```{r, comment='', echo=FALSE, cache=FALSE}
+cat(readLines(file.path('src', 'axpy_c.cpp')), sep = '\n')
+```
+
+<p style="margin-top: -.5ex;"> </p>
+
+**Note:** This function directly modifies `y`.
+<p style="margin-top: -1ex;"> </p>
+```{r}
+y <- rep(0.00159, n)
+invisible(axpy_c(a, x, y)) # Same effect as 'y <- axpy_c(a, x, y)'
+head(y) 
+```
+
+<!-- Mention that we could have equivalently set the return type to be 'void' but that it's a bad practice. -->
+
+---
+layout: false
+layout: true
+
+# "Compiled code is faster" but why?
+
+**Additional Note:** <br>
+Surprisingly, the function below too directly modifies `y`.
+
+---
+
+```{r, echo=FALSE}
+cat("#include <Rcpp.h>
+using Rcpp::NumericVector;
+
+// [[Rcpp::export]]
+NumericVector axpy_c(double a, NumericVector` ` x, NumericVector` ` y) {
+  int n = x.size();
+  for (int i = 0; i < n; ++i) {
+    y[i] += a * x[i];
+  }
+  return y;
+}")
+```
+<p style="margin-top: -.5ex;"> </p>
+
+---
+
+```{r, comment='', echo=FALSE}
+cat("#include <Rcpp.h>
+using NumVec = Rcpp::NumericVector; // Alias; here only to save space
+
+// [[Rcpp::export]]
+NumVec axpy_c_mod(double a, const NumVec& x, NumVec& y) { 
+    // 'const' kw promises (at compile time) not to change the variable  
+  int n = x.size();
+  for (int i = 0; i < n; ++i) {
+    y[i] += a * x[i];
+  }
+  return y;
+}")
+```
+
+---
+layout: false
+layout: true
+
+# "Compiled code is faster" but why?
+
+**Additional Note:** <br>
+To leave `y` untouched (which is safer), you can do
+![:vspace -.5ex]
+
+```{r}
+sourceCpp(file.path('src', 'axpy_c_wo_side_effect.cpp'))
+```
+<p style="margin-top: -.5ex;"> </p>
+
+```{r, comment='', echo=FALSE, cache=FALSE}
+cat(readLines(file.path('src', 'axpy_c_wo_side_effect.cpp'))[-c(1, 2, 3, 4)], sep = '\n')
+```
+
+<p style="margin-top: -1ex;"> </p>
+
+---
+
+```{r}
+y <- rep(0.00159, n)
+invisible(axpy_c_alt(a, x, y))
+head(y)
+```
+
+---
+
+```{r, eval=FALSE}
+bench::mark(axpy_c_alt(a, x, y))
+```
+
+```{r, echo=FALSE}
+summarize_benchmark(
+  bench::mark(axpy_c_alt(a, x, y))
+)
+```
+
+---
+layout: false
+layout: true
+
+# Is a dedicated linear algebra library faster?
+
+```{r}
+sourceCpp(file.path('src', 'axpy_eigen.cpp'))
+```
+
+```{r, comment='', echo=FALSE, cache=FALSE}
+cat(readLines(file.path('src', 'axpy_eigen.cpp')), sep = '\n')
+```
+
+---
+
+```{r, eval=FALSE}
+bench::mark(axpy_eigen(a, x, y))
+```
+
+```{r, echo=FALSE}
+summarize_benchmark(
+  bench::mark(axpy_eigen(a, x, y))
+)
+```
+
+---
+
+**Note:** This function _does not_ directly modify `y`. (wtf?)
+<p style="margin-top: -1ex;"> </p>
+```{r}
+y <- rep(0.00159, n)
+invisible(axpy_eigen(a, x, y))
+head(y)
+```
+
+---
+layout: false
+layout: true
+
+# Is a dedicated linear algebra library faster?
+
+If you want to directly modify `y`:
+
+```{r}
+sourceCpp(file.path('src', 'axpy_eigen_mapped.cpp'))
+```
+
+```{r, comment='', echo=FALSE, cache=FALSE}
+cat(readLines(file.path('src', 'axpy_eigen_mapped.cpp')), sep = '\n')
+```
+
+---
+
+```{r}
+y <- rep(0.00159, n)
+invisible(axpy_eigen(a, x, y))
+head(y) # Better to return VectorXd & set 'y <- axpy_eigen(a,x,y)'
+```
+
+---
+
+```{r, eval=FALSE}
+bench::mark(axpy_eigen(a, x, y))
+```
+
+```{r, echo=FALSE}
+summarize_benchmark(
+  bench::mark(axpy_eigen(a, x, y))
+)
+```
+
+---
+layout: false
+layout: true
+
+# Is a dedicated linear algebra library faster?
+
+Optimized libraries (e.g. Eigen, OpenBLAS, IntelMKL, &hellip;) make more difference in Level 2 and, esp., 3 operations.
+
+![:vspace -1ex]
+
+---
+
+<!-- Discuss "not general" matrices (symmetric, triangular, banded, etc) and what "d" is for. -->
+
+```{r}
+# 'gemm' = general matrix-multiplication
+sourceCpp(file.path('src', 'gemm_eigen.cpp'))
+```
+
+```{r, comment='', echo=FALSE, cache=FALSE}
+cat(readLines(file.path('src', 'gemm_eigen.cpp')), sep = '\n')
+```
+
+---
+
+```{r}
+n <- 1024L
+A <- matrix(rnorm(n^2), nrow = n, ncol = n)
+B <- matrix(rnorm(n^2), nrow = n, ncol = n)
+```
+
+--
+
+```{r, eval=FALSE}
+bench::mark(dgemm_eigen(A, B))
+```
+
+```{r, echo=FALSE}
+summarize_benchmark(
+  bench::mark(dgemm_eigen(A, B))
+)
+```
+
+```{r, eval=FALSE}
+bench::mark(A %*% B)
+```
+
+```{r, echo=FALSE}
+summarize_benchmark(
+  bench::mark(A %*% B)
+)
+```
+
+---
+layout: false
+
+# Is a dedicated linear algebra library faster?
+
+**Note:** RcppArmadillo uses the same library as base R&hellip;
+
+![:vspace -1ex]
+
+```{r}
+sourceCpp(file.path('src', 'gemm_arma.cpp'))
+```
+
+```{r, comment='', echo=FALSE, cache=FALSE}
+cat(readLines(file.path('src', 'gemm_arma.cpp')), sep = '\n')
+```
+
+```{r, eval=FALSE}
+bench::mark(dgemm_arma(A, B))
+```
+
+```{r, echo=FALSE}
+summarize_benchmark(
+  bench::mark(dgemm_arma(A, B))
+)
+```
+
+---
+layout: false
+layout: true
+
+# Some of the tricks optimized libraries use
+
+**Single instruction, multiple data (SIMD)** processing
+
+---
+
+![:image](figure/computing_at_low_level/sse_and_avx.png)
+![:vspace .5ex]
+
+--
+
+**Streaming SIMD Extensions (SSE)** use 128-bit registers
+![:vspace -1ex]
+
+**Advanced Vector Extensions (AVX)** use 256-bit registers
+<!-- SSE = Streaming SIMD Extensions, AVX = Advanced Vector Extensions -->
+
+---
+
+![:image](figure/computing_at_low_level/avx_addition.png)
+
+In particular, AVX allows you to add 4 doubles in one shot.
+
+--
+
+Use of AVX additionally requires OS and compiler support.<br>
+(Anything post 2015 should work.)
+
+---
+layout: false
+
+# Some of the tricks optimized libraries use
+
+**Fused Multiply Accumulate (FMA)**
+
+![:image](figure/computing_at_low_level/fused_multiply_accumulate.png)
+
+Available since AMD _Piledriver_ (2012)/Intel _Haswell_ (2013).
+
+```{r, include=FALSE}
+# No more Rcpp compilations; stop caching
+knitr::opts_chunk$set(cache = FALSE)
+
+# Turn back on warnings
+options(warn = default_warn_opt)
+```
+
+---
+layout: false
+class: center, middle, inverse
+
+# A bit of assembly code
+
+---
+
+# Quick peek into CPU
+<img src="figure/computing_at_low_level/cpu_diagram.jpeg" alt="" class="center" style="width: 85%;"/>
+
+---
+
+# Registers: most accessible data storage
+<img src="figure/computing_at_low_level/x86_32bits_registers.png" class="center" style="width: 85%;"/>
+
+---
+
+# What's machine doing behind the scene?
+
+To foster mutual understanding between us and machine, let's look at simple _assembly code_.
+
+--
+
+<img src="figure/computing_at_low_level/divide_int_by_two.png" class="center" style="width: 100%;"/>
+
+---
+
+<!-- Let's now try to decifer what our machine friend is doing: -->
+# Division via bit-shift
+.pull-left[
+  <img src="figure/computing_at_low_level/divide_int_by_two_assembly_only.png" class="left" style="width: 100%;"/> 
+]
+--
+.pull-right[
+  "shr" = _logical shift_ to right
+  
+  <img src="figure/computing_at_low_level/right_logical_shift.png" class="center" style="width: 100%;"/>
+]
+
+---
+
+# Division via bit-shift
+.pull-left[
+  <img src="figure/computing_at_low_level/divide_int_by_two_assembly_only.png" class="left" style="width: 100%;"/> 
+]
+.pull-right[
+  "sar" = _arith. shift_ to right
+  
+  <img src="figure/computing_at_low_level/right_arithmetic_shift.png" class="center" style="width: 100%;"/>
+]
+<!-- Right shift by 31-bits ensures that division of negative integers get rounded towards 0. 
+The operation achieves this by isolating the sign bit (which is 1 for negative integers) and adding it to the original integer value:
+https://stackoverflow.com/questions/40638335/why-does-the-compiler-generate-a-right-shift-by-31-bits-when-dividing-by-2 -->
+
+---
+
+# Division via bit-shift
+.pull-left[
+  <img src="figure/computing_at_low_level/divide_int_by_two_assembly_only.png" class="left" style="width: 100%;"/> 
+]
+.pull-right[
+  <img src="figure/computing_at_low_level/twos_complement_representation_of_integer.png" class="center" style="width: 100%;"/>
+]
+
+---
+
+# More general divisions
+
+In order to optimize division as bit-shift, a compiler needs to know we are dividing by 2 and not by a generic integer:
+
+<img src="figure/computing_at_low_level/divide_int_by_int.png" class="center" style="width: 100%;"/> 
+
+---
+
+# More general divisions
+
+Floating point arithmetic uses completely different logic:
+
+![:vspace -.5ex]
+
+<img src="figure/computing_at_low_level/divide_double_by_two.png" class="center" style="width: 75%;"/> 
+
+--
+ 
+![:vspace -.75ex]
+Btw: "1071644672" (decimal) $=$ "3FE00000" (hexadecimal) $=$ "111111111000000000000000000000" (binary) $=$ " $\!0.5$"
+
+<!-- and the other "0" is for the trailing 32-bits. -->
+
+---
+layout: false
+class: center, middle, inverse
+
+# Pipelining "fetch-decode-execute-store"
+## How to keep your CPU "executing"
+
+---
+layout: true
+
+# Example: effect of details in "tight loops"
+
+<!-- "tight loop": a loop which contains few instructions and iterates many times.
+https://en.wiktionary.org/wiki/tight_loop#:~:text=Noun,running%20in%20the%20operating%20system. -->
+
+---
+
+Consider two implementations of a `sign` function:
+```{r, message=FALSE, cache=FALSE}
+sourceCpp(file.path('src', 'sign.cpp'))
+```
+
+```{r, comment='', echo=FALSE}
+cat(readLines(file.path('src', 'sign.cpp'))[5:20], sep = '\n')
+```
+
+---
+
+Consider two implementations of a `sign` function:
+```{r, eval=FALSE}
+sourceCpp(file.path('src', 'sign.cpp'))
+```
+
+```{r, comment='', echo=FALSE}
+cat(readLines(file.path('src', 'sign.cpp'))[22:30], sep = '\n')
+```
+
+---
+
+Let's compare their performances:
+```{r, echo=FALSE}
+x <- rnorm(10^6)
+```
+
+```{r, eval=FALSE}
+x <- rnorm(10^6)
+bench::mark(sign_via_if(x))
+```
+
+```{r, echo=FALSE}
+summarize_benchmark(
+  bench::mark(sign_via_if(x))
+)
+```
+
+```{r, eval=FALSE}
+bench::mark(sign_via_diff(x))
+```
+
+```{r, echo=FALSE}
+summarize_benchmark(
+  bench::mark(sign_via_diff(x))
+)
+```
+
+---
+
+Another run just to make sure... oh, what happened?
+
+```{r, echo=FALSE}
+x <- rep(1, 10^6)
+```
+
+```{r, eval=FALSE}
+x <- rep(1, 10^6)
+bench::mark(sign_via_if(x))
+```
+
+```{r, echo=FALSE}
+summarize_benchmark(
+  bench::mark(sign_via_if(x))
+)
+```
+
+```{r, eval=FALSE}
+bench::mark(sign_via_diff(x))
+```
+
+```{r, echo=FALSE}
+summarize_benchmark(
+  bench::mark(sign_via_diff(x))
+)
+```
+
+---
+layout: false
+
+# Instruction cycle:<br> $\quad$ fetch-decode-execute-store
+
+<img src="figure/computing_at_low_level/fetch_decode_execute_store_cycle.png" class="center" style="width: 70%;"/> 
+
+---
+
+# Instruction cycle:<br> $\quad$ fetch-decode-execute-store
+
+<img src="figure/computing_at_low_level/fetch_decode_execute_store_cycle_more_details.jpeg" class="center" style="width: 100%;"/> 
+
+---
+
+# "Instruction pipelining" to avoid idle time
+
+<p style="margin-top: -1ex;"> </p>
+<img src="figure/computing_at_low_level/instruction_pipelining.png" class="center" style="width: 70%;"/> 
+
+---
+layout: true
+
+# Keep it simple & predictable for pipelining
+
+---
+
+You can't pipeline if the next action depends on curr one!
+
+---
+
+Let's take another look at the two `sign` implementations:
+
+<img src="figure/computing_at_low_level/sign_via_diff.png" class="center" style="width: 100%;"/> 
+
+---
+
+Let's take another look at the two `sign` implementations:
+
+<img src="figure/computing_at_low_level/sign_via_if.png" class="center" style="width: 100%;"/> 
+
+---
+
+Let's take another look at the two `sign` implementations:
+
+<img src="figure/computing_at_low_level/sign_via_if_optimized.png" class="center" style="width: 100%;"/> 
+
+--
+
+where "1072693248" $=$ " $\!-1$"
+<!-- 1072693248 
+= 3FF00000
+= 111111111100000000000000000000 (one 1, ten 1's + one 0 for the exponent part, followed by twenty 0's) -->
+
+---
+layout: false
+class: center, middle, inverse
+
+# It's about time: <br> worry less about number of arithmetic ops & more about data motion efficiency
+
+---
+
+# CPU got communication issues with RAM <br> .small[(a.k.a. von Neumann bottleneck)]
+<!-- <p style="margin-top: -1ex;"> </p> -->
+<img src="figure/computing_at_low_level/cpu_diagram_with_memory.jpeg" alt="" class="center" style="width: 90%;"/>
+
+---
+layout: true
+
+# Example: row- vs. column-oriented matvec
+
+---
+
+<!-- <p style="margin-top: 3ex;"> </p> -->
+Matvec $\bm{x} \to \bm{A} \bm{x}$ viewed as multiplying rows of $\bm{A}$ with $\bm{x}$:
+
+<img src="figure/computing_at_low_level/row_oriented_matvec.png" class="center" style="width: 85%;"/> 
+
+---
+
+Viewed as adding up cols of $\bm{A}$ multiplied by entries of $\bm{x}$:
+
+<img src="figure/computing_at_low_level/col_oriented_matvec.png" class="center" style="width: 100%;"/> 
+
+<p style="margin-top:-.5ex;"> </p>
+
+--
+
+.pull-left[
+```{r, eval=FALSE}
+# Row-oriented matvec
+Ax <- rep(0, n_row)
+for (i in 1:n_row) {
+  for (j in 1:n_col) {
+    Ax[i] <- Ax[i] + 
+      A[i, j] * x[j]
+  }
+}
+```
+]
+
+.pull-right[
+```{r, eval=FALSE}
+# Column-oriented matvec
+Ax <- rep(0, n_row)
+for (j in 1:n_col) {
+  for (i in 1:n_row) {
+    Ax[i] <- Ax[i] + 
+      A[i, j] * x[j]
+  }
+}
+```
+]
+
+---
+
+Here is how a row-oriented matvec looks like:
+```{r}
+row_oriented_matvec <- function(A, v) {
+  Av <- rep(0., n_row)
+  for (i in 1:n_row) {
+    Av[i] <- sum(A[i, ] * v)
+  }
+  return(Av)
+}
+```
+and a column-oriented matvec:
+```{r}
+col_oriented_matvec <- function(A, v) {
+  Av <- rep(0., n_row)
+  for (j in 1:n_col) {
+    Av <- Av + A[, j] * v[j]
+  }
+  return(Av)
+}
+```
+
+---
+
+Let's compare their performence:
+
+```{r}
+n_row <- 4096L
+n_col <- 4096L
+A <- matrix(rnorm(n_row * n_col), n_row, n_col)
+v <- rnorm(n_row)
+```
+
+--
+
+```{r, eval=FALSE}
+bench::mark(
+  row_oriented_matvec(A, v)
+)
+```
+
+```{r, echo=FALSE}
+bench_output <- bench::mark(
+  Av_via_row <- row_oriented_matvec(A, v)
+)
+summarize_benchmark(bench_output)
+```
+
+```{r, eval=FALSE}
+bench::mark(
+  col_oriented_matvec(A, v)
+)
+```
+
+```{r, echo=FALSE}
+bench_output <- bench::mark(
+  Av_via_col <- col_oriented_matvec(A, v)
+)
+summarize_benchmark(bench_output)
+```
+
+```{r, echo=FALSE}
+stopifnot(are_all_close(Av_via_col, Av_via_row))
+```
+
+---
+
+Huh, maybe because it's not compiled code? Let's check.
+
+```{r, message=FALSE}
+sourceCpp(file.path('src', 'matvec.cpp'))
+```
+
+```{r, comment='', echo=FALSE}
+cat(readLines(file.path('src', 'matvec.cpp'))[6:21], sep = '\n')
+```
+
+---
+
+Huh, maybe because it's not compiled code? Let's check.
+
+```{r, message=FALSE}
+sourceCpp(file.path('src', 'matvec.cpp'))
+```
+
+```{r, comment='', echo=FALSE}
+cat(readLines(file.path('src', 'matvec.cpp'))[24:39], sep = '\n')
+```
+
+---
+
+Huh, maybe because it's not compiled code? Let's check.
+
+```{r, eval=FALSE}
+bench::mark(
+  row_oriented_matvec_c(A, v)
+)
+```
+
+```{r, echo=FALSE}
+bench_output <- bench::mark(
+  Av_via_row <- row_oriented_matvec_c(A, v)
+)
+summarize_benchmark(bench_output)
+```
+
+```{r, eval=FALSE}
+bench::mark(
+  col_oriented_matvec_c(A, v)
+)
+```
+
+```{r, echo=FALSE}
+bench_output <- bench::mark(
+  Av_via_col <- col_oriented_matvec_c(A, v)
+)
+summarize_benchmark(bench_output)
+```
+
+--
+
+```{r, eval=FALSE}
+bench::mark(A %*% v)
+```
+
+```{r, echo=FALSE}
+summarize_benchmark(bench::mark(A %*% v))
+```
+
+---
+layout: false
+
+# Challenge: feeding data fast enough to CPU
+
+<img src="figure/computing_at_low_level/cache_hierarchy_single_core.png" alt="" class="center" style="width: 70%;"/>
+
+---
+
+# Effect of cache miss and memory latency
+
+Consider the following situation in your computer:
+* CPU keeps itself busy if all data were in L1 cache,
+but need 10 clock cycles to fetch data from L2 cache.
+--
+
+* On average, CPU finds 90% of necessary data in L1 cache, but have to look L2 cache for remaining 10%.
+
+--
+
+How long does it take for CPU to complete 10&nbsp;operations?
+<!-- "how long" = "how many clock cycles" -->
+
+---
+
+# Lesson: optimize your code for data motion
+
+Turns out R arrays are stored in _column major_ order:
+
+<p style="margin-top: 3ex; margin-bottom: 3ex;"> 
+<img src="figure/computing_at_low_level/column_major_matrix.png" alt="" class="center" style="width: 100%;"/>
+</p>
+
+--
+
+So it is more efficient to access its elements column-wise!
+
+---
+
+# Lesson: optimize your code for data motion
+
+In C and Python, arrays are stored in _row major_ order:
+
+<p style="margin-top: 3ex; margin-bottom: 3ex;"> 
+<img src="figure/computing_at_low_level/row_major_matrix.png" alt="" class="center" style="width: 100%;"/>
+</p>
+
+Make sure you choose the right order for double for-loops!
+(Stan uses C arrays, for example.)
+
+---
+
+# Things get even more complicated when trying to parallelize over multiple CPUs
+
+<p style="margin-top: 3ex;"> </p>
+
+<img src="figure/computing_at_low_level/cache_hierarchy_multi_core.png" alt="" class="center" style="width: 100%;"/>
+
+---
+
+<p style="margin-top: 3ex;"> </p>
+<img src="figure/computing_at_low_level/HPCG_results_Nov_2016.png" alt="" class="center" style="width: 100%;"/>
+
+---
+
+<p style="margin-top: 4ex;"> </p>
+
+.large[**Nov 2020 Ranking:**]<br> 
+$\quad$ .large[**Actual over theoretical performance**]
+
+<img src="figure/computing_at_low_level/highest_hpcg_to_peak_ratio_among_top500_Nov_2020.jpeg" alt="" class="center" style="width: 100%;"/>
+
+---
+class: center, middle, inverse
+
+# Different flavors of parallel computing
+
+---
+
+# Parallelization: no-brainer in theory, but...
+
+![](figure/parallelization/serial_vs_parallel_computing.png)
+---
+
+# Parallelization: no-brainer in theory, but...
+
+![](figure/parallelization/effect_of_parallelization_overhead.jpeg)
+
+---
+
+# Types of parallelization opportunities
+
+### Inherently independent tasks
+<p style="opacity:0"> 
+* Bootstrap and cross-validation
+* Regression with multiple outcomes
+</p>
+
+### Serial task with parallelizable components
+<p style="opacity:0"> 
+* Maximizing likelihood via (stochastic) gradient descent
+* Markov chain Monte Carlo with lots of linear algebra
+</p>
+
+---
+
+# Types of parallelization opportunities
+
+### Inherently independent tasks
+* Bootstrap and cross-validation
+* Regression with multiple outcomes
+
+### Serial task with parallelizable components
+* Maximizing likelihood via (stochastic) gradient descent
+* Markov chain Monte Carlo with lots of linear algebra
+
+--
+
+**Note:** <p style="margin-top: -.5ex;">  </p>
+* Many problems are hybrids of the two kinds.
+* Even seemingly indepenent tasks may be done more efficiently together or with shared resources.
+
+---
+
+# Types of parallelization opportunities
+
+### Inherently independent tasks ("coarse-scale" parallelization)
+* Bootstrap and cross-validation
+* Regression with multiple outcomes
+
+### Serial task with parallelizable components ("fine-scale")
+* Maximizing likelihood via (stochastic) gradient descent
+* Markov chain Monte Carlo with lots of linear algebra
+
+**Note:** <p style="margin-top: -.5ex;">  </p>
+* Many problems are hybrids of the two kinds.
+* Even seemingly indepenent tasks may be done more efficiently together or with shared resources.
+
+---
+
+# Multi-threading vs -processing
+
+![](figure/parallelization/multi_threading_vs_processing.png)
+
+**Rule of thumb:** For typical stat computing problems,
+* multi-threading necessary for "fine" parallel tasks.
+* multi-processing good enough for "coarse" ones. 
+
+---
+
+# Threads share resources, processes don't
+
+![](figure/parallelization/multi_threading_vs_processing.png)
+
+Processes &mdash; more expensive to set up ( $=$ _more overhead_ )
+
+Threads &mdash; "lightweight processes," sharing memory and capable of exchanging (but also of corrupting) data
+
+---
+
+# What's involved in multi-processing set-up
+
+<p style="margin-top: 3ex;"> </p>
+<img src="figure/parallelization/multi_processing_via_psock.png" alt="" class="center" style="width: 75%;"/>
+<p style="margin-top: 2ex;"> </p>
+<!-- https://www.blasbenito.com/post/02_parallelizing_loops_with_r/ -->
+
+When you call&thinsp; `foreach(...) %dopar% {...}`, new R instances are launched and all the variables are copied.
+
+---
+
+# What's involved in multi-processing set-up
+
+<p style="margin-top: 3ex;"> </p>
+<img src="figure/parallelization/multi_processing_via_fork.png" alt="" class="center" style="width: 55%;"/>
+<p style="margin-top: 2ex;"> </p>
+
+Actually, there are multiple backends for multi-processing, w/ `fork` (Unix only) and `socket` available in R `parallel`.
+<!-- (And `fork` is more efficient as it avoids copying the data.) -->
+
+---
+
+# Major bummer warning: no multi-threading in (pure) R or Python!
+
+R/Python interpreters dot **not** deal with mulitple threads, so interfacing with C/C++/Fortran is the only way around.
+
+---
+
+# Major bummer warning: no multi-threading in (pure) R or Python!
+
+That said, there still are (relatively) easy, indirect accesses to multi-threading you can exploit when using R/Python:
+
+* Packages you use might be multi-threaded via C/C++.<br>
+  * Watch for options to specify the number of cores, e.g. `stan(..., cores = 4)`.
+  * But set `logical = FALSE`&thinsp; in `detectCores()`!
+
+--
+* If you built R/Python with an optimized BLAS library, then many linear algebra ops are multi-threaded.
+
+--
+* For some packages (e.g. `RcppEigen`), you only need to specify right compiler flags in `Makevars(.win)` file. 
+
+---
+
+# Word of caution: don't get fooled by "threading" module in Python
+
+<img src="figure/parallelization/python_multi_threading.png" alt="" class="center" style="width: 75%;"/>
+
+---
+class: middle, center, inverse
+
+# Summary & References
+
+## Hardware aware computing
+
+---
+
+# Summary: optimize, but only as warranted
+
+![:vspace -3ex]
+<blockquote>
+<p style="margin-top:12ex; font-size:25pt; font-family:garamond;">
+Rules of Optimization:<br>
+Rule 1: Don't do it.<br>
+Rule 2 (for experts only): Don't do it yet.
+</p>
+</blockquote>
+
+<p style="margin-top:1ex; font-size:25pt; font-family:'Times New Roman';", class="right"> &mdash; Michael A. Jackson &emsp;&emsp;</p>
+
+---
+
+# Summary: effects of hardware design
+
+We looked at inner workings of computer to &hellip;
+* Build intuition on why some code runs faster:
+  * How variable type info is used;
+  * When instructions can be pipelined;
+  * Et cetera, et cetera, et cetera, &hellip;.
+--
+
+* Appreciate its complexity:
+  * Simplified picture is valuable but has its limits.
+  * Be systematic in identifying perf. bottleneck.
+
+---
+
+# Summary: effects of hardware design
+
+Data motaion $\ge$ arithmetic op counts
+* Cache miss and latency have massive impacts on computational speed.
+* Work with data that are near-by in memory for efficient data access (and hence efficient computation).
+
+--
+
+Parallelization
+* Mind the overheads.
+* Fine-scale one requires more thoughts/work.
+
+---
+
+# References: hardware and computing
+.pull-left[
+  ![:image 80%, right](figure/reference/medium_logo.png)
+  ![:vspace -1ex]
+]
+
+![:image 70%, right](figure/reference/stack_overflow_logo.png)
+![:vspace -.5ex]
+
+![:image 45%, left](figure/reference/google_logo.png)
+![:vspace 3ex]
+
+![:image 60%, right](figure/reference/geeksforgeeks_logo.png)
+
+---
+
+# References: R and Python how-to
+
+###R and Rcpp
+
+_Advanced R_:&thinsp; Rewriting R code in C++ <br>
+$\quad$ https://adv-r.hadley.nz/rcpp.html#rcpp
+
+--
+
+Rcpp page: http://dirk.eddelbuettel.com/code/rcpp.html
+
+Rcpp Gallery: https://gallery.rcpp.org/
+
+--
+
+### Python
+
+_High Performance Python: <br> $\quad$ Practical Performant Programming for Humans_
+
+---
+
+# References: CPU/GPU parallelization
+
+CRAN: High-Performance and Parallel Computing with R<br> $\quad$ 
+[cran.r-project.org/view=HighPerformanceComputing](https://cran.r-project.org/view=HighPerformanceComputing)
+	
+<!-- CRAN Task View containing a list of packages, grouped by topic, that are useful for high-performance computing (HPC) with R -->
+
+"R-Friendly Multi-Threading in C++." Nagler (2021).
+<br> $\quad$ https://doi.org/10.18637/jss.v097.c01
+
+--
+
+"Understanding GPU programming for statistical computation: Studies in massively parallel massive mixtures." Suchard et. al. (2010).
+<br> $\quad$ https://doi.org/10.1198/jcgs.2010.10016
+
+"Vector operations for accelerating expensive Bayesian computations &mdash; a tutorial guide."&thinsp; Warne et. al. (2021).<br> 
+$\quad$ https://doi.org/10.1214/21-BA1265
+
