@@ -1,0 +1,182 @@
+---
+title: 'Homework: Numerical linear algebra'
+output:
+  html_notebook:
+    code_folding: none
+    highlight: textmate
+---
+
+<script type="text/x-mathjax-config">
+MathJax.Hub.Config({
+  TeX: {
+    Macros: {
+      bA: "{\\boldsymbol{A}}",
+      bx: "{\\boldsymbol{x}}",
+      bb: "{\\boldsymbol{b}}"
+    }
+  }
+});
+</script>
+
+
+```{r setup, include=FALSE}
+source(file.path("..", "R", "util.R"))
+
+required_packages <- c("microbenchmark")
+install_and_load_packages(required_packages)
+```
+
+
+# Exercise 1: Comparing different numerical linear algebra algorithms for solving linear systems
+
+In this exercise, we consider the problem of solving a linear system $\bA \bx = \bb$ for $\bx$.
+We compare the three methods we learned in the class: LU, Cholesky, and QR decompositions.
+(Of course, LU applies to more general systems and QR can be used to solve least squares, but here we focus on positive definite systems.)
+
+## Part A: Racing for solution &mdash; speed comparison 
+
+We first compare their computational speed. 
+Fill in the code below and `bench::mark()` the three algorithms.
+
+**Questions:**
+What are relative speeds among the algorithms?
+Do relative speeds agree with what you expect from the complexity analyses?
+If not (quite), why might that be?
+
+**Note:**
+I misspoke about the R's built-in `chol()` function during the lecture:
+when applied to a positive-definite `A`, the function actually returns an _upper-triangular_ matrix `R` such that `t(R) %*% R == A`.
+
+```{r, eval=FALSE}
+# Import the `rand_positive_def_matrix` function
+source(file.path("R", "random_matrix.R"))
+
+mat_size <- 1024L
+A <- rand_positive_def_matrix(mat_size, cond_num = 1e3)
+b <- rnorm(mat_size)
+
+solve_via_cholesky <- function(A, b) {
+  # Fill in
+}
+
+bench::mark(
+  solve(A, b)
+)
+bench::mark(
+  solve_via_cholesky(A, b)
+)
+bench::mark(
+  # Solve via QR decomposition
+)
+```
+
+## Part B: Competition in terms of numerical accuracy/stability
+
+We now compare the three methods in terms of numerical accuracy/stability.
+To this end, we set up the following simulation study. 
+We first generate a "ground truth" solution vector $\bx_0$.
+We then compute an "numerical-error-free" $\bb = \bA \bx_0$ by carrying out the matrix-vector multiplication using the `long double` type, which (on most hardware and compilers) provides [additional 12 bits of precision](https://en.wikipedia.org/wiki/Extended_precision#x86_extended_precision_format).
+Of course, the vector $\bb$ computed as such still suffers from numerical errors, but the idea is that the numerical errors from this high-precision matrix-vector multiplication is much smaller than the errors caused by numerically solving $\bA \bx = \bb$ for $\bx$.
+We can thus assess the accuracy of the three solvers by comparing the numerically computed $\bx$ to the ground truth $\bx_0$.
+
+### Task &#x2F00;
+
+First compare the outputs of matrix-vector multiplication $\bx \to \bA \bx$ using `double` and `long double` using the provided Rcpp functions.
+
+**Questions:**
+What is the relative difference in $\ell^2$-norm? 
+How about the coordinate-wise relative differences?
+Are the observed magnitudes of the differences what you'd expect?
+
+```{r, eval=FALSE}
+Rcpp::sourceCpp(file.path("src", "matvec_double.cpp"))
+Rcpp::sourceCpp(file.path("src", "matvec_ldouble.cpp"))
+
+set.seed(1918)
+
+mat_size <- 1024L
+A <- rand_positive_def_matrix(mat_size, cond_num = 1e3)
+x <- rnorm(mat_size)
+
+# Fill in
+
+```
+
+### Task &#x2F06;
+
+Now randomly generate $\bA$ so that its condition number is $10^6$.
+Then solve a positive-definite system $\bA \bx = \bb$ for $\bx$ using the three algorithms and compare their outputs to the ground truth $\bx_0$.
+
+**Questions:**
+Which algorithm appears to be more accurate than the others? 
+Visually demonstrate your answer.
+
+```{r, eval=FALSE}
+set.seed(1918)
+cond_num <- 1e6
+
+# Larger matrices could incur substantial computational time under base R BLAS
+mat_size <- 1024L 
+
+A <- rand_positive_def_matrix(mat_size, cond_num)
+x <- rnorm(mat_size)
+
+# Fill in
+
+```
+
+### Task &#x4E09;
+
+In Task &#x2F06;, we compared the three algorithms in one randomly generated example.
+Now we consider a more systematic (though hardly comprehensive) comparison via repeated simulations.
+We also vary the condition number of $\bA$ and assess whether the results would hold across varying degrees of ill-conditioning.
+
+**Questions/To-do's:**
+
+* Using the starter code provided, calculate various summary measures of the numerical errors.
+* Integrate into the provided code one another (or more, if you like) meaningful metric(s) of your choice to summarize the numerical error.
+* Visually explore how the three algorithms compare with each other in their accuracy. See if different error metrics tell different stories; they might or might not.
+* Vary the condition number in the range $10^6 \sim 10^{12}$, e.g. by trying $10^6$, $10^9$, and $10^{12}$.
+* Do you see any patterns in the numerical errors across the three algorithms, metrics, and/or condition numbers? Show some plots to support your conclusion.
+
+**Note:** 
+The QR solver will throw an error when the system is ill-condition enough that the numerical solution might not be very accurate. 
+To force it to return the solution in any case, set `tol = .Machine$double.eps`.
+
+```{r, eval=FALSE}
+# Utility functions for bookkeeping simulation results.
+source(file.path("R", "num_linalg_sim_study_helper.R"))
+
+n_sim <- 32L
+mat_size <- 512L
+cond_num <- 1e6
+metrics <- c("norm", "median", "five_percentile", "ninety_five_percentile")
+  # TODO: add another metric and modify the helper script accordingly
+
+rel_error_list <- lapply(
+  c("lu", "chol", "qr"), 
+  function(method) pre_allocate_error_list(n_sim, metrics)
+)
+
+for (sim_index in 1:n_sim) {
+  A <- rand_positive_def_matrix(mat_size, cond_num)
+  x <- rnorm(mat_size) 
+  b <- matvec_ldouble(A, x)
+  x_approx <- list( 
+    # Fill in
+  )
+  for (method in c("lu", "chol", "qr")) {
+    rel_error <- lapply(
+      metrics, 
+      function (metric) calc_rel_error(x, x_approx[[method]], metric)
+    )
+    names(rel_error) <- metrics
+    for (metric in names(rel_error)) {
+      rel_error_list[[method]][[metric]][sim_index] <- rel_error[[metric]]
+    }
+  }
+}
+
+# TODO: visually compare errors
+
+```
