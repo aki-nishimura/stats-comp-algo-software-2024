@@ -1,0 +1,219 @@
+---
+title: "Homework: Rcpp & Hardware-optimized computation"
+html_notebook:
+  code_folding: none
+  highlight: textmate
+---
+
+```{r setup, include=FALSE}
+source(file.path("..", "R", "util.R"))
+
+required_packages <- c("Rcpp", "RcppEigen")
+install_and_load_packages(required_packages)
+```
+
+# Exercise 2: Coding on the edge &mdash; being responsible for your own safety in the C++ world
+
+## Part A: Buggy inner product
+
+Below is a (buggy) Rcpp implementation of an inner product calculation. 
+
+```{r, comment='', echo=FALSE}
+cat(readLines(file.path("src", "inner_prod.cpp")), sep = '\n')
+```
+
+Ignoring the bug for the moment, run the code below and see what you get.
+
+```{r, eval=FALSE}
+Rcpp::sourceCpp(file.path("src", "inner_prod.cpp"))
+
+vec_size <- 1023L
+v <- rep(1, vec_size)
+w <- rep(1, vec_size)
+inner_prod(v, w)
+```
+
+Still ignoring the bug, run the code below that calculates the same inner product many times and checks whether the output remains the same.
+I mean, whether there is a bug or not, an output of a deterministic calculation should surely be the same each time?
+Try running the code chunk multiple times. 
+
+```{r, error=TRUE, eval=FALSE}
+first_val <- inner_prod(v, w)
+
+for (i in 1:10^6) {
+  v <- rep(1, vec_size)
+  w <- rep(1, vec_size)
+  subseq_val <- inner_prod(v, w)
+  if (!identical(first_val, subseq_val, num.eq = TRUE)) {
+    print(subseq_val)
+    stop("The last inner prod result disagrees with the previous ones.")
+  }
+}
+```
+
+**Questions:**
+What behavior do you observe above? How do you explain it?
+
+
+## Part B: Sloppy matrix-matrix multiplication
+
+You have been told by the instructor that error-checking is particularly important in C++ and, in particular, that you should probably check for the dimension compatibility before you multiply two matrices in Rcpp(Eigen).
+But it would be fair enough to wonder: is that dude really worth listening to?
+I'll leave that for you to judge, but for this part of exercise let's consider what might happen if we remove such a safeguard from an Rcpp matrix-matrix multiplication.
+Below is an implementation without the dimension check: 
+
+```{r, comment='', echo=FALSE}
+cat(readLines(file.path("src", "gemm_eigen_unprotected.cpp")), sep = '\n')
+```
+
+Run the code below using the above "unprotected" matrix-matrix multiplication.
+
+```{r, eval=FALSE}
+Rcpp::sourceCpp(file.path("src", "gemm_eigen_unprotected.cpp"))
+
+A <- matrix(1, nrow = 4, ncol = 1024)
+B <- matrix(1, nrow = 512, ncol = 2)
+
+dgemm_eigen(A, B)
+```
+
+**Questions:**
+What do you get as an output? What if you re-run the code chunk? Explain the observed behavior.
+
+## Part C: Consequence of "tresspassing"
+
+The code below uses the `axpy_c()` function as seen in lecture.
+Run it and see what happens. 
+(I am not sure if the behavior is reproducible 100% of time; if you don't observe anything striking, restart the R session and run the code chunk in a fresh state.)
+
+```{r, eval=FALSE}
+Rcpp::sourceCpp(file.path("src", "axpy_c.cpp"), rebuild = TRUE)
+
+a <- 3.14
+x <- rep(1, 1e7L)
+y <- rep(0.00159, 1e3L)
+
+axpy_c(a, x, y)
+```
+
+Now try running the code below; it should execute just fine unlike the above one.
+
+```{r, eval=FALSE}
+a <- 3.14
+x <- rep(1, 1e3L)
+y <- rep(0.00159, 1e7L)
+
+axpy_c(a, x, y)
+```
+
+**Questions/To-do's:**
+
+* What happens when you run the first code chunk above and why? 
+Running the same piece of code from an R console (instead of an RStudio session) should give you more information on what actually happens.
+* Why does the second code chunk run fine?
+* Modify `axpy_c.cpp` to make the function safer to use.
+
+
+# Exercise 3: Multiplying two matrices ain't quite what you learned in your linear algebra class
+
+## Part A: Paying homage to your linear algebra teacher
+
+As we all learned in our linear algebra class, the matrix product $\boldsymbol{C} = \boldsymbol{A} \boldsymbol{B}$ of $\boldsymbol{A} \in \mathbb{R}^{n \times k}$ and $\boldsymbol{B} \in \mathbb{R}^{k \times p}$ has its elements defined as
+$$C_{ij} = \sum_{\ell = 1}^k A_{i\ell} B_{\ell j}.$$
+So a conceptually natural way to implement a matrix multiplication is looping through each row of $\boldsymbol{A}$ and column of $\boldsymbol{B}$, taking inner products of the pairs of vectors:
+
+![](figure/matrix_multi_via_row_col_dot.gif){width=30%}
+
+Implement a matrix-matrix multiplication based on this approach as `row_col_dot_matmat` using the starter code provided in the `matmat.cpp` file.
+Then check that its output agrees with the base R matrix multiplication.
+
+```{r, eval=FALSE}
+Rcpp::sourceCpp(file.path("src", "matmat.cpp"))
+```
+
+```{r, eval=FALSE}
+n_row_out <- 1024L
+n_inner <- 2048L
+n_col_out <- 512L
+A <- matrix(rnorm(n_row_out * n_inner), nrow = n_row_out, ncol = n_inner)
+B <- matrix(rnorm(n_inner * n_col_out), nrow = n_inner, ncol = n_col_out)
+```
+
+```{r}
+# Check the output of `row_col_dot_matmat`
+```
+
+## Part B: Going one step beyond your linear algebra class
+
+We now consider an alternative approach to matrix-matrix multiplications, noting that we can think of a matrix product $\boldsymbol{A} \cdot \boldsymbol{B}$ as each column of $\boldsymbol{B}$ multiplied by $\boldsymbol{A}$:
+$$\boldsymbol{A} \cdot \boldsymbol{B} = \big[ \, \boldsymbol{A} \boldsymbol{b}_1 \, | \, \ldots \, | \, \boldsymbol{A} \boldsymbol{b}_p \, \big].$$
+Recalling from lecture that "column-oriented" matrix-vector multiplication is more efficient than "row-oriented" one for R matrices, implement `col_oriented_matmat` (in `matmat.cpp`) that loops through each column of $\boldsymbol{B}$ applying the column-oriented matrix-vector multiplication.
+Then compare performances of `row_col_dot_matmat` and `col_oriented_matmat` (but only after you test your column-oriented implementation).
+Which one is faster and why?
+
+```{r}
+# Check and benchmark
+```
+
+Also compare with performance of the matrix-matrix multiplication via `%*%` in R, which uses whatever the BLAS library your R was configured with.
+(You can find out which BLAS library R is using via `sessionInfo()` or `extSoftVersion()`.) 
+
+```{r}
+# Fill in
+```
+
+When benchmarking alternative implementations (or alternative algorithms, more generally), keep in mind that the relative performance depends significantly on the size of a test problem.
+It is important, therefore, to benchmark your implementation/algorithm on problems of realistic size. 
+See the benchmark results of linear algebra libraries from [the Eigen development team](https://eigen.tuxfamily.org/index.php?title=Benchmark) and the results under "Gcbd benchmark" in [this github repository](https://github.com/andre-wojtowicz/blas-benchmarks), for example.
+
+
+## Part C: Doing it the right way
+
+Part A & B are meant to get you some practice writing Rcpp code and to illustrate how much an algorithm's performance depends on whether or not it respects an underlying representation of data.
+Neither of the approaches we've discussed, however, is the most effective way to multiply two matrices on modern hardware.
+
+Dedicated linear algebra libraries typically deploy _blocking_, dividing the matrices $\boldsymbol{A}$ and $\boldsymbol{B}$ into sub-matrices of appropriate size and carrying out multiplications block-wise.
+This approach is designed to minimize the data motion between CPU and RAM by re-using the same pieces of data as much as possible once they travel all the way from RAM to L1 cache.
+In practice, we of course shouldn't try to implement, let alone optimize, an operation ourselves when there already are efficient software libraries available.
+(But, if you are interested in learning more about how the optimized matrix multiplication works, Sec 1.5.4. of Golub and Van Loan (2013) is a good place to start. Also, I found nice lecture slides on this topic [here](https://cs.brown.edu/courses/cs033/lecture/18cacheX.pdf).)
+
+### Rcpp, Eigen, and compiler options
+With the interface provided by RcppEigen, the C++ linear algebra library [Eigen](https://eigen.tuxfamily.org/) is one obvious choice for dealing with computationally intensive numerical linear algebra tasks in R.
+But the optimized C++ code provided by Eigen is _only one part of the equation_:
+in order to achieve the best performance, we have to provide appropriate instructions to the compilers on how to translate the C++ code into machine code specific to each hardware and operating system.
+These instructions are given in terms of _compiler flags_. 
+I am far from an expert on compiler flags, so the rest of discussion is accurate only to the best of my knowledge 
+&mdash; let me know if you find out any part of it to be inaccurate.
+
+Rcpp by default applies the level 2 optimization via flag `-O2` when compiling your Rcpp code.
+This flag is a shorthand for turning on a collection of more specific flags and generally leads to efficient machine code without any major drawbacks.
+I've been told that the more aggressive level 3 optimization via `-O3` can sometimes hurt performance or even break things.
+Which specific flags `-O2` activates to some extent depends on which (version of) compiler you are using;
+you can for example see a list of optimizations turned on through the `-O2` flag by the latest GCC version 
+[here](https://gcc.gnu.org/onlinedocs/gcc/Optimize-Options.html).
+Generally speaking, the level 2 optimization misses some of the important optimization opportunities for scientific computation, such as fused multiply-add (FMA) and AVX's 256-bit vectorized operation discussed in class.
+SSE's 128-bit vectorization seems to be activated by `-O2` with Clang 12.0.0, but I am not sure how to confirm it and [their documentation is not particularly helpful](https://clang.llvm.org/docs/CommandGuide/clang.html#cmdoption-o0).
+
+In compiling Rcpp code, you can turn on and off these additional options by modifying the R version of a [Makefile](https://en.wikipedia.org/wiki/Make_(software)#Makefiles) called `Makevars` and `Makevars.win` for Unix and Windows respectively. 
+To specify the compiler options for a specific R package, you can place such an Makevars file under the `src/` directory.
+To specify the global options that affect all Rcpp code compilations on your computer, you can edit the Makevars file at the location given by `tools::makevars_user()`, which is typically `~/.R/Makevars` in Unix.
+For example, to turn on AVX and FMA, you would add a line `CXXFLAGS += -mavx -mfma` in the Makevars file; 
+to turn off SSE, you woud add `CXXFLAGS += -mno-sse`.
+You can read more about the role of Makevars files [here](https://stackoverflow.com/questions/43597632/understanding-the-contents-of-the-makevars-file-in-r-macros-variables-r-ma).
+
+**To-do's:**
+Using the `dgemm_eigen()` function from lecture, compare the performances of Eigen's and your custom matrix-matrix multiplication compiled under different optimization options.
+Selectively turn on and off SSE, AVX, and FMA to see how each option affects the performances. 
+(SSE should be turned on by `-O2` unless explicitly turned off, but if `-mno-sse` makes no performance difference, then try `-msse` or `-msse4`.)
+Finally, turn on both AVX and FMA and check the resulting performances.
+Report what you find.
+
+```{r, warning=FALSE, eval=FALSE}
+# Import `dgemm_eigen()` from lecture
+Rcpp::sourceCpp(file.path("..", "lecture", "src", "gemm_eigen.cpp"))
+```
+
+```{r, eval=FALSE}
+# Benchmark
+dgemm_eigen(A, B)
+```
