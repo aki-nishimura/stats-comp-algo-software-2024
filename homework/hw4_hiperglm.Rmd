@@ -1,0 +1,65 @@
+---
+title: "Homework: QR and RcppEigen for `hiperglm`"
+html_notebook:
+  code_folding: none
+  highlight: textmate
+---
+
+<script type="text/x-mathjax-config">
+MathJax.Hub.Config({
+  TeX: {
+    Macros: {
+      X: "{\\boldsymbol{X}}",
+      y: "{\\boldsymbol{y}}",
+      bm: ["{\\boldsymbol #1}", 1]
+    }
+  }
+});
+</script>
+
+# Exercise 4: Continuing development of `hiperglm` &mdash; improving numerical stability of Newton's method via QR-based solver and optimizing it via RcppEigen
+
+From the previous assignments, you should now have a `hiperglm` package that implement an MLE finder via Newton's method. 
+We have so far focused on getting the functionality correct, and not so much on numerical stability and computational speed.
+In this assignment, we improve the algorithm's numerical stability by first turning Newton's method into the mathematically equivalent iteratively re-weighted least squares (IWLS) based on QR decomposition.
+We then improve the computational speed by interfacing the package with RcppEigen.
+
+Much of this assignment is about enhancing performance of the package's existing features, rather than adding new ones.
+This is one setting in which the formal automated testing really proves its value. 
+By running the existing tests after each change, you can be confident that you did not break anything by changing the internal implementations that do not affect the interface.
+And, if you did change functions' interfaces, the tests help you remember where you have to make corresponding changes to ensure correct overall functionality.
+
+Before you start this assignment, remember to first address all the feedback from the previous assignment and merge your previous work to the main branch. 
+Then create a new `optimized-irls` branch from there, check it out, and commit all your work for this assignment there.
+Finally, open a pull request into your main branch after completing the assignment and request a review from the TA.
+
+1. Change your code for fitting linear models to solve the least squares problem using QR decomposition instead of LU/Cholesky.
+Make sure to run the existing tests to make sure the change did not break anything.
+2. Turn, if you have not already done so, each iteration of Newton's method into an isolated function.
+In other words, write a function named something like `take_one_newton_step(...)` and use it within the for-loop.
+This in particular facilitate unit-testing one step of Newton's method.
+3. Viewing the vector $\boldsymbol{H}_f^{-1} \nabla f$ in the Newton update formula as the solution of a weighted least squares problem, implement the solver for it based on QR decomposition.
+To do so, observe that minimizing $\| \bm{W}^{1/2} (\X \bm{\beta} - \y) \|^2$ is equivalent to minimizing $\| \tilde{\X} \bm{\beta} - \tilde{\y} \|^2$ with the modified input $\tilde{\X}$ and $\tilde{\y}$. 
+Use base R linear algebra functions for now.
+Add an option to the function `take_one_newton_step(...)` (or however else you decided to call it) to switch between the QR- and LU/Cholesky-based solvers, with QR being default.
+Test that the two solvers yield the same result up to finite precision errors.
+4. Use `usethis::use_rcpp_eigen()` to set up the use of Rcpp(Eigen) within the package.<br>
+_Remark:_
+Within an R package, Rcpp code needs to be placed in `.cpp` files under the `src/` directory. 
+After you've written Rcpp functions, you need run `Rcpp::compileAttributes()` to make those functions available to the rest of the package.
+See the ["Using Rcpp in a package"](https://adv-r.hadley.nz/rcpp.html#rcpp-package) section in _Advanced R_ and references therein if you want to learn more. 
+5. Replace base R's QR functions with RcppEigen's and test that their outputs agree.
+Don't forget to run `Rcpp::compileAttributes()` after writing Rcpp functions. 
+Below you find tips on how to use Rcpp(Eigen) which, combined with the lecture materials, should be sufficient for completing this step:
+    * Calling the constructor function `Eigen::HouseholderQR<Eigen::MatrixXd> qr(A);` computes the QR decomposition of a given `A` of type `Eigen::MatrixXd` and assigns it to the variable `qr`. 
+    In other words, this is a shorthand for initializing the variable `qr` by first calling `Eigen::HouseholderQR<Eigen::MatrixXd> qr(A.rows(), A.cols());` and then actually computing and assigning to `    qr` the output of QR decomposition by calling `qr.compute(A);`.
+    You can then call `qr.solve(y);` to compute the least squares solution $\hat{\bm{\beta}} = \bm{R}^{-1} \bm{Q}^\intercal \y$.
+    * If you want to use `using ...;` within a package, you have to place these statements within a header file called `pkgname_types.h` under `src/` and include it in the `.cpp` files via `#include "pkgname_types.h"`.
+    For example, the name of the header file should be `hiperglm_types.h` in our case.
+    *  _Remark:_ You can find more about Eigen's HouseholderQR class  [here](https://eigen.tuxfamily.org/dox/classEigen_1_1HouseholderQR.html).
+    Note that, as typical of many cutting-edge open-source technologies, their documentations are generally adequate but not particularly user-friendly.
+    Some of the details might just require educated guesses and trial-and-errors. 
+    You can find useful examples in Dirk Eddelbuettel's [page on RcppEigen](https://dirk.eddelbuettel.com/code/rcpp.eigen.html).
+    But then RcppEigen is just an Rcpp wrapper of Eigen, so you might just have to refer to Eigen's documentation for further details. 
+6. Incorporate the least squares solver via Eigen's QR into the IWLS algorithm for finding MLE.
+Make it the default option and check that all the tests still pass when using the QR-based solver.
