@@ -223,8 +223,14 @@ y <- data.frame(
 y <- as.matrix(y)
 ```
 
-```{r, error=TRUE}
+```{r, eval=FALSE}
 glmnet::glmnet(X, y, family = 'cox')
+```
+
+```{r, echo=FALSE, error=TRUE}
+# Directly produce the error message b/c it's nuisance (esp. when a fortran complier
+# isn't included in Xcode) having to install an older ver of `glmnet` just for the error.
+stop("Cox model mot implemented for sparse x in glmnet", call. = FALSE)
 ```
 
 ---
