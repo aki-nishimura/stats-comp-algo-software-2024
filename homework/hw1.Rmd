@@ -1,10 +1,10 @@
 
 
 ---
-title: 'Homework: Setup and Warm-up'
+title: "Homework: Setup and Warm-up"
 output:
-  html_notebook: 
-    code_folding: none
+  html_document:
+    df_print: paged
     highlight: textmate
 ---
 
@@ -32,35 +32,45 @@ knitr::opts_chunk$set(echo = TRUE)
 Set up your Git and Github. 
 You can find many resources regarding this online, including [a guide from Github](https://docs.github.com/en/get-started/quickstart/set-up-git).
 Another nice one is Karl Broman's [minimal git/github tutorial](https://kbroman.org/github_tutorial/).
+Make sure you at least set your Git username and commit email.
 
 In this course, you will be mainly interacting with Git through its command-line interface. 
-(In particular, I am not going to help you if you get yourself into troubly by using a Git GUI, like the RStudio one.)
+(In particular, I am not going to help you if you get yourself into trouble by using a Git GUI, like the RStudio one.)
 If you are on Windows, you can use [Git Bash](https://www.atlassian.com/git/tutorials/git-bash). 
-If you are on Mac, I recommend you use [iTerm2](https://iterm2.com/) instead of the built-in Terminal. 
+If you are on Mac, I recommend you use [iTerm2](https://iterm2.com/), instead of the built-in Terminal, along with [Oh My Zsh](https://ohmyz.sh/) and its [Powerlevel10k](https://github.com/romkatv/powerlevel10k) theme. 
 If you are on Linux, most likely you don't need my suggestions :-)
 
-Besides the bare minimum Git set-up, I recommend you also set up the default editor and visual diff tool. 
-I personally use Sublime Text as the Git editor on macOS and, for those on Windows, Notepad++ is one popular option. As for visual diff, I like [Meld](https://meldmerge.org/).
-The following commands tell Git to use Sublime and Meld:
+Besides the bare minimum Git set-up, you should also set up the default editor and visual diff tool. 
+I personally use Sublime Text as the Git editor on macOS and, for those on Windows, Notepad++ is one popular option. 
+As for visual diff, I like [Meld](https://meldmerge.org/) but it is currently unavailable for latest macOS versions, unfortunately;
+so I have been using [KDiff3](https://apps.kde.org/kdiff3/) instead.
+The following commands tell Git to use Sublime and KDiff3:
 
 ```{bash, eval=FALSE}
 git config --global core.editor subl --wait
-git config --global diff.tool meld
+git config --global diff.tool kdiff3
 git config --global --add difftool.prompt false
 ```
 
-(Incidentally, all the above commands do is to simply modify the "global" `.gitconfig` file, typically located in your home directory. You can find the exact location of this file is via the command `git config --list --show-origin`. Note, though, that the `--show-origin` option won't work on JHPCE, which has an old 2013 version of Git.)
+All the above commands do is to simply modify the "global" `.gitconfig` file, typically located in your home directory. You can find the exact location of this file is via the command `git config --list --show-origin`. 
 
 ## Part 2: Graphical user interface
 
 While I've just told you to use the command-line to interact with Git, a Git GUI can be a valuable tool for visually examining the current and past states of a repo.
 So, my recommended workflow is to interact with Git via command-line (b/c it gives you more precise controls) but to use a GUI for visualizing the repo. 
 I personally have been a happy user of a cross-platform [GitKraken](https://www.gitkraken.com/), which is freely available via [GitHub Student Developer Pack](https://education.github.com/pack/). 
-But other freeware like [Github Desktop](https://desktop.github.com/) should work fine for the intended use of simply visualizing the repo. 
+But other freeware like [Sourcetree](https://www.sourcetreeapp.com/) should work fine for the intended use of simply visualizing the repo. 
+
+This part of the exercise used to be optional because it seems silly to micromanage peoples' workflows, but I have had many students not take my recommendation only to later tell me they wish they started using a Git GUI earlier.
+So I am going to ask you to give it a try at least and to submit a screenshot of a package's Git history in Exercise 2.
 
 ## Things to commit and submit
 
-None
+The content of `.gitconfig` showing a proper Git set-up (though you would normally access this information via `git config` commands).
+
+```{bash, eval=FALSE}
+# Paste the output of `cat .gitconfig` here
+```
 
 
 
@@ -137,4 +147,7 @@ Set up your own version of the `hiperglm` package as we discussed in the class a
 
 ## Things to commit and submit
 
-Hyperlink to the `hiperglm` repository on your Github account
+- Hyperlink to the `hiperglm` repository on your Github account
+- Screenshot of the package's Git history visualized through a Git GUI of your choice
+
+<img src="figure/git_history_screenshot.png" alt="Place the screenshot here"/>
