@@ -76,14 +76,17 @@ The content of `.gitconfig` showing a proper Git set-up (though you would normal
 
 # Exercise 1: Playing around with command-line and Git
 
-Log in to JHPCE and `qrsh` into a compute node. 
+## Part A
+
+Log in to JHPCE and `srun --pty bash` to be assigned a compute node. 
 For this exercise, we use the `homework/git_experiment` folder from the course repository, so clone the repo to your JHPCE home directory:
 
 ```{bash, eval=FALSE}
 git clone https://github.com/aki-nishimura/stats-comp-algo-software-2023
 ```
 
-Next, go into the `git_experiment` folder, initialize it as a git repo (yes, you can have a git repo within another git repo), and commit `foo.tex`:
+Next, copy the `git_experiment` folder via a command `cp -r git_experiment git_experiment_copy` (`-r` for "recursive" copy that includes the folder's contents and sub-directories).
+Go into the copied folder, initialize it as a git repo (yes, you can have a git repo within another git repo), and commit `foo.tex`:
 
 ```{bash, eval=FALSE}
 git init
@@ -98,9 +101,9 @@ module load tex
 pdflatex foo.tex
 ``` 
 
-You can suppress the compilation messages by redirecting the `stderr` and `stdout` to `/dev/null`:
+You can suppress the compilation messages by redirecting the `stdout` to `/dev/null`:
 ```{bash, eval=FALSE}
-pdflatex foo.tex > /dev/null 2>&1
+pdflatex foo.tex > /dev/null
 ```
 
 For the rest of this exercise, you use a "stream" editor _sed_. 
@@ -122,17 +125,65 @@ git add -u
 git commit -m "Add first sentence to TeX file"
 ```
 
-Now write a bash script which repeats the following cycle of steps for 99 times: adds a new sentence to `foo.tex`, compile it, and commit *both* the TeX source file and its PDF output. I've provided starter code `edit_and_commit.sh` for this exercise. Once you have the bash script, execute it and check the disk space usage of the `git_experiement` folder. You can do this via `du -h -s git_experiment/` (`-h` for "human-readable" and `-s` for "summarize"). 
+Now write a bash script which repeats the following cycle of steps for 9 times: adds a new sentence to `foo.tex` with `sed`, compile it, and commit *both* the TeX source file and its PDF output. 
+I've provided starter code `edit_and_commit.sh` for this exercise. 
+Once you have the bash script, execute it to make the 9 additional commits.
+To sanity check that your script ran as expected, check the commit history via `git log` and check the changes made in the last commit via `git diff HEAD~1..`.
+Then check the disk space usage of the `git_experiment_copy` folder. 
+You can do this via `du -h -s git_experiment_copy` (`-h` for "human-readable" and `-s` for "summarize") or `du -h -s .` from inside the folder.
 
-**Question:** Does the size of the folder look reasonable relative to the sizes of the individual files inside it? (Use `ls -l -h` to list the files with the size info; `-l` is for "long.") If not, why would that be? How would this explain why [Github discourages you from commiting (large) binary files](https://docs.github.com/en/repositories/working-with-files/managing-large-files/about-large-files-on-github)?
+Next, make a fresh clone of the repo; you can remove the old one via `rm -rf stats-comp-algo-software-2023`.
+And repeat the above process from the beginning, but without ever adding the PDF output to the repo.
+
+**Tips:**
+You can edit the bash script locally and transfer to JHPCE via `rsync -P git_experiment/edit_and_commit.sh your_username@jhpce03.jhsph.edu:/users/your_username/`.
+
+**Question:** 
+Does the size of the folder look reasonable relative to the sizes of the individual files inside it? 
+(Use `ls -l -h` to list the files with the size info; `-l` is for "long.") 
+If not, why would that be? 
+Also, how do you explain the difference in the disk space usages under the two cases above?
 
 **Your answer:** (To be filled.)
+
+## Part B
+
+You will now run the same experiment but on steroids, making a total of _10,000_ commits (plus the initial commit).
+Start again with a fresh copy of the `git_experiment` folder and follow the same procedure as before.
+This time, however, modify the bash script to make 9,999 additional commits and record the size of the `git_experiment_copy` folder after each commit.
+You can use `du -s -k . >> git_repo_size_history.txt` for the latter purpose;
+you may want to combine the `du` command with `awk '{print $1}'` to only record the size without extraneous information.
+Since this is a long job that will take a non-trivial amount of JHPCE resource, just run this experiment once without committing the PDF output.
+Also make sure to use `sbatch`, and _not_ `srun`, for such a long job.
+
+**Tips:**
+You can transfer the disk usage result from JHPCE to your local computer via 
+`rsync -P "your_username@jhpce03.jhsph.edu:/users/your_username/stats-comp-algo-software-2023/homework/git_experiment_copy/git_repo_size_history.txt" git_experiment` (assuming that you are running the command from the `homework` folder).
+
+**Question:** 
+Plot the disk usage of the git repo with the number of commits on the $x$-axis.
+Explain what you observe --- you may consult with resources on the web, including ChatGPT.
+Based on this result and those from Part A, explain why [Github discourages you from commiting (large) binary files](https://docs.github.com/en/repositories/working-with-files/managing-large-files/about-large-files-on-github)?
+
+**Your answer:** (To be filled.)
+
+```{r, eval=FALSE}
+source(file.path("..", "R", "colors.R"))
+
+repo_size <- scan("git_experiment/git_repo_size_history.txt")
+plot(
+  # To be filled
+  frame = FALSE, # Remove the ugly box
+  col = jhu_color$heritageBlue,
+  xlab = "Commit counts",
+  ylab = "Repo size (MB)"
+)
+```
 
 ## Things to commit and submit
 
 1. Completed `edit_and_commit.sh`
-2. Answer to the question above
-
+2. Answer to the question above, along with the plot
 
 
 # Exercise 2: Setting up an R package skeleton
