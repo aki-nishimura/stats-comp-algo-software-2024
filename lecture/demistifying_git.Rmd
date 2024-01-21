@@ -61,7 +61,7 @@ first_draft_edited_by_advisorA_andB.tex
 
 ---
 
-VCS's take snapshots of the folders/files in a codebase and keep records its states at various points in time.
+VCS's take snapshots of the folders/files in a codebase and keep records of its states at various points in time.
 
 --
 * First gen (e.g. SCCS):&thinsp; local &mdash; file edits allowed by one user at a time
@@ -149,6 +149,7 @@ Sorry to dissapoint, but nothing super exciting:
 	ignorecase = true
 	precomposeunicode = true
 [user]
+	name = Aki Nishimura
 	email = aki.nishimura@jhu.edu
 ```
 
@@ -162,6 +163,7 @@ Now, let's try committing some file:
 ❯ cat bar.txt
 Hello, World! -- Bar
 
+> git add bar.txt foo.txt
 ❯ git commit -m 'Nonsense txt files just for demo'
 [master (root-commit) e895331] Nonsense txt file just for demo
  1 file changed, 1 insertion(+)
@@ -234,6 +236,32 @@ Hello, World! -- Foo
 
 ---
 
+In summary, here are what the Git commit created:
+
+![:vspace -1.5ex]
+```{bash, eval=FALSE}
+.git
+├── ...
+├── objects
+│   ├── 22
+│   │   └── 4b432523b07228787ff8e44fdf2d6d66c74b62
+|   |   # List of files in the repo after the commit
+│   ├── 8a
+│   │   └── b686eafeb1f44702738c8b0f24f2567c36da6d
+|   |   # Content of bar.txt 
+│   ├── e8
+│   │   └── 953312ce85c5f6f6ca007c20ac0e894d1350d3
+|   |   # Info about the commit
+│   ├── f6
+│   │   └── e31e74619a2c9faafe04295a5ebed850c3b8d9
+|   |   # Content of foo.txt 
+│   └── ...
+└── ...
+```
+![:vspace -1.5ex]
+
+---
+
 Let's try just one more commit:
 
 ![:vspace -1.5ex]
@@ -285,7 +313,7 @@ More nonsense
 ```
 ![:vspace -.5ex]
 
--- 
+--
 
 Git knows not to make a new file for unchanged `foo.txt`:
 
