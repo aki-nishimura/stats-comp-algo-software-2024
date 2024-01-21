@@ -336,7 +336,7 @@ layout: false
 This lecture was inspired by a blog post
 
 .center[
-  [_Understanding git for real by exploring the .git directory_](https://www.daolf.com/posts/git-series-part-1/)
+  [_Understanding git for real by exploring the .git directory_](https://hashnode.com/post/understanding-git-for-real-by-exploring-the-git-directory-cjt44mqmi0001a6s2a8el9a4t)
 ]
 
 by Pierre de Wulf.
