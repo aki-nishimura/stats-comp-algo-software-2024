@@ -1,5 +1,3 @@
-
-
 ---
 title: "Homework: Setup and Warm-up"
 output:
@@ -7,22 +5,6 @@ output:
     df_print: paged
     highlight: textmate
 ---
-
-
-```{r setup, echo=FALSE}
-rm(list = ls())
-path_to_script <- dirname(rstudioapi::getActiveDocumentContext()$path) 
-  # assuming you are using RStudio
-required_packages <- c()
-for (pkg in required_packages) {
-  if (!(pkg %in% rownames(installed.packages()))) {
-    install.packages(pkg)
-  }
-  library(pkg, character.only = TRUE)
-}
-
-knitr::opts_chunk$set(echo = TRUE)
-```
 
 
 # Exercise 0: Setting up Git and Github
