@@ -235,11 +235,17 @@ stop("Cox model mot implemented for sparse x in glmnet", call. = FALSE)
 
 ---
 
-# Words from Joel Spolsky, <br> $\qquad$co-founder of Stack Overflow
+# Words from co-founder of Stack Overflow
 
-"Nobody would be surprised if you told them it was hard to do open heart surgery. OK, fine, so maybe software isn't open heart surgery. But it has about the same number of moving parts, it's probably just as complicated, and it's critical in a different way.
+<p style="margin-top:3ex; line-height:1.2em; font-size:24pt; font-family:garamond;">
+&#x201C;Nobody would be surprised if you told them it was hard to do open heart surgery. OK, fine, so maybe software isn't open heart surgery. But it has about the same number of moving parts, it's probably just as complicated, and it's critical in a different way.
+</p>
 
-But there's something weird about designing software specifically: Everybody thinks they know how to do it, even when they have no training. They just think, Oh sure, I can do that!"
+<p style="margin-top:0ex; line-height:1.2em; font-size:24pt; font-family:garamond;">
+But there's something weird about designing software specifically: Everybody thinks they know how to do it, even when they have no training. They just think, 'Oh sure, I can do that!'&thinsp;&#x201D;
+</p>
+
+<p style="margin-top:-1.5ex; line-height:1.2em; font-size:24pt; font-family:'Times New Roman';", class="right"> &mdash; Joel Spolsky &emsp;&emsp;</p>
 
 <!-- https://www.salon.com/2004/12/09/spolsky/ -->
 
