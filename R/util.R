@@ -1,7 +1,8 @@
 install_and_load_packages <- function(package_names) {
   for (pkg in package_names) {
     if (!(pkg %in% rownames(installed.packages()))) {
-      install.packages(pkg)
+      install.packages(pkg, repos = "http://cran.us.r-project.org")
+        # `knitr` requires setting a CRAN mirror: https://stackoverflow.com/questions/33969024
     }
     library(pkg, character.only = TRUE)
   }
