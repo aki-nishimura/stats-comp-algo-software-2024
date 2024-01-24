@@ -97,9 +97,17 @@ This example is a bit of a surprise b/c `2^(-1022 - 52)` only has 1-binary digit
 
 ---
 
+Limit of relative approx is called "machine epsilon":
+![:vspace -.75ex]
+
 ```{r}
 .Machine$double.eps # == 2^-52 on most computers
 ```
+
+--
+
+What does this mean in practical terms?
+![:vspace -.75ex]
 
 ```{r}
 a <- 1e6 * rnorm(1)
@@ -108,6 +116,10 @@ a * (1 + .Machine$double.eps / 2) == a
 ```
 
 ---
+
+In particular, an order of additions can make difference: 
+<!-- addition isn't necessarily associative -->
+![:vspace -.75ex]
 
 ```{r}
 set.seed(615)
@@ -127,6 +139,52 @@ c <- rnorm(1)
 (a + b) + c == a + (b + c)
 ```
 
+---
+
+What exactly is going on? Here's an illustrative example:
+![:vspace -.75ex]
+
+```{r}
+a <- 1 + .Machine$double.eps
+b <- 1 + .Machine$double.eps 
+c <- 1
+(a + b) + c == a + (b + c)
+```
+
+This is because
+$$(a + b) + c \to 2 (1 + \epsilon) + 1 \to 3 + 2 \epsilon$$
+--
+
+![:vspace -1ex]
+while
+![:vspace -1ex]
+$$a + (b + c) \to 1 + 2 \to 3$$
+---
+
+As another way to see the issue, imagine decimal arithmetic w/ 6 digits of accuracy:
+  $$\small(40.2318 + 64.3623) + 36.1841 \ \text{ vs. } 40.2318 + (64.3623 + 36.1841)$$
+--
+
+* $\small(40.2318 + 64.3623)$ evaluates to $\small\,104.5941 \to 104.594$
+* $\small(64.3623 + 36.1841)$ evaluates to $\small\,100.5464 \to 100.546$
+
+--
+
+So the left hand side evaluates to
+$$\small 104.594 + 36.1841 \to 140.7781 \to 140.778$$
+while the right hand side to
+$$\small 40.2318 + 100.546 \to 140.7778 \to 140.777$$
+
+---
+
+Finite prec errs also manifest in more benign calculations:
+```{r}
+3 * 0.1 == 0.3
+(0.1 + 0.3) == 0.4
+(0.1 + 0.2) == 0.3
+(1 + 2) == 3
+```
+
 <!-- 
 One consequence: non-determinism in GPU computation. 
 This [2013 paper](https://doi.org/10.1145/2451116.2451118) reports 105% performance penalty from determinism. 
@@ -135,6 +193,7 @@ Examples of non-determinism in deep learning libraries can be found e.g.at [](ht
 
 ---
 
+Let's turn on the issue of numerical over/underflow:
 ```{r, eval=TRUE}
 .Machine$double.xmax # == (2 - 2^-52) * 2^1023 on most computers
 .Machine$double.xmax * (1 + .Machine$double.eps)
