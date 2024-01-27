@@ -17,8 +17,6 @@ install_and_load_packages(required_packages)
 
 # Exercise 0: Checking your understanding of floating point numbers and finite precision arithmetic
 
-## Part A
-
 We observed in the class that the following code returns `FALSE`:
 
 ```{r, eval=FALSE}
@@ -38,7 +36,45 @@ b <- 0.5 + .Machine$double.eps
 Why do we get the different result?
 
 
-# Exercise 0': Generating random real numbers in finite precision arithmetic
+# Exercise 1: One-pass algorithm for calculating variance
+
+Let's say you are running a Monte Carlo simulation to estimate the mean and variance of some random variable $\boldsymbol{\theta}$. 
+Imagine that $\boldsymbol{\theta}$ is high-dimensional, so you don't want to keep all the Monte Carlo samples $\boldsymbol{\theta}_i$ due to the memory burden.
+(If $\boldsymbol{\theta}$ is $10^6$-dimensional, for example, storing 1,000 Monte Carlo samples would require 8GB of memory.)
+And it occurs to you that you can write a "one-pass" algorithm to calculate the sample mean and sample second moment of $\boldsymbol{\theta}$ by only keeping track of running totals of Monte Carlo samples. 
+You can then, in theory, calculate the sample variance from these quantities.
+
+The above idea is implemented and applied below. 
+Try it and see what you get. 
+Does the estimate make sense? If not, why?
+How does the estimate change if you change the seed?
+
+**Bonus question:** 
+What is, roughly speaking, the distribution of the estimator `sample_var_with_question_mark` under repeated Monte Carlo simulations (i.e. without a fixed seed)?
+
+```{r}
+set.seed(140778)
+
+running_sum <- 0
+running_sum_sq <- 0
+
+n_sample <- 10^3
+for (i in 1:n_sample) {
+  theta <- 1e10 + rnorm(1)
+  running_sum <- running_sum + theta
+  running_sum_sq <- running_sum_sq + theta^2
+}
+sample_mean <- running_sum / n_sample
+sample_sec_mom <- running_sum_sq / n_sample
+
+sample_var_with_question_mark <- (sample_sec_mom - (sample_mean)^2)
+```
+
+## Things to commit/submit
+Answers to the questions above.
+
+
+# Exercise 2: Generating random real numbers in finite precision arithmetic
 
 ## Part A
 
@@ -117,45 +153,7 @@ unif_rv <- sapply(1:n_draw, function (i) double_prec_runif())
 Answers to the tasks/questions above.
 
 
-# Exercise 1: One-pass algorithm for calculating variance
-
-Let's say you are running a Monte Carlo simulation to estimate the mean and variance of some random variable $\boldsymbol{\theta}$. 
-Imagine that $\boldsymbol{\theta}$ is high-dimensional, so you don't want to keep all the Monte Carlo samples $\boldsymbol{\theta}_i$ due to the memory burden.
-(If $\boldsymbol{\theta}$ is $10^6$-dimensional, for example, storing 1,000 Monte Carlo samples would require 8GB of memory.)
-And it occurs to you that you can write a "one-pass" algorithm to calculate the sample mean and sample second moment of $\boldsymbol{\theta}$ by only keeping track of running totals of Monte Carlo samples. 
-You can then, in theory, calculate the sample variance from these quantities.
-
-The above idea is implemented and applied below. 
-Try it and see what you get. 
-Does the estimate make sense? If not, why?
-How does the estimate change if you change the seed?
-
-**Bonus question:** 
-What is, roughly speaking, the distribution of the estimator `sample_var_with_question_mark` under repeated Monte Carlo simulations (i.e. without a fixed seed)?
-
-```{r}
-set.seed(140778)
-
-running_sum <- 0
-running_sum_sq <- 0
-
-n_sample <- 10^3
-for (i in 1:n_sample) {
-  theta <- 1e10 + rnorm(1)
-  running_sum <- running_sum + theta
-  running_sum_sq <- running_sum_sq + theta^2
-}
-sample_mean <- running_sum / n_sample
-sample_sec_mom <- running_sum_sq / n_sample
-
-sample_var_with_question_mark <- (sample_sec_mom - (sample_mean)^2)
-```
-
-## Things to commit/submit
-Answers to the questions above.
-
-
-# Exercise 2: Numerical differentiation
+# Exercise 3: Numerical differentiation
 
 ## Part A: Potential caveats of numerical differentiation
 
@@ -266,7 +264,7 @@ For Part A, completed code and answers to the questions.
 For Part B, completed code that passes the test.
 
 
-# Exercise 3: Continuing development of `hiperglm` &mdash; finding MLE via `stats::optim()` and testing it
+# Exercise 4: Continuing development of `hiperglm` &mdash; finding MLE via `stats::optim()` and testing it
 
 We will continue the development of the `hiperglm` package. 
 
