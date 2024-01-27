@@ -1,20 +1,70 @@
 ---
 title: "Homework: Finite Precision Arithmetic & Gradient Descent"
 output:
-  html_notebook: 
+  html_notebook:
     code_folding: none
     highlight: textmate
 ---
 
 
 ```{r setup, include=FALSE}
-rm(list = ls())
 source(file.path("..", "R", "colors.R"))
 source(file.path("..", "R", "util.R"))
 
 required_packages <- c('Matrix', 'testthat')
 install_and_load_packages(required_packages)
 ```
+
+# Exercise 0: Checking your understanding of floating point numbers and finite precision arithmetic
+
+## Part A
+
+We observed in the class that the following code returns `FALSE`:
+
+```{r, eval=FALSE}
+a <- 1 + .Machine$double.eps
+b <- 1 + .Machine$double.eps 
+c <- 1
+(a + b) + c == a + (b + c)
+```
+
+On the other hand, the following modification results in `TRUE`:
+
+```{r, eval=FALSE}
+b <- 0.5 + .Machine$double.eps
+(a + b) + c == a + (b + c)
+```
+
+Why do we get the different result?
+
+## Part B
+
+You learned in the class that numeric values in computers are typically represented with 64-bits double-precision numbers, having 53-bits of relative precision. 
+In particular, a "Uniform(0, 1)" random variable in double-precision generates a number from the $2^{53}$ unique values between $0$ and $1$.
+The amount of randomness in it, therefore, is equivalent to 53 Bernoulli random variables.
+Write a function to generate a Uniform(0, 1) random variable in double-precision with randomness coming only from the `rbinom()` function.
+Check the function's behavior by plotting a histogram of random variables generated from it. 
+
+```{r, eval=FALSE}
+double_prec_runif <- function () {
+  # Fill in
+}
+
+n_draw <- 10^5
+unif_rv <- sapply(1:n_draw, function (i) double_prec_runif())
+
+rv_hist <- hist(unif_rv, breaks = 21, plot = FALSE)
+plot(
+  rv_hist,
+  freq = FALSE,
+  xlab = "Realized values",
+  col = "#bdcedb", # JHU Spirit Blue with saturation and luminance adjusted: https://hslpicker.com/#bdcedb
+  border = "#859bad" # Another variation of JHU Spirit Blue
+)
+```
+
+## Things to commit/submit
+Answers to the questions above.
 
 
 # Exercise 1: One-pass algorithm for calculating variance
