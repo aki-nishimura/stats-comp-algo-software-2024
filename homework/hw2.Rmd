@@ -218,9 +218,9 @@ As mentioned in the lecture, the finite difference method extends to a function 
 The extension relies on the fact $f(\boldsymbol{x} + \Delta x \, \boldsymbol{e}_i) = f(\boldsymbol{x}) + \Delta x \, \partial_i f(\boldsymbol{x}) + \ldots$ for $i = 1, \ldots, d$.
 
 Using the starter code provided below, implement a function to approximate $\nabla f(\boldsymbol{x})$ via the centered difference method.
-To test this function, take as an example a quadratic function $f(x) = - \boldsymbol{x}^\intercal \boldsymbol{\Phi} \boldsymbol{x} / 2$ with positive definite $\boldsymbol{\Phi}$, which can be thought of as a log-likelihood function for $x \sim \mathscr{N}(\boldsymbol{0}, \boldsymbol{\Phi})$ up to an additive constant.
-First show that its gradient is given by $\nabla f(x) = - \boldsymbol{\Phi} \boldsymbol{x}$; 
-more generally, the gradient of a quadratic function $g(x) = \boldsymbol{x}^\intercal \boldsymbol{A} \boldsymbol{x}$ is given by $\nabla g(x) = (\boldsymbol{A} + \boldsymbol{A}^\intercal) \boldsymbol{x}$ for any square matrix $\boldsymbol{A}$.
+To test this function, take as an example a quadratic function $f(\boldsymbol{x}) = - \boldsymbol{x}^\intercal \boldsymbol{\Phi} \boldsymbol{x} / 2$ with positive definite $\boldsymbol{\Phi}$, which can be thought of as a log-likelihood function for $\boldsymbol{x} \sim \mathscr{N}(\boldsymbol{0}, \boldsymbol{\Phi})$ up to an additive constant.
+First show that its gradient is given by $\nabla f(\boldsymbol{x}) = - \boldsymbol{\Phi} \boldsymbol{x}$; 
+more generally, the gradient of a quadratic function $g(\boldsymbol{x}) = \boldsymbol{x}^\intercal \boldsymbol{A} \boldsymbol{x}$ is given by $\nabla g(\boldsymbol{x} = (\boldsymbol{A} + \boldsymbol{A}^\intercal) \boldsymbol{x}$ for any square matrix $\boldsymbol{A}$.
 Then compare a numerically approximated gradient to one computed via an analytical formula.
 
 ```{r, eval=FALSE}
