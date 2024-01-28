@@ -26,3 +26,27 @@ summarize_benchmark <- function(bench_output, include_expression = FALSE) {
     cat(paste0(print_output[i], '\n'))
   }
 }
+
+simulate_sparse_binary_design <- function(
+    n_obs, n_pred, density, repr = "C", seed = NULL
+  ) {
+  if (!is.null(seed)) {
+    set.seed(seed)
+  }
+  if (density < 0 || density > 1) {
+    stop("Density must be between 0 and 1")
+  }
+  if (n_obs < 1 || n_pred < 1) {
+    stop("Number of observations and predictors must be larger than 1")
+  }
+  n_obs <- floor(n_obs)
+  n_pred <- floor(n_pred)
+  n_nonzero <- as.integer(n_obs * n_pred * density)
+  nnz_linear_index <- sample(n_obs * n_pred, n_nonzero, replace = FALSE)
+  row_index <- nnz_linear_index %% n_obs + 1
+  col_index <- (nnz_linear_index - 1) %/% n_obs + 1
+  design_mat <- sparseMatrix(
+    i = row_index, j = col_index, x = 1, dims = c(n_obs, n_pred), repr = repr
+  )
+  return(design_mat)
+}
