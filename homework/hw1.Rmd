@@ -51,7 +51,20 @@ So I am going to ask you to give it a try at least and to submit a screenshot of
 The content of `.gitconfig` showing a proper Git set-up (though you would normally access this information via `git config` commands).
 
 ```{bash, eval=FALSE}
-# Paste the output of `cat .gitconfig` here
+[user]
+        name = "Alyssa Columbus"
+        email = 21285656+acolum@users.noreply.github.com
+[filter "lfs"]
+        process = git-lfs filter-process
+        required = true
+        clean = git-lfs clean -- %f
+        smudge = git-lfs smudge -- %f
+[core]
+        editor = subl
+[diff]
+        tool = kdiff3
+[difftool]
+        prompt = false
 ```
 
 
