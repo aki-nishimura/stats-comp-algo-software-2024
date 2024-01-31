@@ -52,6 +52,22 @@ The content of `.gitconfig` showing a proper Git set-up (though you would normal
 
 ```{bash, eval=FALSE}
 # Paste the output of `cat .gitconfig` here
+[user]
+	name = Nora Liu
+	email = yanxiliu23@gmail.com
+[filter "lfs"]
+	clean = git-lfs clean -- %f
+	smudge = git-lfs smudge -- %f
+	process = git-lfs filter-process
+	required = true
+[init]
+	defaultBranch = main
+[core]
+	editor = subl
+[diff]
+	tool = kdiff3
+[difftool]
+	prompt = false
 ```
 
 
@@ -64,7 +80,7 @@ Log in to JHPCE and `srun --pty bash` to be assigned a compute node.
 For this exercise, we use the `homework/git_experiment` folder from the course repository, so clone the repo to your JHPCE home directory:
 
 ```{bash, eval=FALSE}
-git clone https://github.com/aki-nishimura/stats-comp-algo-software-2023
+git clone https://github.com/aki-nishimura/stats-comp-algo-software-2024
 ```
 
 Next, copy the `git_experiment` folder via a command `cp -r git_experiment git_experiment_copy` (`-r` for "recursive" copy that includes the folder's contents and sub-directories).
@@ -114,7 +130,7 @@ To sanity check that your script ran as expected, check the commit history via `
 Then check the disk space usage of the `git_experiment_copy` folder. 
 You can do this via `du -h -s git_experiment_copy` (`-h` for "human-readable" and `-s` for "summarize") or `du -h -s .` from inside the folder.
 
-Next, make a fresh clone of the repo; you can remove the old one via `rm -rf stats-comp-algo-software-2023`.
+Next, make a fresh clone of the repo; you can remove the old one via `rm -rf stats-comp-algo-software-2024`.
 And repeat the above process from the beginning, but without ever adding the PDF output to the repo.
 
 **Tips:**
@@ -128,6 +144,40 @@ Also, how do you explain the difference in the disk space usages under the two c
 
 **Your answer:** (To be filled.)
 
+Case 1:
+output of `du -h -s .`: 
+```
+1.0M	.
+```
+
+output of `ls -l -h`:
+```
+total 75K
+-rwxr-x--- 1 yliu9 users  419 Jan 29 14:55 edit_and_commit.sh
+-rw-r----- 1 yliu9 users   32 Jan 29 14:53 foo.aux
+-rw-r----- 1 yliu9 users 3.4K Jan 29 14:53 foo.log
+-rw-r----- 1 yliu9 users  36K Jan 29 14:53 foo.pdf
+-rw-r----- 1 yliu9 users  337 Jan 29 14:53 foo.tex
+```
+
+No the size of the folder does not look reasonable relative to the size of the individual files. The individual files total up to 75K while the disk usage is 1M. This is because git init save all the snapshots of the current status of the folder.
+
+Case 2:
+output of `du -h -s .`:
+```
+505K	.
+```
+
+output of `ls -l -h`:
+```
+total 19K
+-rwxr-x--- 1 yliu9 users 352 Jan 29 15:04 edit_and_commit.sh
+-rw-r----- 1 yliu9 users 337 Jan 29 15:04 foo.tex
+```
+
+The disk usage of case 2 is almost half of case 1. This is because case 1 involves pdf files, which is around 30K+ on itself. Each snapshot of case 1 folder takes more space than case 2.
+
+
 ## Part B
 
 You will now run the same experiment but on steroids, making a total of _10,000_ commits (plus the initial commit).
@@ -138,9 +188,33 @@ you may want to combine the `du` command with `awk '{print $1}'` to only record 
 Since this is a long job that will take a non-trivial amount of JHPCE resource, just run this experiment once without committing the PDF output.
 Also make sure to use `sbatch`, and _not_ `srun`, for such a long job.
 
+
+
+Notes:
+fresh folder:
+du -h -s .
+20K	.
+
+total 19K
+-rw-r----- 1 yliu9 users 227 Jan 29 15:10 edit_and_commit.sh
+-rw-r----- 1 yliu9 users 128 Jan 29 15:10 foo.tex
+
+
+after first commit
+du -h -s .
+248K	.
+
+ls -l -h
+total 19K
+-rw-r----- 1 yliu9 users 227 Jan 29 15:10 edit_and_commit.sh
+-rw-r----- 1 yliu9 users 128 Jan 29 15:10 foo.tex
+
+
+
+
 **Tips:**
 You can transfer the disk usage result from JHPCE to your local computer via 
-`rsync -P "your_username@jhpce03.jhsph.edu:/users/your_username/stats-comp-algo-software-2023/homework/git_experiment_copy/git_repo_size_history.txt" git_experiment` (assuming that you are running the command from the `homework` folder).
+`rsync -P "your_username@jhpce03.jhsph.edu:/users/your_username/stats-comp-algo-software-2024/homework/git_experiment_copy/git_repo_size_history.txt" git_experiment` (assuming that you are running the command from the `homework` folder).
 
 **Question:** 
 Plot the disk usage of the git repo with the number of commits on the $x$-axis.
@@ -149,12 +223,25 @@ Based on this result and those from Part A, explain why [Github discourages you 
 
 **Your answer:** (To be filled.)
 
-```{r, eval=FALSE}
+```{r}
 source(file.path("..", "R", "colors.R"))
 
-repo_size <- scan("git_experiment/git_repo_size_history.txt")
+repo_size <- scan("git_experiment/git_repo_size_history.txt", what = "character")
+
+library(stringr)
+library(dplyr)
+
+repo_size_num <- repo_size[str_detect(repo_size, "K")] %>% 
+  str_replace_all("K", "")%>% 
+  as.numeric()
+repo_size_num <- repo_size_num / 1024
+repo_size_num <- c(repo_size_num, 
+                   repo_size[str_detect(repo_size, "M")] %>% 
+                     str_replace_all("M", "")%>% 
+                     as.numeric())
 plot(
   # To be filled
+  repo_size_num,
   frame = FALSE, # Remove the ugly box
   col = jhu_color$heritageBlue,
   xlab = "Commit counts",
@@ -180,7 +267,7 @@ Set up your own version of the `hiperglm` package as we discussed in the class a
 
 ## Things to commit and submit
 
-- Hyperlink to the `hiperglm` repository on your Github account
+- Hyperlink to the `hiperglm` repository on your Github account: https://github.com/yanxiliu230/hiperglm
 - Screenshot of the package's Git history visualized through a Git GUI of your choice
 
 <img src="figure/git_history_screenshot.png" alt="Place the screenshot here"/>
