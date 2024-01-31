@@ -223,6 +223,12 @@ Based on this result and those from Part A, explain why [Github discourages you 
 
 **Your answer:** (To be filled.)
 
+The plot below shows that the repo size fluctuates where each cycle is about 2000+ commits. In each cycle, the repo size increases linearly, then suddenly drops to a size close to the repo size after init commit (0.25M+). After this sudden drop, we enter the next cycle of 2000+ commits showing linear increase in repo size at first, then sudden drop to initial repo size level. When we use git to commit binary files, the repo size increases fast, but there is a limit to how big the repo can grow since we observe that after every 2000+ commits, git manages to cut down the repo size. Nonetheless, committing TeX file increases the repo size and can use a lot of storage. After consulting ChatGPT and git-scm.com, we know that this fluctuation in repo size might be due to Git's packfile creation mechanism. In one cycle, as we add a line and commit, Git stores the changes and the new files accumulates. When the repo size gets too large, Git thinks it is more efficient to compress all the changes so far into a packfile, which is a more efficient way to store changes, so the repo size drops. Recall that we only add one line to the file each time, which means without packfile, Git needs to store many highly similar versions of the same files, leading to fast linear increase in repo size. But packfile stores several of these highly similarly TeX files into a single binary file, cleaning up the space.
+
+In part A we see that when updating and committing only the foo.tex files 10 times, the repo size becomes 505K while the file size of foo.tex and the bash script total up to only 19K. This shows us that at each commit, git saves a snapshot of the current status of the repo, so the total repo size increases fast. But 505K is not that much to create a packfile yet.
+
+GitHub discourages committing large binary files because large binary files take up too much storage space of the version control repo. Making changes to the binary file and committing again can increase the repo size very quickly. And in the example of packfile, since all the history in the 2000+ commits are stored in one packfile, it is harder to access that normal files.
+
 ```{r}
 source(file.path("..", "R", "colors.R"))
 
@@ -248,6 +254,11 @@ plot(
   ylab = "Repo size (MB)"
 )
 ```
+
+```{r}
+head(sort(repo_size_num))
+```
+
 
 ## Things to commit and submit
 
