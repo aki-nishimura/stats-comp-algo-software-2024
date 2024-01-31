@@ -857,9 +857,9 @@ Here's another use case of Cholesky:
 ```{r}
 Sigma_inv <- A
 
-L <- chol(Sigma_inv) # Use the built-in ver
+R <- chol(Sigma_inv) # Use the built-in ver; t(R) %*% R == Sigma_inv
 z <- rnorm(size)
-x <- forwardsolve(L, z)
+x <- backsolve(R, z)
 ```
 
 --

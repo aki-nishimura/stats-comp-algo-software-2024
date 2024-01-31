@@ -4,6 +4,7 @@
   * Homework 1 due
   * `hiperglm` dev: package skeleton
 - Finite precision arithmetic & Numerical stability
+- Setting up `testthat`
   * Homework 2 due
   * `hiperglm` dev: implement BFGS-based model fitting
 - Minimal intro to numerical optimization

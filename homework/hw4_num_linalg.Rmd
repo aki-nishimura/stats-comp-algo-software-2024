@@ -43,10 +43,6 @@ What are relative speeds among the algorithms?
 Do relative speeds agree with what you expect from the complexity analyses?
 If not (quite), why might that be?
 
-**Note:**
-I misspoke about the R's built-in `chol()` function during the lecture:
-when applied to a positive-definite `A`, the function actually returns an _upper-triangular_ matrix `R` such that `t(R) %*% R == A`.
-
 ```{r, eval=FALSE}
 # Import the `rand_positive_def_matrix` function
 source(file.path("R", "random_matrix.R"))
