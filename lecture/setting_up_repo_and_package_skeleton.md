@@ -34,6 +34,7 @@
   * (After forgetting to do so,) Roxygenize again
 - Decide, out of whim, to change the package name from `hiperLogit` to `hiperglm`
   * Gotta replace all the "logit" word from the repo: `git grep --ignore-case logit`
+  * Rename variables with `find R -type f -name "*.R" -exec gsed -i 's/glm/logit/g' {} \;` (since RStudio currently doesn't support refactoring)
   * Also need to change all the file names: `find * -iname "*logit*"`
   * Rename git repo
   * Change remote url `git remote set-url origin ...`
