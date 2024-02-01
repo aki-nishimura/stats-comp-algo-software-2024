@@ -174,7 +174,9 @@ Plot the disk usage of the git repo with the number of commits on the $x$-axis.
 Explain what you observe --- you may consult with resources on the web, including ChatGPT.
 Based on this result and those from Part A, explain why [Github discourages you from commiting (large) binary files](https://docs.github.com/en/repositories/working-with-files/managing-large-files/about-large-files-on-github)?
 
-**Your answer:** (To be filled.)
+**Your answer:**
+
+Each commit in Git creates a set of objects that represent the state of the files at the moment of the commit. Each object is stored as a separate file in the .git/objects directory. These are called "loose objects," and they can consume more disk space than necessary because they are not yet compressed. After a certain number of loose objects are created, or when the .git/objects directory becomes too large, Git will run its automatic garbage collection, packing those objects into pack files, which can drastically reduce disk usage. That explains why there is a periodic fluctuation in the disk usage of the git repo with the number of commits.
 
 ```{r, eval=FALSE}
 source(file.path("..", "R", "colors.R"))
@@ -182,6 +184,8 @@ source(file.path("..", "R", "colors.R"))
 repo_size <- scan("git_experiment/git_repo_size_history.txt")
 plot(
   # To be filled
+  x = 1:length(repo_size),
+  y = repo_size/1024,
   frame = FALSE, # Remove the ugly box
   col = jhu_color$heritageBlue,
   xlab = "Commit counts",
