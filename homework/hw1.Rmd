@@ -205,11 +205,11 @@ Based on this result and those from Part A, explain why [Github discourages you 
 
 **Your answer:** (To be filled.)
 
-*Observation*: The plot below shows that the repo size fluctuates where each cycle is about 2000+ commits. In each cycle, the repo size increases linearly, then suddenly drops to a size close to the repo size after init commit (0.25M+). After this sudden drop, we enter the next cycle of 2000+ commits showing linear increase in repo size at first, then sudden drop to initial repo size level. So it looks like there is a limit to how big the repo will grow since we observe that git manages to cut down the repo size in every 2000+ commits. Nonetheless, committing TeX file increases the repo size fast and can use a lot of storage. 
+*Observation*: The plot below shows that the repo size fluctuates where each cycle is about 2000+ commits. In each cycle, the repo size increases linearly, then suddenly drops to a size close to the repo size after init commit (0.25M+). After this sudden drop, we enter the next cycle of 2000+ commits showing linear increase in repo size at first, then sudden drop in repo size level. So it looks like there is a limit to how big the repo will grow since we observe that git manages to cut down the repo size in every 2000+ commits. Nonetheless, committing TeX file increases the repo size fast and can use a lot of storage. 
 
 *Explanation*: After consulting ChatGPT and git-scm.com, we know that this fluctuation in repo size might be due to Git's packfile creation mechanism. In one cycle, as we add a line and commit, Git stores the changes; the new files accumulates. When the repo size gets too large, Git thinks it is more efficient to compress all the changes so far into a packfile, which is a more efficient way to store changes (considering that consecutive files are only different by one line), so the repo size drops after packfile creation. To verify that this is the case, I have found these packfiles in my repo. There are 4 packfiles, corresponding to the 4 sudden drops in repo size as shown in the figure below.
 
-```
+```{r, eval=FALSE}
 [yliu9@login31 git_experiment_copy]$ find .git/objects/info/packs -type f
 .git/objects/info/packs
 [yliu9@login31 git_experiment_copy]$ find .git/objects/pack -type f
@@ -227,10 +227,9 @@ reference: ChatGPT, [git-scm.com](https://git-scm.com/book/en/v2/Git-Internals-P
 
 In conclusion, recall that we only add one line to the file each time, which means without packfile, Git needs to store many highly similar versions of the same files, leading to fast linear increase in repo size. But packfile stores several of these highly similarly TeX files into a single binary file, cleaning up the space. Nonetheless, the overall trend is that the repo size is going up fast despite packfile creation
 
-In part A we see that when updating and committing only the foo.tex files 10 times, the repo size becomes 505K while the sizes of foo.tex and the bash script total up to only 19K. This shows us that at each commit, git saves a snapshot of the current status of the repo, so the total repo size increases fast. But 505K is not that much to create a packfile yet.
+In part A we see that when including pdf in the commits, the total repo size after 10 commits is 1MB while the repo size is 505K without including pdf in the 10 commits. This is because the pdf file (the large binary file) itself takes up too much space which causes each commits to increase faster than without including pdf. If we commit the pdf 10,000 times, even with the packfile mechanism, the repo size will be much larger than not committing the pdf, and the pdf will not compress really well into packfile.
 
-GitHub discourages committing large binary files because large binary files take up too much storage space of the version control repo. Making changes to the binary file and committing again can increase the repo size very quickly. And in the example of packfile, since all the history in the 2000+ commits are stored in one packfile, it is harder to access that normal files.
-
+Therefore, GitHub discourages committing large binary files because large binary files take up too much storage space of the version control repo. Making changes to the binary file and committing again can increase the repo size very quickly, even with the packfile mechanism. And in the example of pdf, it is also harder to merge changes to pdf between different commits, making collaboration harder.
 
 ```{r}
 source(file.path("..", "R", "colors.R"))
@@ -253,10 +252,6 @@ plot(
   xlab = "Commit counts",
   ylab = "Repo size (MB)"
 )
-```
-
-```{r}
-head(sort(repo_size_num))
 ```
 
 
