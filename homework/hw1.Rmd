@@ -139,7 +139,21 @@ Does the size of the folder look reasonable relative to the sizes of the individ
 If not, why would that be? 
 Also, how do you explain the difference in the disk space usages under the two cases above?
 
-**Your answer:** (To be filled.)
+**Your answer:** 
+
+1. Does the size of the folder look reasonable relative to the sizes of the individual files inside it?  (Use `ls -l -h` to list the files with the size info; `-l` is for "long.") If not, why would that be? 
+
+No it doesn't. The size of the folder (shown by using `du -h -s`) is much larger than the sum of the sizes of the individual files (shown by using `ls -l -h`). This is because:
+
+- Block Allocation: The `du` command reports the actual disk space used by files under the directory, taking into account the block size (The total size of the blocks allocated to a file is usually larger than the size of the file). The `ls -l -h` command, on the other hand, reports the apparent size of the file, which is the actual size of the file, without taking into account the block size.
+
+- Hidden files: The `du` command includes all files in the directory, including hidden ones. However `ls -l -h` does not show the hidden files like .git, so we are not actually summing the sizes of all the files in the directory.
+
+- Cumulative size: The `du` command reports the cumulative size of the directory, including the sizes of all the files and subdirectories in the directory. The `ls -l -h` command, on the other hand, reports the size of the directory itself, which is usually much smaller than the cumulative size of the directory. i.e, `ls -l -h` command does not recursively sum the sizes of files in subdirectories.
+
+2. Also, how do you explain the difference in the disk space usages under the two cases above?
+
+In the first case, we track both the TeX source file and its PDF output. In the second case, we only track the TeX source file. Git does not work the best with the generated non-text files like PDFs. It is designed to track changes in text files, and it does not handle binary files as well as it does text files. When we track the PDF output, Git has to store the entire file for each commit, which can lead to a large repository size. When we only track the TeX source file, the repository size is much smaller because the TeX source file is a text file and Git can track changes in text files more efficiently. That's why the disk space usage is much larger when we also track the PDF output.
 
 ## Part B
 
