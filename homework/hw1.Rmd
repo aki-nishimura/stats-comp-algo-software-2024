@@ -52,6 +52,19 @@ The content of `.gitconfig` showing a proper Git set-up (though you would normal
 
 ```{bash, eval=FALSE}
 # Paste the output of `cat .gitconfig` here
+[core]
+        editor = \"C:\\Users\\Alex\\AppData\\Local\\Programs\\Microsoft VS Code\\bin\\code\" --wait
+[user]
+        name = thepianistalex
+        email = llang7@jh.edu
+[init]
+        defaultBranch = main
+[gui]
+        recentrepo = C:/Users/Alex/Desktop/planets
+[diff]
+        tool = kdiff3
+[difftool]
+        prompt = false
 ```
 
 
