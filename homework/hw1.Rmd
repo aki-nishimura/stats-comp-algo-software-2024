@@ -154,7 +154,7 @@ No it doesn't. The size of the folder (shown by using `du -h -s`) is much larger
 - Cumulative size: The `du` command reports the cumulative size of the directory, including the sizes of all the files and subdirectories in the directory. The `ls -l -h` command, on the other hand, reports the size of the directory itself (not even including the hidden file), which is usually much smaller than the cumulative size of the directory. i.e, `ls -l -h` command does not recursively sum the sizes of files in subdirectories.  
 
 
-2. Also, how do you explain the difference in the disk space usages under the two cases above?  
+2. Also, how do you explain the difference in the disk space usages under the two cases above?
 
 In the first case, we track both the TeX source file and its PDF output. In the second case, we only track the TeX source file. Git does not work the best with the generated non-text files like PDFs. It is designed to track changes in text files, and it does not handle binary files as well as it does text files. When we track the PDF output, Git has to store the entire file for each commit, which can lead to a large repository size. When we only track the TeX source file, the repository size is much smaller because the TeX source file is a text file and Git can track changes in text files more efficiently. That's why the disk space usage is much larger when we also track the PDF output.
 
@@ -180,6 +180,8 @@ Based on this result and those from Part A, explain why [Github discourages you 
 **Your answer:**
 
 Each commit in Git creates a set of objects that represent the state of the files at the moment of the commit. Each object is stored as a separate file in the .git/objects directory. These are called "loose objects," and they can consume more disk space than necessary because they are not yet compressed. After a certain number of loose objects are created, or when the .git/objects directory becomes too large, Git will run its automatic garbage collection, packing those objects into pack files, which can drastically reduce disk usage. That explains why there is a periodic fluctuation in the disk usage of the git repo with the number of commits.
+
+Git doesn't necessarily perform a full garbage collection at every invocation of git gc. It often does smaller cleanups that incrementally optimize the repository. This means that rather than a single large drop, there will be a series of smaller reductions in the repository size as different cleanup operations take effect over several commits. That explains why the drop in disk usage of the git repo happens over multiple commits.
 
 ```{r, eval=TRUE}
 source(file.path("..", "R", "colors.R"))
