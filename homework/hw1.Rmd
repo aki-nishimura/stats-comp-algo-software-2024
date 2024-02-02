@@ -52,6 +52,23 @@ The content of `.gitconfig` showing a proper Git set-up (though you would normal
 
 ```{bash, eval=FALSE}
 # Paste the output of `cat .gitconfig` here
+[user]
+        email = wenxuanlu@hotmail.com
+        name = Wenxuan Lu
+[credential "helperselector"]
+        selected = manager-core
+[http]
+        sslVerify = false
+[https]
+        sslVerify = false
+[init]
+        defaultBranch = main
+[core]
+        editor = 'C:/Program Files/Notepad++/notepad++.exe' -multiInst -notabbar -nosession -noPlugin
+[diff]
+        tool = kdiff3
+[difftool]
+        prompt = false
 ```
 
 
