@@ -234,7 +234,7 @@ Set up your own version of the `hiperglm` package as we discussed in the class a
 
 ## Things to commit and submit
 
-- Hyperlink to the `hiperglm` repository on your Github account
+- Hyperlink to the `hiperglm` repository on your Github account: <https://github.com/Wenxuan-Lu/hiperglm>
 - Screenshot of the package's Git history visualized through a Git GUI of your choice
 
 <img src="figure/git_history_screenshot.png" alt="Place the screenshot here"/>
