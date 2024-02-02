@@ -260,35 +260,12 @@ Set up your own version of the `hiperglm` package as we discussed in the class a
 The goal here is to outline a skeleton of the package, without actually implementing the functions.
 For now, let these "placeholder" functions simply throw warnings that they are yet to be implemented.
 
-```{r pkg-sample-code, eval=F, echo=F}
-# see also my handwritten notes
-
-# from biostat 777 project 2
-make_ci_class <- function(x){
-  structure(list(x = x), class = "ci_class")
-}
-
-# from today's class
-#' @export
-hiper_logit <- function(outcome, design){
-  
-  hlogit <- list()
-  class(hlogit) <- "hlogit"
-  return(hlogit)
-}
-
-#' @export
-predict.hlogit <- function(hlogit, ...){ # at least, I think I need ...
-  warning("Yet to be implemented")
-}
-```
-
 ## Things to commit and submit
 
-- Hyperlink to the `hiperglm` repository on your Github account
-- Screenshot of the package's Git history visualized through a Git GUI of your choice
+- Hyperlink to the `hiperglm` repository on your Github account: https://github.com/m-qin/hiperglm
+- Screenshot of the package's Git history visualized through a Git GUI of your choice:
 
-<img src="figure/git_history_screenshot.png" alt="Place the screenshot here"/>
+<img src="figure/git_history_screenshot.png" alt="Screenshot from GitHub Desktop"/>
 
 **Note:** 
 In case you decided to go with GitKraken via GitHub Student Developer Pack, the student status verification process could take a few days.
