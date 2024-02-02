@@ -206,7 +206,7 @@ For now, let these "placeholder" functions simply throw warnings that they are y
 
 - Screenshot of the package's Git history visualized through a Git GUI of your choice
 
-<img src="C:/Users/HP/Desktop/JHU/Term 3/Data Science/photo_assgn1/Capture.jpg" alt="Place the screenshot here"/>
+<img src="https://github.com/achatto4/stats-comp-algo-software-2024/blob/main/homework/figure/Capture.JPG?raw=true" alt="Place the screenshot here"/>
 
 **Note:** 
 In case you decided to go with GitKraken via GitHub Student Developer Pack, the student status verification process could take a few days.
