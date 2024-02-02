@@ -59,24 +59,9 @@ layout: true
 ---
 
 ![](figure/double_precision_number.png)
-![:vspace -1ex]
+![:vspace -1.5ex]
 
-52-bits fraction:<br>
-$\qquad$ 10110... = 1/2 + 0/4 + 1/8 + 1/16 + 0/32 + ...
-
---
-
-```{r, eval=TRUE}
-c((1 + 2^(-52)) - 1, 
-  (1 + 2^(-53)) - 1)
-```
-
----
-
-![](figure/double_precision_number.png)
-![:vspace -1ex]
-
-11-bits exponent:<br>
+Magnitude (in base 2) is represented by 11-bits exponent:<br>
 $\qquad$ $2^{11} = 2048$, covering −1022 to +1023
 ![:vspace -.75ex]
 
@@ -97,6 +82,27 @@ This example is a bit of a surprise b/c `2^(-1022 - 52)` only has 1-binary digit
 
 ---
 
+![](figure/double_precision_number.png)
+![:vspace -1.5ex]
+
+Signif digits (in base 2) are given by 52-bits fraction part:<br>
+$\qquad$ 10110... = 1/2 + 0/4 + 1/8 + 1/16 + 0/32 + ...
+
+![:vspace -.5ex]
+
+In other words, there're $2^{52}$ machine-representable values in between two reals $2^k$ and $2^{k + 1}$ w/ increment $2^k \times 2^{-52}$.
+
+--
+
+![:vspace -.75ex]
+
+```{r, eval=TRUE}
+c((1 + 2^(-52)) - 1, 
+  (1 + 2^(-53)) - 1)
+```
+
+---
+
 Limit of relative approx is called "machine epsilon":
 ![:vspace -.75ex]
 
@@ -111,8 +117,8 @@ What does this mean in practical terms?
 
 ```{r}
 a <- 1e6 * rnorm(1)
-a * (1 + .Machine$double.eps) == a
-a * (1 + .Machine$double.eps / 2) == a
+(a + a * .Machine$double.eps) == a
+(a + a * .Machine$double.eps / 2.1) == a
 ```
 
 ---
@@ -224,7 +230,7 @@ set.seed(1918)
 n_pred <- 10^6
 n_category <- 3
 
-x_1 <- rnorm(n_pred)
+x <- rnorm(n_pred)
 reg_coef <- matrix(
   rnorm(n_pred * n_category), 
   n_pred, n_category
@@ -237,7 +243,7 @@ reg_coef <- matrix(
 
 ![:vspace -3.1ex]
 ```{r, eval=FALSE}
-category_logp <- as.vector(t(x_1) %*% reg_coef)
+category_logp <- as.vector(t(x) %*% reg_coef)
 category_prob <- exp(category_logp) / sum(exp(category_logp))
 ```
 
@@ -245,7 +251,7 @@ category_prob <- exp(category_logp) / sum(exp(category_logp))
 
 ![:vspace -3.1ex]
 ```{r}
-category_logp <- as.vector(t(x_1) %*% reg_coef)
+category_logp <- as.vector(t(x) %*% reg_coef)
 category_prob <- exp(category_logp) / sum(exp(category_logp))
 category_prob
 ```
@@ -254,7 +260,7 @@ category_prob
 
 ![:vspace -3.1ex]
 ```{r}
-category_logp <- as.vector(t(x_1) %*% reg_coef)
+category_logp <- as.vector(t(x) %*% reg_coef)
 category_prob <- exp(category_logp) / sum(exp(category_logp))
 category_logp
 ```
@@ -411,7 +417,7 @@ ancestor_factor <- rbinom(n_pred, 1, prob = .1)
 for (i in 1:n_obs) {
   X[i, ] <- ancestor_factor
   rand_indx <- sample.int(n_pred, 10)
-  X[i, rand_indx] <- 1 - X[i, rand_indx]
+  X[i, rand_indx] <- 1 - X[i, rand_indx] # Flip 0 and 1
 }
 ```
 
