@@ -30,7 +30,7 @@ The following commands tell Git to use Sublime and KDiff3:
 
 ```{bash, eval=FALSE}
 git config --global core.editor subl --wait
-git config --global diff.tool kdiff3
+git config --global diff.tool meld
 git config --global --add difftool.prompt false
 ```
 
@@ -52,6 +52,27 @@ The content of `.gitconfig` showing a proper Git set-up (though you would normal
 
 ```{bash, eval=FALSE}
 # Paste the output of `cat .gitconfig` here
+[user]
+        email = sfansle1@jh.edu
+        name = Sam Fansler
+[init]
+        defaultBranch = main
+[filter "lfs"]
+        clean = git-lfs clean -- %f
+        smudge = git-lfs smudge -- %f
+        process = git-lfs filter-process
+        required = true
+[color]
+        ui = true
+[diff]
+        tool = meld
+[core]
+        editor = 'C:/Program Files/Notepad++/notepad++.exe' -multiInst -notabbar -nosession -noPlugin
+[difftool "sourcetree"]
+        cmd = "'' "
+[mergetool "sourcetree"]
+        cmd = "'' "
+        trustExitCode = true
 ```
 
 
@@ -126,7 +147,24 @@ Does the size of the folder look reasonable relative to the sizes of the individ
 If not, why would that be? 
 Also, how do you explain the difference in the disk space usages under the two cases above?
 
-**Your answer:** (To be filled.)
+Folder size (with pdfs): 75K
+  Individual file sizes: 227 edit_and_commit.sh
+                         22 foo.aux
+                         3.4K foo.log
+                         36K foo.pdf
+                         337 foo.tex
+                         
+Folder size (without pdfs): 19K
+  Individual file sizes: 227 edit_and_commit.sh
+                         337 foo.tex
+
+Disk space with pdfs: 1.1M
+Disk space without pdfs: 495K
+
+
+The folder size with the pdf included is 75K, while the individual file sizes inside that folder sum to around 40K. I believe this is because the git repo additionally stores version history metadata which takes up extra space. Similarly, the folder size without the pdf is 19K while the individual file sizes sum to 564. This is likely due to similar reasons. 
+
+For the disk space difference, this is because the folder including the pdf takes up much more space. The pdf is a binary file, which takes up more space than the TeX file, which is a text file. This is why the folder size as well as the disk space usage is larger with the folder including the pdf.
 
 ## Part B
 
@@ -140,25 +178,31 @@ Also make sure to use `sbatch`, and _not_ `srun`, for such a long job.
 
 **Tips:**
 You can transfer the disk usage result from JHPCE to your local computer via 
-`rsync -P "your_username@jhpce03.jhsph.edu:/users/your_username/stats-comp-algo-software-2024/homework/git_experiment_copy/git_repo_size_history.txt" git_experiment` (assuming that you are running the command from the `homework` folder).
+`rsync -P "your_username@jhpce03.jhsph.edu:/users/your_username/stats-comp-algo-software-2023/homework/git_experiment_copy/git_repo_size_history.txt" git_experiment` (assuming that you are running the command from the `homework` folder).
 
 **Question:** 
 Plot the disk usage of the git repo with the number of commits on the $x$-axis.
 Explain what you observe --- you may consult with resources on the web, including ChatGPT.
 Based on this result and those from Part A, explain why [Github discourages you from commiting (large) binary files](https://docs.github.com/en/repositories/working-with-files/managing-large-files/about-large-files-on-github)?
 
-**Your answer:** (To be filled.)
 
-```{r, eval=FALSE}
-source(file.path("..", "R", "colors.R"))
+The plot below shows a large fluctuation of disk usage as the number of commits increases. This is due to how Git stores version histories and metadata. For example, Git sometimes creates pack files to compress objects and create more space as the number of commits increases. This is done when there are a large number of loose files, Git recognizes this and packs them into a single binary file. [Source](https://git-scm.com/book/en/v2/Git-Internals-Packfiles#:~:text=However%2C%20occasionally%20Git%20packs%20up,push%20to%20a%20remote%20server.)
 
-repo_size <- scan("git_experiment/git_repo_size_history.txt")
+Based off these results, it is clear why Github discourages use of large binary files. Text files are much smaller, which is easier for Git to keep track of changes and perform effective version control. Large binary files also increase the size of the repository, which could slow down cloning and pulling/pushing.
+
+```{r}
+getwd()
+data = read.table("git_repo_size_history.txt")
+
+sizes = data[,1]
+commit_num = seq(1:length(sizes))
+
 plot(
-  # To be filled
+  commit_num, sizes,
   frame = FALSE, # Remove the ugly box
-  col = jhu_color$heritageBlue,
+  col = "blue",
   xlab = "Commit counts",
-  ylab = "Repo size (MB)"
+  ylab = "Repo size"
 )
 ```
 
@@ -181,6 +225,9 @@ Set up your own version of the `hiperglm` package as we discussed in the class a
 ## Things to commit and submit
 
 - Hyperlink to the `hiperglm` repository on your Github account
+  
+[Link to hiperglm repository](https://github.com/sfansler/hiperglm)  
+  
 - Screenshot of the package's Git history visualized through a Git GUI of your choice
 
-<img src="figure/git_history_screenshot.png" alt="Place the screenshot here"/>
+<img src="git_history_screenshot.png" alt="Place the screenshot here"/>
