@@ -156,7 +156,7 @@ No it doesn't. The size of the folder (shown by using `du -h -s`) is much larger
 
 2. Also, how do you explain the difference in the disk space usages under the two cases above?
 
-In the first case, we track both the TeX source file and its PDF output. In the second case, we only track the TeX source file. Git does not work the best with the generated non-text files like PDFs. It is designed to track changes in text files, and it does not handle binary files as well as it does text files. When we track the PDF output, Git has to store the entire file for each commit, which can lead to a large repository size. When we only track the TeX source file, the repository size is much smaller because the TeX source file is a text file and Git can track changes in text files more efficiently. That's why the disk space usage is much larger when we also track the PDF output.
+In the first case, we track both the TeX source file and its PDF output. In the second case, we only track the TeX source file. Git does not work the best with the generated non-text files like PDFs. It is designed to track changes in text files, and it does not handle binary files as well as it does text files. When we track the PDF output, Git is not able to store the updates efficiently, which can lead to a large repository size. When we only track the TeX source file, the repository size is much smaller because the TeX source file is a text file and Git can track changes in text files more efficiently. That's why the disk space usage is much larger when we also track the PDF output.
 
 ## Part B
 
