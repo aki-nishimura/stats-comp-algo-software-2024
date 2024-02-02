@@ -225,9 +225,9 @@ Plot the disk usage of the git repo with the number of commits on the $x$-axis.
 Explain what you observe --- you may consult with resources on the web, including ChatGPT.
 Based on this result and those from Part A, explain why [Github discourages you from commiting (large) binary files](https://docs.github.com/en/repositories/working-with-files/managing-large-files/about-large-files-on-github)?
 
-**Your answer:** (To be filled.)
+**Your answer:** Interestingly, my git repository size goes up then down periodically. A quick ChatGPT query suggested that git may be performing routine garbage collection as my repo size increases. I'm also puzzled as to why my .txt files seems to only have 6,601 lines. Did the garbage collection delete stuff?
 
-```{r, eval=FALSE}
+```{r, eval=T}
 source(file.path("..", "R", "colors.R"))
 
 repo_size <- scan("git_experiment/git_repo_size_history.txt")
