@@ -54,6 +54,14 @@ The content of `.gitconfig` showing a proper Git set-up (though you would normal
 
 ```{bash, eval=FALSE}
 # Paste the output of `cat .gitconfig` here
+$ cat .gitconfig
+[user]
+        email = achatto4@jhu.edu
+        name = Anagh Chattopadhyay
+[core]
+        editor = emacs
+[init]
+        defaultBranch = main
 ```
 
 
@@ -128,7 +136,9 @@ Does the size of the folder look reasonable relative to the sizes of the individ
 If not, why would that be? 
 Also, how do you explain the difference in the disk space usages under the two cases above?
 
-**Your answer:** (To be filled.)
+**Your answer:** The size of the folder does not look reasonable relative to the sizes of the individual files inside it.  To further investigate the matter, I utilized the function "du -h -a git_experiment", and that showed that the git-substructure was responsible for the inflated disk-space. Git also stores metadata about the repository in the Git folder, leading to further inflation. 
+
+It is further noted that the space usage is worse for the case where the pdf is commited compared to the case where it is not. It is important to note that for binary files( such as pdfs) Git stores every change to the repository as a separate object. Since we are doing 10 changes, there are generally 10 different versions of the pdf stored which in turn lead to an even larger inflation.This problem does not occur at such a scale in tex files, because git tracks just the changes done in the tex files, and does not explicitly need to keep copies of the tex files after each iteration.
 
 ## Part B
 
@@ -149,20 +159,24 @@ Plot the disk usage of the git repo with the number of commits on the $x$-axis.
 Explain what you observe --- you may consult with resources on the web, including ChatGPT.
 Based on this result and those from Part A, explain why [Github discourages you from commiting (large) binary files](https://docs.github.com/en/repositories/working-with-files/managing-large-files/about-large-files-on-github)?
 
-**Your answer:** (To be filled.)
+**Your answer:** The following plot relating the disk usage of the git repo with the number of commits on the $x$-axis shows that the disk usage of the git-repo demonstrates an oscillatory pattern with the number of commits. There are increases and decreases which are shown in the pattern below
+
+<img src="C:/Users/HP/Desktop/JHU/Term 3/Data Science/photo_assgn1/Capture1.jpg" alt="Place the screenshot here"/>
 
 ```{r, eval=FALSE}
-source(file.path("..", "R", "colors.R"))
-
-repo_size <- scan("git_experiment/git_repo_size_history.txt")
+repo_size <- scan(file.choose())/1000 #Convert to MB
 plot(
-  # To be filled
+  x=1:length(repo_size), y=repo_size,
   frame = FALSE, # Remove the ugly box
   col = jhu_color$heritageBlue,
   xlab = "Commit counts",
   ylab = "Repo size (MB)"
 )
 ```
+
+Version control systems like Git typically use various compression techniques to optimize storage. When you commit changes, Git may initially increase the disk space as it saves a new snapshot of the file. However, over time, Git performs periodic optimizations, and this could lead to a decrease in disk space.
+
+Git uses delta compression and other mechanisms to minimize redundancy in storage. If there are repetitive patterns or similarities between versions, Git might identify and store them more efficiently.
 
 ## Things to commit and submit
 
@@ -185,10 +199,14 @@ For now, let these "placeholder" functions simply throw warnings that they are y
 
 ## Things to commit and submit
 
+## Things to commit and submit
+
 - Hyperlink to the `hiperglm` repository on your Github account
+---- https://github.com/achatto4/hiperglm
+
 - Screenshot of the package's Git history visualized through a Git GUI of your choice
 
-<img src="figure/git_history_screenshot.png" alt="Place the screenshot here"/>
+<img src="C:/Users/HP/Desktop/JHU/Term 3/Data Science/photo_assgn1/Capture.jpg" alt="Place the screenshot here"/>
 
 **Note:** 
 In case you decided to go with GitKraken via GitHub Student Developer Pack, the student status verification process could take a few days.
