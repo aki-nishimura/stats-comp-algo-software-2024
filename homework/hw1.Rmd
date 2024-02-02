@@ -172,10 +172,15 @@ plot(
   ylab = "Repo size (MB)"
 )
 ```
+Reason for increasing nature- The primary contributors to the escalating disk usage are the accumulation of versioned files and their associated historical data. As the number of commits grows, each commit introduces new changes and potentially additional files, resulting in a gradual expansion of the repository's footprint on disk. Moreover, large binary files, frequent modifications, or the retention of obsolete or redundant data can further contribute to the overall increase in disk usage over the course of the repository's development history. 
 
-Version control systems like Git typically use various compression techniques to optimize storage. When you commit changes, Git may initially increase the disk space as it saves a new snapshot of the file. However, over time, Git performs periodic optimizations, and this could lead to a decrease in disk space.
+Reason for decreasing nature- Version control systems like Git typically use various compression techniques to optimize storage. When you commit changes, Git may initially increase the disk space as it saves a new snapshot of the file. However, over time, Git performs periodic optimizations, and this could lead to a decrease in disk space. Git uses delta compression and other mechanisms to minimize redundancy in storage. If there are repetitive patterns or similarities between versions, Git might identify and store them more efficiently. These happen alternatively hence giving us the observed oscillatory structure.
 
-Git uses delta compression and other mechanisms to minimize redundancy in storage. If there are repetitive patterns or similarities between versions, Git might identify and store them more efficiently.
+Furthermore, the two main reasons why Github discourages us from commiting (large) binary files are understood to be the follows-
+
+Storage and Bandwidth: Large binary files significantly increase the storage requirements of a repository, due to lack of ease of reproducibility. Storing and transferring such files can consume more disk space and bandwidth, impacting both GitHub's infrastructure costs and the user experience for those cloning or fetching the repository.
+
+Performance: Handling large binary files can degrade the performance of Git operations, particularly cloning and fetching, as the entire history, including binary files, must be downloaded and processed.
 
 ## Things to commit and submit
 
