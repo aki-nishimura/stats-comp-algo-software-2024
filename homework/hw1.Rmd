@@ -167,7 +167,7 @@ total 75K
 
 Case 2 (not committing pdf):
 
-We observe that the disk usage of case 2 is almost half of case 1. This is because case 1 involves committing and saving each copy of the pdf files, which is around 30K+ on itself. Each snapshot of case 1 folder takes more space than case 2.
+We observe that the disk usage of case 2 is almost half of case 1. This is because case 2 does not commit the pdf file, while case 1 involves committing and saving each copy of the pdf files, which is around 30K+ by itself. Each snapshot of case 1 folder takes more space than case 2.
 
 
 output of `du -h -s .`:
@@ -205,9 +205,9 @@ Based on this result and those from Part A, explain why [Github discourages you 
 
 **Your answer:** (To be filled.)
 
-*Observation*: The plot below shows that the repo size fluctuates. In each cycle of about 2000 commits, the repo size increases linearly, then suddenly drops to a relatively low level. After this sudden drop, we enter the next cycle of increase then sudden drop in repo size. So it looks like there is a limit to how big the repo will grow and git manages to cut down the repo size in every 2000+ commits. Nonetheless, committing TeX file increases the repo size fast and can use a lot of storage. The repo size even after the sudden drop is still high.
+*Observation*: The plot below shows that the repo size fluctuates over the 10,000 commits. In each cycle of about 2000 commits, the repo size increases linearly, then suddenly drops to a relatively low level. The cycle repeats. But note that in each cycle the repo size will drop below the lowest size in the previous cycle. So it looks like there is a limit to how big the repo will grow and git manages to cut down the repo size. Nonetheless, committing TeX file increases the repo size fast and can use a lot of storage. The repo size even after the sudden drop is still high.
 
-*Explanation*: This fluctuation in repo size is be due to Git's packfile creation mechanism. In each cycle, one line is added to TeX, changes committed, and Git stores the changes. The new files thus accumulates. When the repo size gets too large, Git thinks it is more efficient to compress all the changes thus far into one single packfile, which is especially efficient considering that consecutive files only differs by one line. The repo size drops after packfile creation. To verify that this is the case, I have found these packfiles in my repo. There are 4 packfiles, corresponding to the 4 sudden drops in repo size as shown in the figure below. Nonetheless, the overall trend over the 10,000 commits is that the repo size is going up fast despite packfile creation.
+*Explanation*: This fluctuation in repo size is be due to Git's packfile creation mechanism. In each cycle, one line is added to TeX, changes committed, and Git stores the changes. The new files thus accumulates. When the repo size gets too large, Git thinks it is more efficient to compress all the changes thus far into one single packfile, which is especially efficient in this case where consecutive files only differ by one line. The repo size drops after packfile creation, still higher than the lowest repo size in previous cycle, but the drop is significant. To provide evidence, I have found these packfiles in my repo. There are 4 packfiles, corresponding to the 4 sudden drops in repo size shown in the figure below. Nonetheless, the overall trend over the 10,000 commits is that the repo size is going up fast despite packfile creation.
 
 reference: ChatGPT, [git-scm.com](https://git-scm.com/book/en/v2/Git-Internals-Packfiles)
 
