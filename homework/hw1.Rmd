@@ -161,14 +161,13 @@ Based on this result and those from Part A, explain why [Github discourages you 
 
 **Your answer:** The following plot relating the disk usage of the git repo with the number of commits on the $x$-axis shows that the disk usage of the git-repo demonstrates an oscillatory pattern with the number of commits. There are increases and decreases which are shown in the pattern below
 
-<img src="C:/Users/HP/Desktop/JHU/Term 3/Data Science/photo_assgn1/Capture1.jpg" alt="Place the screenshot here"/>
+<img src="https://github.com/achatto4/stats-comp-algo-software-2024/blob/main/homework/figure/Capture1.1.JPG?raw=true" alt="Place the screenshot here"/>
 
 ```{r, eval=FALSE}
 repo_size <- scan(file.choose())/1000 #Convert to MB
 plot(
   x=1:length(repo_size), y=repo_size,
   frame = FALSE, # Remove the ugly box
-  col = jhu_color$heritageBlue,
   xlab = "Commit counts",
   ylab = "Repo size (MB)"
 )
