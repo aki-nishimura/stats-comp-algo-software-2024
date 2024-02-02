@@ -195,8 +195,8 @@ Set up your own version of the `hiperglm` package as we discussed in the class a
 
 ## Things to commit and submit
 
-- Hyperlink to the `hiperglm` repository on your Github account
-- Screenshot of the package's Git history visualized through a Git GUI of your choice
+- Hyperlink to the `hiperglm` repository on your Github account: <https://github.com/acolum/hiperglm>
+- Screenshot of the package's Git history visualized through a Git GUI of your choice: I've added a screenshot named `git_history_screenshot.png` to the `figure` folder.
 
 <img src="figure/git_history_screenshot.png" alt="Place the screenshot here"/>
 
