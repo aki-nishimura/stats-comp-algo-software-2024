@@ -195,6 +195,9 @@ Set up your own version of the `hiperglm` package as we discussed in the class a
 * Exported S3 methods `coef`, `vcov`, and `print`.
 * Clean and modular git history.
 
+The goal here is to outline a skeleton of the package, without actually implementing the functions.
+For now, let these "placeholder" functions simply throw warnings that they are yet to be implemented.
+
 ## Things to commit and submit
 
 - Hyperlink to the `hiperglm` repository on your Github account: <https://github.com/acolum/hiperglm>
