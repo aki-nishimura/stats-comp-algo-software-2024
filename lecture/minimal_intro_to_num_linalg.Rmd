@@ -854,13 +854,21 @@ chol_factor_solve <- function(L, b) {
 
 Here's another use case of Cholesky:
 
+<style>
+.smaller-code .remark-code{
+  font-size: 49%
+}
+</style>
+
+.smaller-code[
 ```{r}
 Sigma_inv <- A
 
-R <- chol(Sigma_inv) # Use the built-in ver; t(R) %*% R == Sigma_inv
+R <- chol(Sigma_inv) # Built-in ver: t(R) %*% R == Sigma_inv
 z <- rnorm(size)
 x <- backsolve(R, z)
 ```
+]
 
 --
 
