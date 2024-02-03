@@ -141,7 +141,9 @@ Does the size of the folder look reasonable relative to the sizes of the individ
 If not, why would that be? 
 Also, how do you explain the difference in the disk space usages under the two cases above?
 
-**Your answer:** (To be filled.)
+**Your answer:** The size of the folder doesn't look reasonable relative to the sizes of the individual files inside it because Git stores the entire history of the project, including every version of every file. This means that if we have a large file and we make a small change to it, Git has to store the entire file again in its history, which can quickly add up if we’re making many changes to large files like we did in this exercise. Also, even if the current version of the files is small, the repository (overall) can still be large if it has a long history.
+
+The difference in the disk space usages under the two cases above can be explained by the fact that in the first case, we were committing both the TeX source file and its PDF output, while in the second case, we were only committing the TeX source file. PDF files are usually larger than TeX files, so committing them in addition to the TeX files greatly increases the size of the repository. This is why it’s generally a good idea to avoid adding non-source files, especially large binary files (like PDFs), to a Git repository. 
 
 ## Part B
 
