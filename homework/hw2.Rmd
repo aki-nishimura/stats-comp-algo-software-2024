@@ -108,8 +108,8 @@ As we observed above, a Uniform(1, 2) random variable in double-precision takes 
 Two independently drawn random variables, therefore, has small but positive probability of having exactly the same value.
 We can calculate the expected number of duplicate values in i.i.d. Uniform(1, 2) random variables as follows.
 When drawing with replacement $d$ independent random variables out of $n$ choices, the probability of the $i$-th element never selected is $(1 - n^{-1})^d$ for $i = 1, \ldots, n$. 
-The expected number of unique items drawn, therefore, is $n (1 - n^{-1})^d$.
-In turn, the expected number of duplicates is $d - n (1 - n^{-1})^d$.
+The expected number of unique items drawn, therefore, is $n [1 - (1 - n^{-1})^d]$.
+In turn, the expected number of duplicates is $d - n [1 - (1 - n^{-1})^d]$.
 For the case of double-precision uniform random variables, we have $n = 2^{52}$ for the number of choices.
 
 The `calc_num_expected_duplicate()` function below implements the above formula for the expected number of duplicates. 
@@ -128,9 +128,9 @@ calc_num_expected_duplicate <- function (n_draw, n_choice) {
 Formulas involving $1 + x$ for $|x| \ll 1$ ($x = - n^{-1}$ in the above case) occur commonly enough in statistics/scientific computing that R provides a function `log1p(x)` for computing $\log(1 + x)$ to deal with one such situation.
 In more general calculations involving $|x| \ll 1$ (e.g. for a "sinc" funciton $\operatorname{sinc}(x) = \sin(x) / x$), a Taylor expansion provides a general approach to control truncation errors.
 
-Remedy the `calc_num_expected_duplicate()` function by applying the second-order Taylor expansion to $(1 + x)^d$ and simplifying the formula $d - x^{-1} (1 - x)^d$ to avoid truncation errors. 
+Remedy the `calc_num_expected_duplicate()` function by applying the second-order Taylor expansion to $(1 + x)^d$ and simplifying the formula $d - x^{-1} [1 - (1 - x)^d]$ to avoid truncation errors. 
 (Remark: i) in this specific case, you could use the binomial expansion and calculate it exactly; 
-ii) applying the second-order expansion to $(1 + x)^d$ corresponds to applying the first-order expansion to the overall expression $d - x^{-1} (1 - x)^d$.)
+ii) applying the second-order expansion to $(1 + x)^d$ corresponds to applying the first-order expansion to the overall expression $d - x^{-1} [1 - (1 - x)^d]$.)
 Use the more numerically accurate version of `calc_num_expected_duplicate()` to calculate the expected number of duplicates among $10^6$ Uniform(1, 2) random variables.
 
 ## Part C
