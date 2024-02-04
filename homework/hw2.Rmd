@@ -99,6 +99,7 @@ How does the estimate change if you change the seed?
 What is, roughly speaking, the distribution of the estimator `sample_var_with_question_mark` under repeated Monte Carlo simulations (i.e. without a fixed seed)?
 
 ```{r}
+# original code
 set.seed(140778)
 
 running_sum <- 0
@@ -114,10 +115,54 @@ sample_mean <- running_sum / n_sample
 sample_sec_mom <- running_sum_sq / n_sample
 
 sample_var_with_question_mark <- (sample_sec_mom - (sample_mean)^2)
+sample_var_with_question_mark
 ```
 
+```{r}
+# show the distribution of sample_var_with_question_mark
+
+set.seed(10)
+seed_rep_num = 1000
+seeds = sample.int(1e8, seed_rep_num, replace=TRUE)
+
+sample_var_with_question_mark_SAMPLE = rep(0, seed_rep_num)
+
+for (curr_seed in 1:seed_rep_num) {
+  set.seed(seeds[curr_seed])
+  running_sum <- 0
+  running_sum_sq <- 0
+  
+  n_sample <- 10^3
+  for (i in 1:n_sample) {
+    theta <- 1e10 + rnorm(1)
+    running_sum <- running_sum + theta
+    running_sum_sq <- running_sum_sq + theta^2
+  }
+  sample_mean <- running_sum / n_sample
+  sample_sec_mom <- running_sum_sq / n_sample
+  
+  sample_var_with_question_mark <- (sample_sec_mom - (sample_mean)^2)
+  sample_var_with_question_mark_SAMPLE[curr_seed] = sample_var_with_question_mark
+}
+
+plot(density(sample_var_with_question_mark_SAMPLE), 
+     main="Empirical distribution of sample_var_with_question_mark")
+```
+
+```{r}
+qqnorm(sample_var_with_question_mark_SAMPLE)
+qqline(sample_var_with_question_mark_SAMPLE)
+```
+
+
 ## Things to commit/submit
-Answers to the questions above.
+I got `-147456` with the original seed $140778$. This does not make sense because $\theta \sim N(1e10, 1)$, so the sample variance should be approximately $1$.
+
+The estimation is not accurate because arithmetic operations are not precise when real numbers are represented using the double-precision floating-point format. In `1e10 + rnorm(1)`, a relatively small number `rnorm(1)` is added to a very large number `1e10`. Since the minimum distinguishable difference decreases as the number becomes larger, this addition can cause round-off error and the precision in the `rnorm(1)` part is lost. In addition, the squaring of a large number in `theta^2` can cause additional loss in precision due to the same reason. As these round-off errors accumulate over 1000 iterations, the result becomes highly inaccurate. 
+
+When the seed is changed, a difference sample is generated, so the sample variance changes. However, it is still far away from its theoretical value 1 because the round-off error remains.
+
+The distribution of `sample_var_with_question_mark` without a fixed seed is roughly normal with mean 1 and a very large variance. We can think of the round-off errors as random noise added to the sample. Since both round-up and round-down errors exist, they approximately cancel each other. Moreover, the variance of the round-off error is large, as shown in the example. Thus, the round-off error is approximately normal with mean 0 and a large variance. Accordingly, `sample_var_with_question_mark` centers around 1 and has a very large variance.
 
 
 # Exercise 2: Generating random real numbers in finite precision arithmetic
