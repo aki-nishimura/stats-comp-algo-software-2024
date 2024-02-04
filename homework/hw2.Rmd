@@ -1,6 +1,8 @@
 ---
 title: 'Homework: Finite Precision Arithmetic & Gradient Descent'
 output:
+  html_document:
+    df_print: paged
   html_notebook:
     code_folding: none
     highlight: textmate
@@ -34,6 +36,16 @@ b <- 0.5 + .Machine$double.eps
 ```
 
 Why do we get the different result?
+
+**Answer:**
+
+There're \( 2^{52} \) machine-representable values in between two reals \( 2^{k} \) and \( 2^{k+1} \) w/ \( 2^{k} \times 2^{-52} \) increment. 
+
+Notice, for numbers between \( 2^{1} \) and \( 2^{2} \), the smallest increment is \( 2^{-52} \times 2^{1} = 2^{-51} \), and for numbers between \( 2^{0} \) and \( 2^{1} \), the smallest increment is \( 2^{-52} \times 2^{0} = 2^{-52} \).
+
+For the first equation, b+c is within the range of \( 2^{1} \) and \( 2^{2} \), thus the epsilon is not distinguishable in \( b + c = 2 + \epsilon \) and it becomes \( b + c = 2 \).
+
+However, for the second equation, b+c is within the range of \( 2^{0} \) and \( 2^{1} \), thus the epsilon is distinguishable in \( b + c = 1.5 + \epsilon \).
 
 
 # Exercise 1: One-pass algorithm for calculating variance
@@ -70,6 +82,36 @@ sample_sec_mom <- running_sum_sq / n_sample
 sample_var_with_question_mark <- (sample_sec_mom - (sample_mean)^2)
 ```
 
+**Answers:**
+
+The estimate for mean makes sense but the variance does not. The variance should be close to 1, but the estimate is way off from 1, and even negative. Because the correct way for estimating variance is to subtract the sample mean from each sample, and then square and sum them up, and then divide by n-1. Which is clearly not equivalent to square the samples and sum them up and divide by n, then subtract the mean's square.
+
+When I change the seed, the estimate changes a lot, from -147456 to -81920.
+
+
+**Bonus answer:**
+```{r}
+res <- c()
+for(it in 1:1000){
+  running_sum <- 0
+  running_sum_sq <- 0
+  
+  n_sample <- 10 ^ 3
+  for (i in 1:n_sample) {
+    theta <- 1e10 + rnorm(1)
+    running_sum <- running_sum + theta
+    running_sum_sq <- running_sum_sq + theta ^ 2
+  }
+  sample_mean <- running_sum / n_sample
+  sample_sec_mom <- running_sum_sq / n_sample
+  
+  res <- c(res,sample_var_with_question_mark <- (sample_sec_mom - (sample_mean) ^ 2))
+}
+hist(res)
+```
+
+Turns out to be a normal distribution. This is due to central limit theorem since the random variable (sample_sec_mom) is the sum of many iid random variables (in this case a shifted chi-square distribution) abd the sum should approaching a normal distribution, and (sample_mean) ^ 2 has really small variance thus almost constant. Thus the difference between them is approximately a normal distribution.
+
 ## Things to commit/submit
 Answers to the questions above.
 
@@ -85,8 +127,11 @@ Write a function to generate a Uniform(1, 2) random variable in double-precision
 Check the function's behavior by plotting a histogram of random variables generated from it. 
 
 ```{r, eval=FALSE}
-double_prec_runif <- function () {
+double_prec_runif <- function(){
   # Fill in
+  decimals <- 1/2^(1:52)
+  digits <- rbinom(52, size = 1, prob = 0.5)
+  return(decimals %*% digits + 1)
 }
 
 n_draw <- 10^5
@@ -121,9 +166,20 @@ calc_num_expected_duplicate <- function (n_draw, n_choice) {
   # To be remedied.
   prob_item_never_chosen <- (1 - 1 / n_choice) ^ n_draw
   n_expected_unique <- n_choice * (1 - prob_item_never_chosen)
-  return(n_draw - n_expected_unique)
+  d <- n_draw
+  n <- n_choice
+  prob_item_never_chosen <- 1 - d/n + (1/2) * (1/n^2) * d * (d-1)
+  n_expected_unique <- n_choice * (1 - prob_item_never_chosen)
+  res <- 2*d - n - (1/(2*n)) * d * (d-1)
+  return(res)
 }
+calc_num_expected_duplicate(n_draw = 10^6, n_choice = 2^52)
 ```
+
+**Issue:**
+
+n_choice * (1 - prob_item_never_chosen) is indistinguishable from n_choice (1e+06) due to finite precision arithmetic (1e+06 is between \( 2^{23} \) and \( 2^{24} \), with a distinguishable increment of 199840144), thus the returned result will be 1e+06 - 1e+06 = 0.
+The second order taylor expansion of \( (1+x)^d \) is \( (1+x)^d \approx 1+x \times d + \frac{1}{2} \times x^2 \times d \times (d-1)\)
 
 Formulas involving $1 + x$ for $|x| \ll 1$ ($x = - n^{-1}$ in the above case) occur commonly enough in statistics/scientific computing that R provides a function `log1p(x)` for computing $\log(1 + x)$ to deal with one such situation.
 In more general calculations involving $|x| \ll 1$ (e.g. for a "sinc" funciton $\operatorname{sinc}(x) = \sin(x) / x$), a Taylor expansion provides a general approach to control truncation errors.
