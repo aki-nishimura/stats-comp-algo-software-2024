@@ -1,6 +1,8 @@
 ---
 title: 'Homework: Finite Precision Arithmetic & Gradient Descent'
 output:
+  html_document:
+    df_print: paged
   html_notebook:
     code_folding: none
     highlight: textmate
@@ -34,6 +36,50 @@ b <- 0.5 + .Machine$double.eps
 ```
 
 Why do we get the different result?
+
+Real numbers are encoded in 64-bit double-precision floating-point format in R. There is a 1-bit sign bit, an 11-bit exponent, and a 52-bit fraction. The real values of a given representation is $(-1)^{sign} (1+\sum_{i=1}^{52}b_{52-i}2^{-i}) \times 2^{e-1023}$, where $b_{i}$ is the $i^{th}$ bit in fraction and $e$ is the exponent. The finite-precision representation of real numbers can cause imprecision in arithmetic operations due to round-off errors.
+
+In this example, `.Machine$double.eps` $=2^{-52}$ is the smallest difference between 1 and the next larger representable number. All the numbers here are positive, so I omit the sign bit in the following demonstration. The exponent and the fractional representation of all numbers are shown below.
+
+In the first case, 
+
+$$
+\begin{align*}
+a &= (1+2^{-52}) &\times 2^{1023-1023} \\
+b &= (1+2^{-52}) &\times 2^{1023-1023} \\
+c &= (1) &\times 2^{1023-1023} \\
+a+b &= (1+2^{-52}) &\times 2^{1024-1023} \\
+(a + b) + c &= (1+2^{-1}+2^{-52}) &\times 2^{1024-1023} \\
+b + c  &\approx (1) &\times 2^{1024-1023} \\
+a + (b + c) &\approx (1+2^{-1}) &\times 2^{1024-1023}
+\end{align*}
+$$
+
+In the second case, 
+
+$$
+\begin{align*}
+a &= (1+2^{-52}) &\times 2^{1023-1023} \\
+b &= (1+2^{-51}) &\times 2^{1022-1023} \\
+c &= (1) &\times 2^{1023-1023} \\
+a+b &= (1+2^{-1}+2^{-51}) &\times 2^{1023-1023} \\
+(a + b) + c &= (1+2^{-2}+2^{-52}) &\times 2^{1024-1023} \\
+b + c &= (1+2^{-1}+2^{-52}) &\times 2^{1023-1023} \\
+a + (b + c) &= (1+2^{-2}+2^{-52}) &\times 2^{1024-1023} \\
+\end{align*}
+$$
+When the exponent is $k$, the minimum distinguishable difference is $2^{-52+k-1023}$. The minimum distinguishable difference in $b+c$ is $2^{-51}$ in the first case and is $2^{-52}$ in the second case. Thus, there is a round-off error on RHS in the first case but not the second. Since the calculation is accurate on LHS in both cases, this results in an evaluation of `FALSE` in the first case and a `TRUE` in the second case.
+
+
+```{r, eval=FALSE, include=FALSE}
+# adapted from https://stackoverflow.com/questions/50217954/double-precision-64-bit-representation-of-numeric-value-in-r-sign-exponent
+Rcpp::cppFunction('void print_hex(double x) {
+    uint64_t y;
+    static_assert(sizeof x == sizeof y, "Size does not match!");
+    std::memcpy(&y, &x, sizeof y);
+    Rcpp::Rcout << std::hex << y << std::endl;
+}', plugins = "cpp11", includes = "#include <cstdint>")
+```
 
 
 # Exercise 1: One-pass algorithm for calculating variance
