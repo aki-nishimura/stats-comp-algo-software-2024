@@ -702,18 +702,25 @@ Here's how I'd re-write the previous code:
 cholesky <- function(A) {
   L <- matrix(0, nrow = nrow(A), ncol = ncol(A))
   for (row_indx in 1:nrow(A)) {
-    A_sub <- A[1:row_indx, 1:row_indx, drop = FALSE]
+    A_curr_row <- A[row_indx, 1:row_indx]
+    L_prev <- L[1:(row_indx - 1), 1:(row_indx - 1), drop=F]
     L[row_indx, 1:row_indx] <- 
-      calc_chol_row(row_indx, A_sub, L)
+      calc_chol_row(row_indx, A_curr_row, L_prev)
   }
   return(L)
 }
+```
 
-calc_chol_row <- function(i, A, L) {
+![:vspace -.8ex]
+
+```{r}
+calc_chol_row <- function(i, A_i, L_prev) {
+  L_i <- rep(0, i) # the new i-th row of L
   for (j in 1:i) {
-    L[i, j] <- calc_chol_entry(i, j, A, L)
+    L_i[j] <- 
+      calc_chol_entry(i, j, A_i, L_prev, L_i[1:(j - 1)])
   }
-  return(L[i, 1:i])
+  return(L_i)
 }
 ```
 
@@ -722,63 +729,13 @@ calc_chol_row <- function(i, A, L) {
 Here's how I'd re-write the previous code:
 
 ```{r}
-calc_chol_entry <- function(i, j, A, L) {
-  row_ij_inner_prod <- 0
-  for (k in seq_len(j - 1)) {
-    row_ij_inner_prod <- 
-      row_ij_inner_prod + L[i, k] * L[j, k]
-  }
-  if (j < i) {
-    chol_entry <- (A[i, j] - row_ij_inner_prod) / L[j, j]
-  } else {
-    chol_entry <- sqrt(A[i, i] - row_ij_inner_prod)
-  }
-  return(chol_entry)
-}
-```
-
----
-
-This is even better:
-
-```{r}
-cholesky <- function(A) {
-  L <- matrix(0, nrow = nrow(A), ncol = ncol(A))
-  for (row_indx in 1:nrow(A)) {
-    A_sub <- A[1:row_indx, 1:row_indx, drop = FALSE]
-    L_prev <- L[1:(row_indx - 1), 1:(row_indx - 1), drop=F]
-    L[row_indx, 1:row_indx] <- 
-      calc_chol_row(row_indx, A_sub, L_prev)
-  }
-  return(L)
-}
-```
-
-![:vspace -.7ex]
-
-```{r}
-calc_chol_row <- function(i, A, L_prev) {
-  L_i <- rep(0, i) # the new "i"th row of L
-  for (j in 1:i) {
-    L_i[j] <- 
-      calc_chol_entry(i, j, A, L_prev, L_i[1:(j - 1)])
-  }
-  return(L_i)
-}
-```
-
----
-
-This is even better:
-
-```{r}
-calc_chol_entry <- function(i, j, A, L, L_i) {
+calc_chol_entry <- function(i, j, A_i, L_prev, L_i) {
   to_subtract <- 0
   if (j < i) {
     for (k in seq_len(j - 1)) {
-      to_subtract <- to_subtract + L_i[k] * L[j, k]
+      to_subtract <- to_subtract + L_i[k] * L_prev[j, k]
     }
-    chol_entry <- (A[i, j] - to_subtract) / L[j, j]
+    chol_entry <- (A_i[j] - to_subtract) / L_prev[j, j]
   } else {
     chol_entry <- sqrt(A[i, i] - sum(L_i^2))
   }
