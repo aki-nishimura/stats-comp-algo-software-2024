@@ -126,7 +126,7 @@ The amount of randomness in it, therefore, is equivalent to 52 Bernoulli random 
 Write a function to generate a Uniform(1, 2) random variable in double-precision with randomness coming only from the `rbinom()` function.
 Check the function's behavior by plotting a histogram of random variables generated from it. 
 
-```{r, eval=FALSE}
+```{r, eval=TRUE}
 double_prec_runif <- function(){
   # Fill in
   decimals <- 1/2^(1:52)
@@ -164,13 +164,11 @@ What is the issue?
 ```{r}
 calc_num_expected_duplicate <- function (n_draw, n_choice) {
   # To be remedied.
-  prob_item_never_chosen <- (1 - 1 / n_choice) ^ n_draw
-  n_expected_unique <- n_choice * (1 - prob_item_never_chosen)
+  # prob_item_never_chosen <- (1 - 1 / n_choice) ^ n_draw
+  # n_expected_unique <- n_choice * (1 - prob_item_never_chosen)
   d <- n_draw
   n <- n_choice
-  prob_item_never_chosen <- 1 - d/n + (1/2) * (1/n^2) * d * (d-1)
-  n_expected_unique <- n_choice * (1 - prob_item_never_chosen)
-  res <- 2*d - n - (1/(2*n)) * d * (d-1)
+  res <- d*(d-1)/(2*n)
   return(res)
 }
 calc_num_expected_duplicate(n_draw = 10^6, n_choice = 2^52)
@@ -178,8 +176,14 @@ calc_num_expected_duplicate(n_draw = 10^6, n_choice = 2^52)
 
 **Issue:**
 
-n_choice * (1 - prob_item_never_chosen) is indistinguishable from n_choice (1e+06) due to finite precision arithmetic (1e+06 is between \( 2^{23} \) and \( 2^{24} \), with a distinguishable increment of 199840144), thus the returned result will be 1e+06 - 1e+06 = 0.
-The second order taylor expansion of \( (1+x)^d \) is \( (1+x)^d \approx 1+x \times d + \frac{1}{2} \times x^2 \times d \times (d-1)\)
+n_choice * (1 - prob_item_never_chosen) is indistinguishable from n_choice (1e+06) due to finite precision arithmetic (1e+06 is between \( 2^{23} \) and \( 2^{24} \), with a minimum distinguishable increment of 199840144), thus the returned result will be 1e+06 - 1e+06 = 0.
+
+
+Using second order taylor expansion, we can simplify the formula $d - n [1 - (1 - n^{-1})^d]$
+
+Firstly, $(1-x)^{d} \approx 1 - xd + \frac{1}{2}x^{2}d(d-1)$, so $(1 - n^{-1})^d \approx 1 - d n^{-1} + \frac{1}{2}d(d-1)n^{-2}$.
+
+Then, $d - n [1 - (1 - n^{-1})^d] \approx d - n [1 - (1 - d n^{-1} + \frac{1}{2}d(d-1)n^{-2})] = d - n(dn^{-1}-\frac{1}{2}d(d-1)n^{-2}) = d - d + \frac{1}{2n}d(d-1) = \frac{d(d-1)}{2n}$.
 
 Formulas involving $1 + x$ for $|x| \ll 1$ ($x = - n^{-1}$ in the above case) occur commonly enough in statistics/scientific computing that R provides a function `log1p(x)` for computing $\log(1 + x)$ to deal with one such situation.
 In more general calculations involving $|x| \ll 1$ (e.g. for a "sinc" funciton $\operatorname{sinc}(x) = \sin(x) / x$), a Taylor expansion provides a general approach to control truncation errors.
@@ -197,11 +201,25 @@ If we use R's `runif()` function, however, this is _not_ what we observe because
 Check the number of duplicates from `runif(10^6)` against the expected value for a floating-point number with 32-bits of precision. 
 Check also that, using your implementation of random uniform from Part A, duplicates are indeed rare in double-precision.
 
-```{r, eval=FALSE}
+```{r, eval=TRUE}
 n_draw <- 10^6
 base_r_unif <- runif(n_draw, min = 1, max = 2)
 unif_rv <- sapply(1:n_draw, function (i) double_prec_runif())
 # Check the number of duplicates against the expected value
+```
+**Expected number of duplicates for 32 bits:**
+```{r}
+calc_num_expected_duplicate(n_draw, 2^32)
+```
+
+**Number of duplicates for base R uniform:**
+```{r}
+n_draw - length(unique(base_r_unif))
+```
+
+**Number of duplicates for double precision uniform:**
+```{r}
+n_draw - length(unique(unif_rv))
 ```
 
 
