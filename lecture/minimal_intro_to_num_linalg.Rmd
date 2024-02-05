@@ -1434,12 +1434,6 @@ Computational complexity of solving least-sq via QR?
 
 Overall, the factorization part dominates with $2 n p^2$ cost. 
 
---
-
-The $- \frac{2}{3} p^3$ part reduces the cost a bit, but only when $n \approx p$.
-* If $n = p$, then $2 n p^2 - \frac{2}{3} p^3 = \frac{4}{3} p^3$.
-* If $n = 4p$, then $2 n p^2 - \frac{2}{3} p^3 = \left( 8 - \frac{2}{3} \right) p^3$.
-
 <!-- 
 See Trefethen Algorithm 10.2:
 2 (n - j) for inner prod, (n - j) multiply, (n - j) add for j = 1, \ldots, p, for the grand total of $4np - 2 p^2$?
