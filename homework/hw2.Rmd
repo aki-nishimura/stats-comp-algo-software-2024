@@ -37,6 +37,8 @@ b <- 0.5 + .Machine$double.eps
 
 Why do we get the different result?
 
+**Answer:**
+
 Real numbers are encoded in 64-bit double-precision floating-point format in R. There is a 1-bit sign bit, an 11-bit exponent, and a 52-bit fraction. The real values of a given representation is $(-1)^{sign} (1+\sum_{i=1}^{52}b_{52-i}2^{-i}) \times 2^{e-1023}$, where $b_{i}$ is the $i^{th}$ bit in fraction and $e$ is the exponent. The finite-precision representation of real numbers can cause imprecision in arithmetic operations due to round-off errors.
 
 In this example, `.Machine$double.eps` $=2^{-52}$ is the smallest difference between 1 and the next larger representable number. All the numbers here are positive, so I omit the sign bit in the following demonstration. The exponent and the fractional representation of all numbers are shown below.
@@ -156,6 +158,9 @@ qqline(sample_var_with_question_mark_SAMPLE)
 
 
 ## Things to commit/submit
+
+**Answer:**
+
 I got `-147456` with the original seed $140778$. This does not make sense because $\theta \sim N(1e10, 1)$, so the sample variance should be approximately $1$.
 
 The estimation is not accurate because arithmetic operations are not precise when real numbers are represented using the double-precision floating-point format. In `1e10 + rnorm(1)`, a relatively small number `rnorm(1)` is added to a very large number `1e10`. Since the minimum distinguishable difference decreases as the number becomes larger, this addition can cause round-off error and the precision in the `rnorm(1)` part is lost. In addition, the squaring of a large number in `theta^2` can cause additional loss in precision due to the same reason. As these round-off errors accumulate over 1000 iterations, the result becomes highly inaccurate. 
@@ -175,9 +180,17 @@ The amount of randomness in it, therefore, is equivalent to 52 Bernoulli random 
 Write a function to generate a Uniform(1, 2) random variable in double-precision with randomness coming only from the `rbinom()` function.
 Check the function's behavior by plotting a histogram of random variables generated from it. 
 
-```{r, eval=FALSE}
+```{r, eval=TRUE}
 double_prec_runif <- function () {
-  # Fill in
+  # generate a Uniform(1, 2) random variable
+  fraction_part = rbinom(n=52, size=1, prob=0.5)
+  random_number = 1
+  for (i in 1:52) {
+    if (fraction_part[i]) {
+      random_number = random_number + 2^(-i)
+    }
+  }
+  return(random_number)
 }
 
 n_draw <- 10^5
@@ -211,10 +224,20 @@ What is the issue?
 calc_num_expected_duplicate <- function (n_draw, n_choice) {
   # To be remedied.
   prob_item_never_chosen <- (1 - 1 / n_choice) ^ n_draw
+  print(prob_item_never_chosen)
+  print(prob_item_never_chosen == 1)
   n_expected_unique <- n_choice * (1 - prob_item_never_chosen)
   return(n_draw - n_expected_unique)
 }
+calc_num_expected_duplicate(n_draw=1e6, n_choice=2^(52)) == 0
 ```
+
+**Answer:**
+
+  1. In this example, `1 - 1 / n_choice` can be represented accurately with the double-precision floating-point format. However, it is very close to 1, so taking an exponential of it is still close to 1. This results in an round-off error because the exponent part of the number representation does not change much, and so does the minimum distinguishable difference. Any arithmetic changes smaller than the minimum distinguishable difference is rounded-off. Since `n_draw` is large, this leads to a loss of precision. 
+
+  2. Moreover, in `n_choice * (1 - prob_item_never_chosen)`, `n_choice` is much larger than `1 - prob_item_never_chosen`, the latter of which is close to $0$. Multiplying a small number with a large number causes the minimum distinguishable difference to decrease. This round-off error further contribute to the loss of precision.
+
 
 Formulas involving $1 + x$ for $|x| \ll 1$ ($x = - n^{-1}$ in the above case) occur commonly enough in statistics/scientific computing that R provides a function `log1p(x)` for computing $\log(1 + x)$ to deal with one such situation.
 In more general calculations involving $|x| \ll 1$ (e.g. for a "sinc" funciton $\operatorname{sinc}(x) = \sin(x) / x$), a Taylor expansion provides a general approach to control truncation errors.
@@ -224,6 +247,42 @@ Remedy the `calc_num_expected_duplicate()` function by applying the second-order
 ii) applying the second-order expansion to $(1 + x)^d$ corresponds to applying the first-order expansion to the overall expression $d - x^{-1} (1 - x)^d$.)
 Use the more numerically accurate version of `calc_num_expected_duplicate()` to calculate the expected number of duplicates among $10^6$ Uniform(1, 2) random variables.
 
+**Answer:**
+
+Let $f(x) = x^d$. Then the second-order Taylor expansion of $f(\cdot)$ around $x=1$ is 
+
+$$
+\begin{align*}
+f(1+x) &\approx f(1) + f'(1)x + \frac{x^2}{2}f''(1) \\
+       &= 1 + dx + \frac{x^2}{2}d(d-1)
+\end{align*}
+$$
+
+The original formula is simplified as
+
+$$
+\begin{align*}
+d - n \left(1-(1-\frac{1}{n})^d\right) &=
+d - n + n(1-\frac{1}{n})^d \\
+&\approx d - n + n(1 - \frac{d}{n} + \frac{1}{2n^2}d(d-1)) \\
+&= d - n + n - d + \frac{1}{2n}d(d-1) \\
+&= \frac{1}{2n}d(d-1)
+\end{align*}
+$$
+
+We can use log transformation to increase the accuracy in computation.
+
+$$d - n \left(1-(1-\frac{1}{n})^d\right) = exp\left(log(d) + log(d-1) - log(n) - log(2)\right)$$
+
+```{r}
+# Remedied using second-order Taylor expansion
+calc_num_expected_duplicate <- function (n_draw, n_choice) {
+  result = log(n_draw) + log(n_draw - 1) - log(n_choice) - log(2)
+  return(exp(result))
+}
+calc_num_expected_duplicate(n_draw=1e6, n_choice=2^(52))
+```
+
 ## Part C
 
 The expected number from Part B, if you calculated it correctly, suggests that it is extremely rare to get duplicate values when generating $10^6$ uniform random variables in double-precision.
@@ -232,11 +291,16 @@ If we use R's `runif()` function, however, this is _not_ what we observe because
 Check the number of duplicates from `runif(10^6)` against the expected value for a floating-point number with 32-bits of precision. 
 Check also that, using your implementation of random uniform from Part A, duplicates are indeed rare in double-precision.
 
-```{r, eval=FALSE}
+```{r, eval=TRUE}
 n_draw <- 10^6
 base_r_unif <- runif(n_draw, min = 1, max = 2)
 unif_rv <- sapply(1:n_draw, function (i) double_prec_runif())
+
 # Check the number of duplicates against the expected value
+cat(sprintf("The number of duplicates from runif(10^6) is %d\n", n_draw - length(unique(base_r_unif))))
+cat(sprintf("The expected number of duplicates from runif(10^6) is %.4f\n", calc_num_expected_duplicate(n_draw=n_draw, n_choice=2^(32))))
+cat(sprintf("The number of duplicates from double_prec_runif() is %d\n", n_draw - length(unique(unif_rv))))
+cat(sprintf("The expected number of duplicates from runif(10^6) is %.4f\n", calc_num_expected_duplicate(n_draw=n_draw, n_choice=2^(52))))
 ```
 
 
