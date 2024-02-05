@@ -272,7 +272,7 @@ To be extra safe, we are going to test the MLE finder via BFGS against an even s
 Complete the following steps toward this goal.
 Remember that you can use [`devtools::load_all()`](https://r-pkgs.org/code.html#sec-code-load-all) to help your [package development process](https://r-pkgs.org/code.html#constant-health-checks). 
 
-0. Make and check out (`git branch` and `git checkout`) a development branch (call it `dev` or `develop`) where you will commit the work below.
+0. Make and check out (`git branch` and `git checkout`) a development branch (call it `develop`) where you will commit the work below.
 1. Set up the use of `testthat`.
 2. Copy the helper functions `are_all_close()` and `simulate_data()` from the instructor's repo.
 3. Test the `are_all_close()` function. 
