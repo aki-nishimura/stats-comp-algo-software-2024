@@ -144,7 +144,11 @@ Also, how do you explain the difference in the disk space usages under the two c
 
 **Your answer:** (To be filled.)
 
-Case 1:
+Case 1 (committing pdf):
+
+No, the size of the folder does not look reasonable relative to the size of the individual files. The individual files total up to 75K while the disk usage is 1M. This is because git saves all the snapshots of the current status of the folder at each commit, which includes a pdf file at each commit, leading to fast increase in overall repo size.
+
+
 output of `du -h -s .`: 
 ```
 1.0M	.
@@ -160,9 +164,12 @@ total 75K
 -rw-r----- 1 yliu9 users  337 Jan 29 14:53 foo.tex
 ```
 
-No the size of the folder does not look reasonable relative to the size of the individual files. The individual files total up to 75K while the disk usage is 1M. This is because git init save all the snapshots of the current status of the folder.
 
-Case 2:
+Case 2 (not committing pdf):
+
+We observe that the disk usage of case 2 is almost half of case 1. This is because case 2 does not commit the pdf file, while case 1 involves committing and saving each copy of the pdf files, which is around 30K+ by itself. Each snapshot of case 1 folder takes more space than case 2.
+
+
 output of `du -h -s .`:
 ```
 505K	.
@@ -174,8 +181,6 @@ total 19K
 -rwxr-x--- 1 yliu9 users 352 Jan 29 15:04 edit_and_commit.sh
 -rw-r----- 1 yliu9 users 337 Jan 29 15:04 foo.tex
 ```
-
-The disk usage of case 2 is almost half of case 1. This is because case 1 involves pdf files, which is around 30K+ on itself. Each snapshot of case 1 folder takes more space than case 2.
 
 
 ## Part B
@@ -189,29 +194,6 @@ Since this is a long job that will take a non-trivial amount of JHPCE resource, 
 Also make sure to use `sbatch`, and _not_ `srun`, for such a long job.
 
 
-
-Notes:
-fresh folder:
-du -h -s .
-20K	.
-
-total 19K
--rw-r----- 1 yliu9 users 227 Jan 29 15:10 edit_and_commit.sh
--rw-r----- 1 yliu9 users 128 Jan 29 15:10 foo.tex
-
-
-after first commit
-du -h -s .
-248K	.
-
-ls -l -h
-total 19K
--rw-r----- 1 yliu9 users 227 Jan 29 15:10 edit_and_commit.sh
--rw-r----- 1 yliu9 users 128 Jan 29 15:10 foo.tex
-
-
-
-
 **Tips:**
 You can transfer the disk usage result from JHPCE to your local computer via 
 `rsync -P "your_username@jhpce03.jhsph.edu:/users/your_username/stats-comp-algo-software-2024/homework/git_experiment_copy/git_repo_size_history.txt" git_experiment` (assuming that you are running the command from the `homework` folder).
@@ -223,17 +205,39 @@ Based on this result and those from Part A, explain why [Github discourages you 
 
 **Your answer:** (To be filled.)
 
+*Observation*: The plot below shows that the repo size fluctuates over the 10,000 commits. In each cycle of about 2000 commits, the repo size increases linearly, then suddenly drops to a relatively low level. The cycle repeats. But note that in each cycle the repo size will drop below the lowest size in the previous cycle. So it looks like there is a limit to how big the repo will grow and git manages to cut down the repo size. Nonetheless, committing TeX file increases the repo size fast and can use a lot of storage. The repo size even after the sudden drop is still high.
+
+*Explanation*: This fluctuation in repo size is be due to Git's packfile creation mechanism. In each cycle, one line is added to TeX, changes committed, and Git stores the changes. The new files thus accumulates. When the repo size gets too large, Git thinks it is more efficient to compress all the changes thus far into one single packfile, which is especially efficient in this case where consecutive files only differ by one line. The repo size drops after packfile creation, still higher than the lowest repo size in previous cycle, but the drop is significant. To provide evidence, I have found these packfiles in my repo. There are 4 packfiles, corresponding to the 4 sudden drops in repo size shown in the figure below. Nonetheless, the overall trend over the 10,000 commits is that the repo size is going up fast despite packfile creation.
+
+reference: ChatGPT, [git-scm.com](https://git-scm.com/book/en/v2/Git-Internals-Packfiles)
+
+```{r, eval=FALSE}
+[yliu9@login31 git_experiment_copy]$ find .git/objects/info/packs -type f
+.git/objects/info/packs
+[yliu9@login31 git_experiment_copy]$ find .git/objects/pack -type f
+.git/objects/pack/pack-53f616f61418e77dc1c4f3ed27a0217deb2260fe.pack
+.git/objects/pack/pack-80bed9119c00327047f5f83541e9aa539f65a4ef.pack
+.git/objects/pack/pack-fa17b94345aab75a624ce69d377990a50ef88036.idx
+.git/objects/pack/pack-666f5da0f86eb512b9b0de4df71abdade1fb7b18.idx
+.git/objects/pack/pack-53f616f61418e77dc1c4f3ed27a0217deb2260fe.idx
+.git/objects/pack/pack-fa17b94345aab75a624ce69d377990a50ef88036.pack
+.git/objects/pack/pack-80bed9119c00327047f5f83541e9aa539f65a4ef.idx
+.git/objects/pack/pack-666f5da0f86eb512b9b0de4df71abdade1fb7b18.pack
+```
+
+*Why Git discourages committing large binary files*:
+
+Pdf is a large binary file. In part A we see that the total repo size when including pdf in the 10 commits is 1MB, while the repo size is 505K without including pdf. If we commit the pdf 10,000 times, even with the packfile mechanism, the repo size will increase much faster and be much larger in the end than not committing the pdf, and the pdf will not compress really well into packfile.
+
+Therefore, GitHub discourages committing large binary files because they take up too much storage space of the version controlled repo. Making changes to the binary file and committing again can increase the repo size very quickly, even with the packfile mechanism. And in the example of pdf, it can also be harder to merge changes between different commits, making collaboration harder.
+
 ```{r}
 source(file.path("..", "R", "colors.R"))
-
 repo_size <- scan("git_experiment/git_repo_size_history.txt", what = "character")
 
-library(stringr)
-library(dplyr)
-
-repo_size_num <- repo_size[str_detect(repo_size, "K")] %>% 
-  str_replace_all("K", "")%>% 
-  as.numeric()
+library(stringr, dplyr)
+# transform to numerical values
+repo_size_num <- repo_size[str_detect(repo_size, "K")] %>% str_replace_all("K", "") %>% as.numeric()
 repo_size_num <- repo_size_num / 1024
 repo_size_num <- c(repo_size_num, 
                    repo_size[str_detect(repo_size, "M")] %>% 
@@ -248,6 +252,7 @@ plot(
   ylab = "Repo size (MB)"
 )
 ```
+
 
 ## Things to commit and submit
 
