@@ -793,14 +793,10 @@ layout: true
 
 --
 
-Symmetric $\bA$ is _positive definite_ if $\bv^\intercal \bA \bv > 0$ for $\bv \neq \boldsymbol{0}$.
-
---
-
-Any positive-definite $\bA$ admits the eigen decomposition
+Any symmetric $\bA = \bA^\intercal$ admits the eigen decomposition
 $$\boldsymbol{A} = \bm{U} \boldsymbol{\Lambda} \bm{U}^\intercal, \text{ where}$$
 * $\bm{U}$ orthogonal, i.e. $\bm{U}^\intercal \bm{U} = \boldsymbol{I} \,$ or $\, \langle \bu_j, \bu_k \rangle = \ind\{ j = k \}$;
-* $\boldsymbol{\Lambda} = \textrm{diag}(\lambda_1, \ldots, \lambda_p) \,$ for $\, \lambda_1 \geq \ldots \geq \lambda_p > 0$.
+* $\boldsymbol{\Lambda} = \textrm{diag}(\lambda_1, \ldots, \lambda_p) \,$ for $\, \lambda_1 \geq \ldots \geq \lambda_p$.
 
 --
 
@@ -812,6 +808,10 @@ $$
   = \lambda_j \bm{U} \boldsymbol{e}_j
   = \lambda_j \bu_j.
 $$
+
+--
+
+If additionally $\bA$ is _positive definite_, i.e. $\bv^\intercal \bA \bv \hspace{-.1ex} > \hspace{-.1ex} 0$ for $\bv \neq \boldsymbol{0}$, then all the eigenvalues are necessarily positive.
 
 ---
 
