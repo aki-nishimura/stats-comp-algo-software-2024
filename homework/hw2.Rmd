@@ -56,8 +56,11 @@ Similarly, $1 = 2^0$ is differentiable from $2^0 + 2^0 \times \times 2^{-52}$, b
 ```
 
 Let $e = 2^{-52}$.
+
 Therefore, in our example, $a + b = 1 + e + 1 + e$ which is evaluated to $2 + 2e$, and $(a + b) +c$ is thus evaluated to $3 + 2e$.
+
 While on the RHS, $b + c = 1 + e + 1 = 2 + e$ evaluated to $2$, and $a + (b + c)$ is thus evaluated as $1 + e + 2 = 3 + e$ which is evaluated as $3$.
+
 Thus LHS $\neq$ RHS
 
 # Exercise 1: One-pass algorithm for calculating variance
@@ -93,15 +96,51 @@ sample_sec_mom <- running_sum_sq / n_sample
 sample_var_with_question_mark <- (sample_sec_mom - (sample_mean)^2)
 ```
 
+```{r}
+running_sum_sq / (n_sample-1) - sample_mean * running_sum / (n_sample-1) + n_sample * sample_mean^2 / (n_sample-1)
+
+running_sum_sq / (n_sample) - sample_mean * running_sum / (n_sample) + n_sample * sample_mean^2 / (n_sample)
+```
+
+
 ## Things to commit/submit
 
-Answers to the questions above.
+Answers to the questions above: No the estimate does not make sense. The estimated sample variance using this method is negative. The estimate changes, can be both positive and negative when varying the seeds
+
+The distribution of the estimator `sample_var_with_question_mark` under repeated Monte Carlo simulations is normal distribution by central limit theorem?
 
 ```{r}
-sample_mean
-sample_sec_mom
+#sample_mean
+#sample_sec_mom
 sample_var_with_question_mark
 ```
+
+
+```{r, eval=FALSE}
+test <- function(i) {
+  running_sum <- 0
+  running_sum_sq <- 0
+
+  n_sample <- 10^3
+  for (i in 1:n_sample) {
+    theta <- 1e10 + rnorm(1)
+    running_sum <- running_sum + theta
+    running_sum_sq <- running_sum_sq + theta^2
+  }
+  sample_mean <- running_sum / n_sample
+  sample_sec_mom <- running_sum_sq / n_sample
+
+  sample_var_with_question_mark <- (sample_sec_mom - (sample_mean)^2)
+  sample_var_with_question_mark
+}
+
+n_draw <- 1000
+var_rv <- sapply(1:n_draw, function (i) test())
+
+hist(var_rv)
+```
+
+
 
 # Exercise 2: Generating random real numbers in finite precision arithmetic
 
@@ -113,7 +152,7 @@ The amount of randomness in it, therefore, is equivalent to 52 Bernoulli random 
 Write a function to generate a Uniform(1, 2) random variable in double-precision with randomness coming only from the `rbinom()` function.
 Check the function's behavior by plotting a histogram of random variables generated from it.
 
-```{r, eval=FALSE}
+```{r}
 double_prec_runif <- function () {
   # Fill in
   1 + sum(rbinom(52, 1, 0.5) * 2^(- seq(1, 52)))
@@ -167,11 +206,9 @@ Remedy the `calc_num_expected_duplicate()` function by applying the second-order
 calc_num_expected_duplicate <- function (n_draw, n_choice) {
   # To be remedied.
   x <- 1/n_choice
-  choose(2, n_draw) * x - choose(3, n_draw) * (x^2)
-  choose(2, n_draw) / n_choice
+  0.5 * n_draw * (n_draw - 1) * x
 }
 calc_num_expected_duplicate(n_draw = 10^6, n_choice = 2^52)
-calc_num_expected_duplicate(n_draw = 100, n_choice = 2^5)
 ```
 
 
@@ -188,7 +225,9 @@ n_draw <- 10^6
 base_r_unif <- runif(n_draw, min = 1, max = 2)
 unif_rv <- sapply(1:n_draw, function (i) double_prec_runif())
 # Check the number of duplicates against the expected value
+sum(base_r_unif %in% unif_rv)
 ```
+
 
 ## Things to commit/submit
 
@@ -250,22 +289,17 @@ plot(
 ```
 
 
-
-```{r}
-log2(rel_err)
-```
-```{r}
-log2_dx
-```
-
-
-
 **Questions:** Does the relative error plot agree with what the mathematical theory predicts?
 Explain the observed phenomenon.
 
 Also, what is the slope in the "latter part" of your plotted line, roughly speaking?
 Explain why we observe such a slope in the relative error.
 (Hint: Consider a machine with 10 decimal digits of accuracy. What happens if we numerically differentiate $f(x) = x$ at $x = 1$ with $\Delta x = 0.1, 0.01, 0.001, \ldots$.)
+
+
+*Answer*: Yes the relative error plot agrees with the mathematical theory. log relative error is $log_2(\Delta x^2) = 2 log_2(\Delta x)$, and the plot agrees that there is a linear relationship between log2 step size and log2 relative error.
+
+The slope in the latter part of the plotted line is roughly 1, and which is increasing and is much less smooth than the earlier part. 
 
 ## Part B: Extention to multivariate functions
 
