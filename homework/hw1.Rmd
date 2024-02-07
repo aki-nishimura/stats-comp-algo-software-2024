@@ -54,6 +54,19 @@ The content of `.gitconfig` showing a proper Git set-up (though you would normal
 
 ```{bash, eval=FALSE}
 # Paste the output of `cat .gitconfig` here
+[core]
+        editor = \"C:\\Users\\Alex\\AppData\\Local\\Programs\\Microsoft VS Code\\bin\\code\" --wait
+[user]
+        name = thepianistalex
+        email = llang7@jh.edu
+[init]
+        defaultBranch = main
+[gui]
+        recentrepo = C:/Users/Alex/Desktop/planets
+[diff]
+        tool = kdiff3
+[difftool]
+        prompt = false
 ```
 
 
@@ -128,7 +141,22 @@ Does the size of the folder look reasonable relative to the sizes of the individ
 If not, why would that be? 
 Also, how do you explain the difference in the disk space usages under the two cases above?
 
-**Your answer:** (To be filled.)
+**Your answer:** 
+
+1. Does the size of the folder look reasonable relative to the sizes of the individual files inside it?  (Use `ls -l -h` to list the files with the size info; `-l` is for "long.") If not, why would that be? 
+
+No it doesn't. The size of the folder (shown by using `du -h -s`) is much larger than the sum of the sizes of the individual files (shown by using `ls -l -h`). This is because:
+
+- Block Allocation: The `du` command reports the actual disk space used by files under the directory, taking into account the block size (The total size of the blocks allocated to a file is usually larger than the size of the file). The `ls -l -h` command, on the other hand, reports the apparent size of the file, which is the actual size of the file, without taking into account the block size.
+
+- Hidden files: The `du` command includes all files in the directory, including hidden ones. However `ls -l -h` does not show the hidden files like .git (which actually accounts for un-ignorable amounts of disk usage), so we are not actually summing the sizes of all the files in the directory.
+
+- Cumulative size: The `du` command reports the cumulative size of the directory, including the sizes of all the files and subdirectories in the directory. The `ls -l -h` command, on the other hand, reports the size of the directory itself (not even including the hidden file), which is usually much smaller than the cumulative size of the directory. i.e, `ls -l -h` command does not recursively sum the sizes of files in subdirectories.  
+
+
+2. Also, how do you explain the difference in the disk space usages under the two cases above?
+
+In the first case, we track both the TeX source file and its PDF output. In the second case, we only track the TeX source file. Git does not work the best with the generated non-text files like PDFs. It is designed to track changes in text files, and it does not handle binary files as well as it does text files. When we track the PDF output, Git is not able to store the updates efficiently, which can lead to a large repository size. When we only track the TeX source file, the repository size is much smaller because the TeX source file is a text file and Git can track changes in text files more efficiently. That's why the disk space usage is much larger when we also track the PDF output.
 
 ## Part B
 
@@ -149,14 +177,20 @@ Plot the disk usage of the git repo with the number of commits on the $x$-axis.
 Explain what you observe --- you may consult with resources on the web, including ChatGPT.
 Based on this result and those from Part A, explain why [Github discourages you from commiting (large) binary files](https://docs.github.com/en/repositories/working-with-files/managing-large-files/about-large-files-on-github)?
 
-**Your answer:** (To be filled.)
+**Your answer:**
 
-```{r, eval=FALSE}
+Each commit in Git creates a set of objects that represent the state of the files at the moment of the commit. Each object is stored as a separate file in the .git/objects directory. These are called "loose objects," and they can consume more disk space than necessary because they are not yet compressed. After a certain number of loose objects are created, or when the .git/objects directory becomes too large, Git will run its automatic garbage collection, packing those objects into pack files, which can drastically reduce disk usage. That explains why there is a periodic fluctuation in the disk usage of the git repo with the number of commits.
+
+Git doesn't necessarily perform a full garbage collection at every invocation of git gc. It often does smaller cleanups that incrementally optimize the repository. This means that rather than a single large drop, there will be a series of smaller reductions in the repository size as different cleanup operations take effect over several commits. That explains why the drop in disk usage of the git repo happens over multiple commits.
+
+```{r, eval=TRUE}
 source(file.path("..", "R", "colors.R"))
 
 repo_size <- scan("git_experiment/git_repo_size_history.txt")
 plot(
   # To be filled
+  x = 1:length(repo_size),
+  y = repo_size/1024,
   frame = FALSE, # Remove the ugly box
   col = jhu_color$heritageBlue,
   xlab = "Commit counts",
@@ -185,7 +219,7 @@ For now, let these "placeholder" functions simply throw warnings that they are y
 
 ## Things to commit and submit
 
-- Hyperlink to the `hiperglm` repository on your Github account
+- Hyperlink to the `hiperglm` repository [Lang Lang's hiperglm](https://github.com/thepianistalex/hiperglm) on your Github account
 - Screenshot of the package's Git history visualized through a Git GUI of your choice
 
 <img src="figure/git_history_screenshot.png" alt="Place the screenshot here"/>
