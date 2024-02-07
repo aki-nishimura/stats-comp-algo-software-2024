@@ -40,23 +40,23 @@ Why do we get the different result?
 In the first example, `a` and `b` are both equal to `1 + .Machine$double.eps`, which is slightly greater than 1. When we add `a` and `b` together, the result is a number that is slightly greater than 2 (`2 + 2*.Machine$double.eps`). When this number is added to `c` (which is equal to 1), we get a number that is slightly greater than 3 (`3 + 2*.Machine$double.eps`). On the other hand, when we add `a` to `b + c`, the result is exactly 3 because `1 + .Machine$double.eps` and `2 + .Machine$double.eps` are indistinguishable (for the computer) from 1 and 2, respectively. Hence, `(a + b) + c` is not equal to `a + (b + c)`, and the expression returns `FALSE`. This paragraph is also written in mathematical notation below:
 
 LHS:
-$$(a+b)+c \to (1+\epsilon+1+\epsilon)+1 \to (2 + 2\epsilon) + 1 \to 3 + 2\epsilon.$$
+$$(a+b)+c \to (1+\epsilon+1+\epsilon)+1 \to (2+2\epsilon)+1 \to 3+2\epsilon.$$
 RHS:
-$$a+(b+c) \to 1+\epsilon+(1+\epsilon+1) \to 1+\epsilon+(2+\epsilon) \to 1 + \epsilon + (2) \to 1+(2) \to 3.$$
+$$a+(b+c) \to 1+\epsilon+(1+\epsilon+1) \to 1+\epsilon+(2+\epsilon) \to 1+\epsilon+(2) \to 1+(2) \to 3.$$
 
 Hence:
-$$3 + 2\epsilon \neq 3.$$
+$$3+2\epsilon \neq 3.$$
 
 In the second example, `b` is equal to `0.5 + .Machine$double.eps`, which is slightly greater than 0.5. When we add `a` (which is slightly greater than 1) and `b`, the result is a number that is slightly greater than 1.5. This number is still representable with floating-point precision when it is added to `c` (which is 1), and we get a number that is slightly greater than 2.5 (`2.5 + 2*.Machine$double.eps`). Similarly, when we add `a` to `b + c`, the result is a number that is slightly greater than 2.5 (`2.5 + 2*.Machine$double.eps`) since `b + c` (which is `1.5 + .Machine$double.eps`) is representable with floating-point precision when it is added to `a` (which is `1 + .Machine$double.eps`). Hence, `(a + b) + c` is equal to `a + (b + c)`, and the expression returns `TRUE`. This paragraph is also written in mathematical notation below:
 
 LHS:
-$$(a+b)+c \to (1+\epsilon+0.5+\epsilon)+1 \to (1.5 + 2\epsilon) + 1 \to 2.5 + 2\epsilon.$$
+$$(a+b)+c \to (1+\epsilon+0.5+\epsilon)+1 \to (1.5+2\epsilon)+1 \to 2.5+2\epsilon.$$
 
 RHS:
-$$a+(b+c) \to 1+\epsilon+(0.5+\epsilon+1) \to 1+\epsilon+(1.5+\epsilon) \to 2.5 + 2\epsilon.$$
+$$a+(b+c) \to 1+\epsilon+(0.5+\epsilon+1) \to 1+\epsilon+(1.5+\epsilon) \to 2.5+2\epsilon.$$
 
 Hence:
-$$2.5 + 2\epsilon = 2.5 + 2\epsilon.$$
+$$2.5+2\epsilon = 2.5+2\epsilon.$$
 
 In summary, this exercise demonstrates that addition with floating point numbers and machine epsilon is not associative, and the order of addition operations can make a difference. 
 
@@ -92,11 +92,51 @@ sample_mean <- running_sum / n_sample
 sample_sec_mom <- running_sum_sq / n_sample
 
 sample_var_with_question_mark <- (sample_sec_mom - (sample_mean)^2)
+
+# My code (appended to the end of the original script above)
+print(paste0("The sample mean is: ", sample_mean))
+print(paste0("The sample second moment is: ", sample_sec_mom))
+print(paste0("The sample variance (with question mark) is: ", sample_var_with_question_mark))
 ```
 
 ## Things to commit/submit
 Answers to the questions above.
 
+**My answers to the questions above:** From running the script above, we find that the sample mean is \~1e10 (9999999999.97963), the sample second moment is \~1e20 (99999999999592366080), and the sample variance (with question mark) is -147456.
+
+The sample mean makes sense and aligns with our expectations since the variable being simulated from (`theta`) is normally distributed with mean 1e10 and variance 1. The sample second moment is also in line with the theoretical value of the variance plus the square of the mean for this normal distribution (i.e., 1e20 + 1).
+
+However, the calculated sample variance (with question mark) is -147456, which is very negative (i.e., not possible for a variance estimate, as the variance is always non-negative for non-deterministic random variables). This discrepancy is likely due to the large mean of the target distribution and the subsequent calculations. When we square the large values generated for the estimation of the second moment (in calculating `running_sum_sq`) and square the mean calculated from the running first-moment sum (in calculating `sample_var_with_question_mark`), the deviations from the actual mean are greatly amplified. This results in a high variability in both the second moment estimate and the squared first moment estimate, leading to the calculated sample variance deviating significantly from the actual variance of 1.
+
+If we change the seed (as demonstrated below), we observe that the sample mean and sample second moment are \~1e10 and \~1e20, respectively, but the sample variance is still unreasonably large (524288).
+
+```{r}
+set.seed(140850)
+
+running_sum <- 0
+running_sum_sq <- 0
+
+n_sample <- 10^3
+for (i in 1:n_sample) {
+  theta <- 1e10 + rnorm(1)
+  running_sum <- running_sum + theta
+  running_sum_sq <- running_sum_sq + theta^2
+}
+sample_mean <- running_sum / n_sample
+sample_sec_mom <- running_sum_sq / n_sample
+
+sample_var_with_question_mark <- (sample_sec_mom - (sample_mean)^2)
+
+print(paste0("The sample mean is: ", sample_mean))
+print(paste0("The sample second moment is: ", sample_sec_mom))
+print(paste0("The sample variance (with question mark) is: ", sample_var_with_question_mark))
+```
+
+**My bonus question answer:** Since each sampled `theta` is assumed to be iid normal with mean 1e10 and variance 1, a linear combination of 1,000 of these samples (i.e., the sample mean) is normally distributed as well with mean 1e10 and variance 1e-3. 
+
+Recall that the sum of $n$ iid squared normal random variables, each with mean $\mu$ and variance 1, has a chi-squared distribution with degrees of freedom $n$ and noncentrality parameter $\lambda = n\mu^2$. Using this fact, we find that 1e3 times the sample mean squared has a chi-squared distribution with $n$ = 1 degree of freedom and noncentrality parameter $\lambda$ = 1 $\times$ (1e13)$^2$ =  1e26. Hence, the sample mean squared has this chi-squared distribution scaled by 1e3, and the running sum of squares has a chi-squared distribution with $n$ = 1e3 degrees of freedom and noncentrality parameter $\lambda$ = 1e3 $\times$ (1e10)$^2$ = 1e23. 
+
+Consequently, the distribution of the sample variance estimator `sample_var_with_question_mark`, when obtained from repeated Monte Carlo simulations without a fixed seed, follows a generalized chi-squared distribution because it is a weighted sum of random variables that follow non-central chi-square distributions.
 
 # Exercise 2: Generating random real numbers in finite precision arithmetic
 
