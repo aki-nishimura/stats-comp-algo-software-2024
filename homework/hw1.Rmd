@@ -53,7 +53,31 @@ So I am going to ask you to give it a try at least and to submit a screenshot of
 The content of `.gitconfig` showing a proper Git set-up (though you would normally access this information via `git config` commands).
 
 ```{bash, eval=FALSE}
-# Paste the output of `cat .gitconfig` here
+# Paste the output of `cat .git/config` here
+
+[core]
+	repositoryformatversion = 0
+	filemode = true
+	bare = false
+	logallrefupdates = true
+	ignorecase = true
+	precomposeunicode = true
+[submodule]
+	active = .
+[remote "origin"]
+	url = https://github.com/m-qin/stats-comp-algo-software-2024.git
+	fetch = +refs/heads/*:refs/remotes/origin/*
+[branch "main"]
+	remote = origin
+	merge = refs/heads/main
+[lfs]
+	repositoryformatversion = 0
+[remote "upstream"]
+	url = https://github.com/aki-nishimura/stats-comp-algo-software-2024.git
+	fetch = +refs/heads/*:refs/remotes/upstream/*
+[branch "hw1"]
+	remote = origin
+	merge = refs/heads/hw1
 ```
 
 
@@ -66,7 +90,7 @@ Log in to JHPCE and `srun --pty bash` to be assigned a compute node.
 For this exercise, we use the `homework/git_experiment` folder from the course repository, so clone the repo to your JHPCE home directory:
 
 ```{bash, eval=FALSE}
-git clone https://github.com/aki-nishimura/stats-comp-algo-software-2024
+git clone https://github.com/m-qin/stats-comp-algo-software-2024
 ```
 
 Next, copy the `git_experiment` folder via a command `cp -r git_experiment git_experiment_copy` (`-r` for "recursive" copy that includes the folder's contents and sub-directories).
@@ -95,12 +119,16 @@ A stream editor processes a text file line-by-line, without ever loading the ent
 This is useful when, for example, you are processing a massive text file containing data and you cannot load it to R with `read.table()`.
 Using `sed` to edit a tex file is, obviously, an overkill and done here only for demonstration purposes.
 
-The following command demonstrates how to add a line to a text file using `sed`: 
+The following command demonstrates how to add a line to a text file using `sed`.
+
+**Notes**: `-i` means modify in place, and "i" means insert line.
 
 ```{bash, eval=FALSE}
 linenum=10
 sed -i "$linenum i This is the first sentence." foo.tex
 ```
+
+Alternatively, you can edit using the text editor `nano edit_and_commit.sh`.
 
 Check the change via `git diff`. After doing so, go ahead and add this change to the repo:
 
@@ -116,8 +144,56 @@ To sanity check that your script ran as expected, check the commit history via `
 Then check the disk space usage of the `git_experiment_copy` folder. 
 You can do this via `du -h -s git_experiment_copy` (`-h` for "human-readable" and `-s` for "summarize") or `du -h -s .` from inside the folder.
 
-Next, make a fresh clone of the repo; you can remove the old one via `rm -rf stats-comp-algo-software-2024`.
+**Results (adding foo.pdf to git):**
+
+```{bash, eval=F}
+[compute-103 /users/mqin/stats-comp-algo-software-2024/homework/git_experiment_copy]$ du -h -s .
+988K	. # Hmm I think this number is increasing each time I delete the repository and recreate it; it was 712K earlier
+[compute-103 /users/mqin/stats-comp-algo-software-2024/homework/git_experiment_copy]$ ls -l -h
+total 75K
+-rw-r----- 1 mqin users  394 Feb  1 12:43 edit_and_commit.sh
+-rw-r----- 1 mqin users   32 Feb  1 12:38 foo.aux
+-rw-r----- 1 mqin users 3.4K Feb  1 12:38 foo.log
+-rw-r----- 1 mqin users  36K Feb  1 12:38 foo.pdf
+-rw-r----- 1 mqin users  338 Feb  1 12:37 foo.tex
+[compute-103 /users/mqin/stats-comp-algo-software-2024/homework/git_experiment_copy]$ ls -l -h -a
+total 132K
+drwxr-x--- 3 mqin users    8 Feb  1 12:40 .
+drwxr-x--- 7 mqin users   15 Jan 29 21:37 ..
+-rw-r----- 1 mqin users  394 Feb  1 12:43 edit_and_commit.sh
+-rw-r----- 1 mqin users   32 Feb  1 12:38 foo.aux
+-rw-r----- 1 mqin users 3.4K Feb  1 12:38 foo.log
+-rw-r----- 1 mqin users  36K Feb  1 12:38 foo.pdf
+-rw-r----- 1 mqin users  338 Feb  1 12:37 foo.tex
+drwxr-x--- 8 mqin users   13 Feb  1 12:43 .git
+```
+
+Next, make a fresh clone of the repo; you can remove the old one via `rm -rf stats-comp-algo-software-2024`. (`-rf` is short for `-r -f`.)
 And repeat the above process from the beginning, but without ever adding the PDF output to the repo.
+
+**Results (not adding foo.pdf to git):**
+
+```{bash, eval=F}
+[compute-153 /users/mqin/stats-comp-algo-software-2024/homework/git_experiment_copy]$ du -h -s .
+623K	.
+[compute-153 /users/mqin/stats-comp-algo-software-2024/homework/git_experiment_copy]$ ls -l -h
+total 75K
+-rw-r----- 1 mqin users  386 Feb  1 22:41 edit_and_commit.sh
+-rw-r----- 1 mqin users   32 Feb  1 22:41 foo.aux
+-rw-r----- 1 mqin users 3.4K Feb  1 22:41 foo.log
+-rw-r----- 1 mqin users  36K Feb  1 22:41 foo.pdf
+-rw-r----- 1 mqin users  337 Feb  1 22:41 foo.tex
+[compute-153 /users/mqin/stats-comp-algo-software-2024/homework/git_experiment_copy]$ ls -l -h -a
+total 132K
+drwxr-x--- 3 mqin users    8 Feb  1 22:41 .
+drwxr-x--- 7 mqin users   16 Feb  1 22:39 ..
+-rw-r----- 1 mqin users  386 Feb  1 22:41 edit_and_commit.sh
+-rw-r----- 1 mqin users   32 Feb  1 22:41 foo.aux
+-rw-r----- 1 mqin users 3.4K Feb  1 22:41 foo.log
+-rw-r----- 1 mqin users  36K Feb  1 22:41 foo.pdf
+-rw-r----- 1 mqin users  337 Feb  1 22:41 foo.tex
+drwxr-x--- 8 mqin users   13 Feb  1 22:41 .git
+```
 
 **Tips:**
 You can edit the bash script locally and transfer to JHPCE via `rsync -P git_experiment/edit_and_commit.sh your_username@jhpce03.jhsph.edu:/users/your_username/`.
@@ -128,7 +204,7 @@ Does the size of the folder look reasonable relative to the sizes of the individ
 If not, why would that be? 
 Also, how do you explain the difference in the disk space usages under the two cases above?
 
-**Your answer:** (To be filled.)
+**Your answer:** The folder size as reported by `du -h -s` is multiple times larger than the total size of all files in it as reported by `ls -l -h -a` (988 KB vs. 132 KB); I am not sure why. Meanwhile, the folder size without committing the pdf file is about 2/3 times the size of the folder size with committing the pdf file (988 KB vs. 623 KB); this makes sense to me because git can store less information if I don't commit the pdf file. However, the `.git` folder seems to be 13 (bytes?) in both cases, so I am a bit confused.
 
 ## Part B
 
@@ -142,21 +218,22 @@ Also make sure to use `sbatch`, and _not_ `srun`, for such a long job.
 
 **Tips:**
 You can transfer the disk usage result from JHPCE to your local computer via 
-`rsync -P "your_username@jhpce03.jhsph.edu:/users/your_username/stats-comp-algo-software-2024/homework/git_experiment_copy/git_repo_size_history.txt" git_experiment` (assuming that you are running the command from the `homework` folder).
+`rsync -P "mqin@jhpce03.jhsph.edu:/users/mqin/stats-comp-algo-software-2024/homework/git_experiment_copy/git_repo_size_history.txt" git_experiment` (assuming that you are running the command from the `homework` folder).
 
 **Question:** 
 Plot the disk usage of the git repo with the number of commits on the $x$-axis.
 Explain what you observe --- you may consult with resources on the web, including ChatGPT.
 Based on this result and those from Part A, explain why [Github discourages you from commiting (large) binary files](https://docs.github.com/en/repositories/working-with-files/managing-large-files/about-large-files-on-github)?
 
-**Your answer:** (To be filled.)
+**Your answer:** Interestingly, my git repository size goes up then down periodically. A quick ChatGPT query suggested that git may be performing routine garbage collection as my repo size increases. I'm also puzzled as to why my .txt files seems to only have 6,601 lines. Did the garbage collection delete stuff?
 
-```{r, eval=FALSE}
+```{r, eval=T}
 source(file.path("..", "R", "colors.R"))
 
 repo_size <- scan("git_experiment/git_repo_size_history.txt")
 plot(
-  # To be filled
+  x = 1:length(repo_size),
+  y = repo_size / 1000, # du seems to print in KB, so convert to MB
   frame = FALSE, # Remove the ugly box
   col = jhu_color$heritageBlue,
   xlab = "Commit counts",
@@ -185,10 +262,10 @@ For now, let these "placeholder" functions simply throw warnings that they are y
 
 ## Things to commit and submit
 
-- Hyperlink to the `hiperglm` repository on your Github account
-- Screenshot of the package's Git history visualized through a Git GUI of your choice
+- Hyperlink to the `hiperglm` repository on your Github account: https://github.com/m-qin/hiperglm
+- Screenshot of the package's Git history visualized through a Git GUI of your choice:
 
-<img src="figure/git_history_screenshot.png" alt="Place the screenshot here"/>
+<img src="figure/git_history_screenshot.png" alt="Screenshot from GitHub Desktop"/>
 
 **Note:** 
 In case you decided to go with GitKraken via GitHub Student Developer Pack, the student status verification process could take a few days.
