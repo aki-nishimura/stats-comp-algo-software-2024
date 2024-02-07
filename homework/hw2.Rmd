@@ -35,6 +35,30 @@ b <- 0.5 + .Machine$double.eps
 
 Why do we get the different result?
 
+**My answer:** We get different results here because of the limitations of doing finite precision arithmetic with floating point numbers and machine epsilon (i.e., `.Machine$double.eps` in R). Machine epsilon is defined as the limit of relative approximation and is approximately equal to $2^{-52}$ on most computers. This quantity will be written mathematically below as the symbol $\epsilon$.
+
+In the first example, `a` and `b` are both equal to `1 + .Machine$double.eps`, which is slightly greater than 1. When we add `a` and `b` together, the result is a number that is slightly greater than 2 (`2 + 2*.Machine$double.eps`). When this number is added to `c` (which is equal to 1), we get a number that is slightly greater than 3 (`3 + 2*.Machine$double.eps`). On the other hand, when we add `a` to `b + c`, the result is exactly 3 because `1 + .Machine$double.eps` and `2 + .Machine$double.eps` are indistinguishable (for the computer) from 1 and 2, respectively. Hence, `(a + b) + c` is not equal to `a + (b + c)`, and the expression returns `FALSE`. This paragraph is also written in mathematical notation below:
+
+LHS:
+$$(a+b)+c \to (1+\epsilon+1+\epsilon)+1 \to (2 + 2\epsilon) + 1 \to 3 + 2\epsilon.$$
+RHS:
+$$a+(b+c) \to 1+\epsilon+(1+\epsilon+1) \to 1+\epsilon+(2+\epsilon) \to 1 + \epsilon + (2) \to 1+(2) \to 3.$$
+
+Hence:
+$$3 + 2\epsilon \neq 3.$$
+
+In the second example, `b` is equal to `0.5 + .Machine$double.eps`, which is slightly greater than 0.5. When we add `a` (which is slightly greater than 1) and `b`, the result is a number that is slightly greater than 1.5. This number is still representable with floating-point precision when it is added to `c` (which is 1), and we get a number that is slightly greater than 2.5 (`2.5 + 2*.Machine$double.eps`). Similarly, when we add `a` to `b + c`, the result is a number that is slightly greater than 2.5 (`2.5 + 2*.Machine$double.eps`) since `b + c` (which is `1.5 + .Machine$double.eps`) is representable with floating-point precision when it is added to `a` (which is `1 + .Machine$double.eps`). Hence, `(a + b) + c` is equal to `a + (b + c)`, and the expression returns `TRUE`. This paragraph is also written in mathematical notation below:
+
+LHS:
+$$(a+b)+c \to (1+\epsilon+0.5+\epsilon)+1 \to (1.5 + 2\epsilon) + 1 \to 2.5 + 2\epsilon.$$
+
+RHS:
+$$a+(b+c) \to 1+\epsilon+(0.5+\epsilon+1) \to 1+\epsilon+(1.5+\epsilon) \to 2.5 + 2\epsilon.$$
+
+Hence:
+$$2.5 + 2\epsilon = 2.5 + 2\epsilon.$$
+
+In summary, this exercise demonstrates that addition with floating point numbers and machine epsilon is not associative, and the order of addition operations can make a difference. 
 
 # Exercise 1: One-pass algorithm for calculating variance
 
