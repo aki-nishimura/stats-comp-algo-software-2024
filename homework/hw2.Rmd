@@ -241,14 +241,17 @@ What do you expect the slope of the plotted line to be?
 #' Approximate derivative via centered-difference approximation
 approximate_deriv <- function(func, x, dx) {
   # Fill in
+  (func(x + dx) - func(x - dx)) / (2 * dx)
 }
 
 log_logistic_func <- function(x) {
   # Fill in
+  log(exp(x) / (1 + exp(x)))
 }
 
 log_logistic_deriv <- function(x) {
   # Fill in
+  1/(1 + exp(x))
 }
 
 # Calculate and plot the relative errors of finite difference approximations
@@ -276,7 +279,6 @@ plot(
   cex.axis = fontsize,
   type = 'l'
 )
-
 ```
 
 **Questions:**
@@ -285,6 +287,11 @@ Does the relative error plot agree with what the mathematical theory predicts? E
 Also, what is the slope in the "latter part" of your plotted line, roughly speaking? 
 Explain why we observe such a slope in the relative error. 
 (Hint: Consider a machine with 10 decimal digits of accuracy. What happens if we numerically differentiate $f(x) = x$ at $x = 1$ with $\Delta x = 0.1, 0.01, 0.001, \ldots$.)
+
+**Answers:**
+No, the relative error plot does not agree with what the mathematical theory predicts. The relative error should be decreasing as the step size decreases, but the plot shows that the relative error is decreasing at first but then slightly increasing as step sizes get smaller and smaller. This is due to the fact that the finite difference approximation is not accurate when the step size is too small, and the error is dominated by the round-off error when $\Delta x$ is too small in the $log(exp(x \pm \Delta x) / (1 + exp(x \pm \Delta x)))$.
+
+I think for the latter part, the slope is roughly the rounding error against the step size on a log-log scale, roughly equal to 1, which means that the change of errors is basically the same as the change of step size on a log-log scale. 
 
 ## Part B: Extention to multivariate functions
 
@@ -297,10 +304,51 @@ First show that its gradient is given by $\nabla f(\boldsymbol{x}) = - \boldsymb
 more generally, the gradient of a quadratic function $g(\boldsymbol{x}) = \boldsymbol{x}^\intercal \boldsymbol{A} \boldsymbol{x}$ is given by $\nabla g(\boldsymbol{x} = (\boldsymbol{A} + \boldsymbol{A}^\intercal) \boldsymbol{x}$ for any square matrix $\boldsymbol{A}$.
 Then compare a numerically approximated gradient to one computed via an analytical formula.
 
-```{r, eval=FALSE}
+**Answers:**
+The gradient of a quadratic function :
+
+Given the function 
+
+\[ g(\boldsymbol{x}) = \boldsymbol{x}^\intercal \boldsymbol{A} \boldsymbol{x} \]
+
+we want to find its gradient \( \nabla g(\boldsymbol{x}) \).
+
+The function \( g(\boldsymbol{x}) \) can be expanded into its scalar components:
+
+\[ g(\boldsymbol{x}) = \sum_{i=1}^n \sum_{j=1}^n x_i A_{ij} x_j \]
+
+Now take derivative:
+
+\[ \frac{\partial g(\boldsymbol{x})}{\partial x_k} = \frac{\partial}{\partial x_k} \sum_{i=1}^n \sum_{j=1}^n x_i A_{ij} x_j \]
+
+When differentiating, we treat \( x_k \) as the variable and all other \( x_i \)'s as constants. There are two cases to consider:
+
+1. When \( i = k \), the derivative of \( x_i A_{ij} x_j \) with respect to \( x_k \) is \( A_{kj} x_j \) since \( A_{ij} x_j \) is treated as a constant coefficient.
+2. When \( j = k \), the derivative of \( x_i A_{ij} x_j \) with respect to \( x_k \) is \( x_i A_{ik} \), by the same logic.
+
+Combining both cases, we get:
+
+\[ \frac{\partial g(\boldsymbol{x})}{\partial x_k} = \sum_{j=1}^n A_{kj} x_j + \sum_{i=1}^n x_i A_{ik} \]
+
+The first term is the \( k \)-th component of the matrix-vector product \( \boldsymbol{A} \boldsymbol{x} \), and the second term is the \( k \)-th component of the matrix-vector product \( \boldsymbol{A}^\intercal \boldsymbol{x} \) (since transposing swaps the indices).
+
+Therefore, the gradient \( \nabla g(\boldsymbol{x}) \) is:
+
+\[ \nabla g(\boldsymbol{x}) = \boldsymbol{A} \boldsymbol{x} + \boldsymbol{A}^\intercal \boldsymbol{x} \]
+
+If \( \boldsymbol{A} \) is symmetric (\( \Phi \)), then this simplifies to \( 2 \Phi \boldsymbol{x} \). So we have \(\nabla f(\boldsymbol{x}) = - 2\boldsymbol{\Phi} \boldsymbol{x}/2 = - \boldsymbol{\Phi} \boldsymbol{x} \)
+
+
+```{r, eval=TRUE}
 approx_grad <- function(func, x, dx = .Machine$double.eps^(1/3)) {
   numerical_grad <- rep(0, length(x))
+  D <- length(x)
   # Fill in
+  for(d in 1:D){
+    e_d <- rep(0, D)
+    e_d[d] <- 1
+    numerical_grad[d] <- (func(x + dx * e_d) - func(x - dx * e_d)) / (2 * dx)
+  }
   return(numerical_grad)
 }
 
@@ -316,7 +364,7 @@ gaussian_logp <- function(x, Sigma_inv) {
 }
 
 gaussian_grad <- function(x, Sigma_inv) {
-  grad <- rep(0, length(x)) # Replace with an actual formula
+  grad <- -1 * Sigma_inv %*% x
   return(grad)
 }
 
@@ -372,4 +420,4 @@ Please, pretty please, do not calculate an inverse of a matrix.
     
 ## Things to commit/submit
 
-Link to the pull request.
+[Link to the pull request](https://github.com/thepianistalex/hiperglm/pull/1).
