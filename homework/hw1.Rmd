@@ -53,7 +53,20 @@ So I am going to ask you to give it a try at least and to submit a screenshot of
 The content of `.gitconfig` showing a proper Git set-up (though you would normally access this information via `git config` commands).
 
 ```{bash, eval=FALSE}
-# Paste the output of `cat .gitconfig` here
+[user]
+        name = "Alyssa Columbus"
+        email = 21285656+acolum@users.noreply.github.com
+[filter "lfs"]
+        process = git-lfs filter-process
+        required = true
+        clean = git-lfs clean -- %f
+        smudge = git-lfs smudge -- %f
+[core]
+        editor = subl
+[diff]
+        tool = kdiff3
+[difftool]
+        prompt = false
 ```
 
 
@@ -128,7 +141,9 @@ Does the size of the folder look reasonable relative to the sizes of the individ
 If not, why would that be? 
 Also, how do you explain the difference in the disk space usages under the two cases above?
 
-**Your answer:** (To be filled.)
+**Your answer:** The size of the folder doesn't look reasonable relative to the sizes of the individual files inside it because Git stores the entire history of the project, including every version of every file. This means that if we have a large file and we make a small change to it, Git has to store the entire file again in its history, which can quickly add up if we’re making many changes to large files like we did in this exercise. Also, even if the current version of the files is small, the repository (overall) can still be large if it has a long history.
+
+The difference in the disk space usages under the two cases above can be explained by the fact that in the first case, we were committing both the TeX source file and its PDF output, while in the second case, we were only committing the TeX source file. PDF files are usually larger than TeX files, so committing them in addition to the TeX files greatly increases the size of the repository. This is why it’s generally a good idea to avoid adding non-source files, especially large binary files (like PDFs), to a Git repository. 
 
 ## Part B
 
@@ -149,14 +164,19 @@ Plot the disk usage of the git repo with the number of commits on the $x$-axis.
 Explain what you observe --- you may consult with resources on the web, including ChatGPT.
 Based on this result and those from Part A, explain why [Github discourages you from commiting (large) binary files](https://docs.github.com/en/repositories/working-with-files/managing-large-files/about-large-files-on-github)?
 
-**Your answer:** (To be filled.)
+**Your answer:** We observe a triangular oscillating pattern (akin to a sawtooth wave), where the repository size (in MB) increases rapidly then suddenly decreases multiple times as the commit count progresses. 
 
-```{r, eval=FALSE}
+The increases in the graph represent the growth of the repository size as new commits are made. This is expected because each commit adds a new version of the file to the repository's history, which increases its size. The sudden decreases in the graph could be due to Git's garbage collection running automatically, which can remove objects that are no longer necessary and compress objects to reduce disk space. The pattern of increasing and decreasing repository sizes illustrates a balance between repository growth  (due to new commits) and optimization (due to garbage collection).
+
+As for the question about why GitHub discourages committing large binary files, the reason remains the same. Binary files are not diffable, meaning that Git must store the entire file every time it changes. This can quickly inflate the size of the repository. Moreover, large binary files can make cloning and fetching from the repository slow and use up a lot of disk space quickly. Even though Git has mechanisms like garbage collection to optimize the repository, it’s still a best practice to avoid committing large binary files to keep the repository manageable and efficient.
+
+```{r, eval=TRUE}
 source(file.path("..", "R", "colors.R"))
 
 repo_size <- scan("git_experiment/git_repo_size_history.txt")
 plot(
-  # To be filled
+  x = 1:length(repo_size),
+  y = repo_size/1000, # Convert KB printed by du to MB
   frame = FALSE, # Remove the ugly box
   col = jhu_color$heritageBlue,
   xlab = "Commit counts",
@@ -166,8 +186,8 @@ plot(
 
 ## Things to commit and submit
 
-1. Completed `edit_and_commit.sh`
-2. Answer to the question above, along with the plot
+1. Completed `edit_and_commit.sh`: Please see `git_experiment/edit_and_commit.sh` for my edited script.
+2. Answer to the question above, along with the plot: Please see above for my answer to the question, and compile this Rmd document to see the plot.
 
 
 # Exercise 2: Setting up an R package skeleton
@@ -185,11 +205,13 @@ For now, let these "placeholder" functions simply throw warnings that they are y
 
 ## Things to commit and submit
 
-- Hyperlink to the `hiperglm` repository on your Github account
-- Screenshot of the package's Git history visualized through a Git GUI of your choice
+- Hyperlink to the `hiperglm` repository on your Github account: <https://github.com/acolum/hiperglm>
+- Screenshot of the package's Git history visualized through a Git GUI of your choice: I've added a screenshot named `git_history_screenshot.png` to the `figure` folder.
 
 <img src="figure/git_history_screenshot.png" alt="Place the screenshot here"/>
+
 
 **Note:** 
 In case you decided to go with GitKraken via GitHub Student Developer Pack, the student status verification process could take a few days.
 In the meantime, however, you should be able to start using the free version without any problem and to later enter your Pro account credential after the verification is complete.
+
