@@ -54,8 +54,10 @@ The content of `.gitconfig` showing a proper Git set-up (though you would normal
 
 ```{bash, eval=FALSE}
 # Paste the output of `cat .gitconfig` here
+[user]
+	name = cindyfang70
+	email = cindyfang70@gmail.com
 ```
-
 
 
 # Exercise 1: Playing around with command-line and Git
@@ -128,7 +130,8 @@ Does the size of the folder look reasonable relative to the sizes of the individ
 If not, why would that be? 
 Also, how do you explain the difference in the disk space usages under the two cases above?
 
-**Your answer:** (To be filled.)
+**Your answer:** The size of the folder seems to be significantly larger than the individual files inside.
+This may be because git is keeping track of changes to the file as well as metadata regarding the changes, whereas the sizes of the individual files only reflect their current state.
 
 ## Part B
 
@@ -149,14 +152,17 @@ Plot the disk usage of the git repo with the number of commits on the $x$-axis.
 Explain what you observe --- you may consult with resources on the web, including ChatGPT.
 Based on this result and those from Part A, explain why [Github discourages you from commiting (large) binary files](https://docs.github.com/en/repositories/working-with-files/managing-large-files/about-large-files-on-github)?
 
-**Your answer:** (To be filled.)
+**Your answer:** Based on the plot below, it appears that the size of the directory shows an overall linear increase as the number of commits increase, with some fluctuations. The initial size of the directory was 12K and the final size 323K, with `foo.tex` accounting for 224K. The fluctuations may be due to git running garbage collection behind the scenes. To further support this, for many of my 10,000 commits I received the message `Auto packing the repository in background for optimum performance. See "git help gc" for manual housekeeping.`
+Similar to Part A, this is likely due to git tracking each change as well as metadata about the commits. 
+
+Github likely discourages committing large binary files because as the file gets larger, git has to keep track of more information regarding the commits as well as the large file itself. This can be computationally expensive both when pushing to the cloud and for Github to store.
 
 ```{r, eval=FALSE}
 source(file.path("..", "R", "colors.R"))
 
 repo_size <- scan("git_experiment/git_repo_size_history.txt")
-plot(
-  # To be filled
+df <- as.data.frame(cbind(x=1:9999, y=repo_size))
+plot(x=df$x, y=df$y,
   frame = FALSE, # Remove the ugly box
   col = jhu_color$heritageBlue,
   xlab = "Commit counts",
@@ -188,7 +194,9 @@ For now, let these "placeholder" functions simply throw warnings that they are y
 - Hyperlink to the `hiperglm` repository on your Github account
 - Screenshot of the package's Git history visualized through a Git GUI of your choice
 
-<img src="figure/git_history_screenshot.png" alt="Place the screenshot here"/>
+[hiperglm package](https://github.com/cindyfang70/hiperglm)
+
+<img src="figure/git_history_screenshot.png" alt="Screenshot of Git history visualized in GitKraken"/>
 
 **Note:** 
 In case you decided to go with GitKraken via GitHub Student Developer Pack, the student status verification process could take a few days.
