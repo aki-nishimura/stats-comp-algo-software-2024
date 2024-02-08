@@ -43,9 +43,9 @@ There're \( 2^{52} \) machine-representable values in between two reals \( 2^{k}
 
 Notice, for numbers between \( 2^{1} \) and \( 2^{2} \), the smallest increment is \( 2^{-52} \times 2^{1} = 2^{-51} \), and for numbers between \( 2^{0} \) and \( 2^{1} \), the smallest increment is \( 2^{-52} \times 2^{0} = 2^{-52} \).
 
-For the first equation, b+c is within the range of \( 2^{1} \) and \( 2^{2} \), thus the epsilon is not distinguishable in \( b + c = 2 + \epsilon \) and it becomes \( b + c = 2 \).
+For the first equation, b+c is within the range of \( 2^{1} \) and \( 2^{2} \), thus the epsilon is not distinguishable in \( b + c = 2 + \epsilon \) and it becomes \( b + c = 2 \). And eventually \( a + (b + c) = 2 + 1 = 3 \) and \( (a + b) + c = 2 + 1 = 3 + 2 \epsilon \), thus they are not the same.
 
-However, for the second equation, b+c is within the range of \( 2^{0} \) and \( 2^{1} \), thus the epsilon is distinguishable in \( b + c = 1.5 + \epsilon \).
+However, for the second equation, b+c is within the range of \( 2^{0} \) and \( 2^{1} \), thus the epsilon is distinguishable in \( b + c = 1.5 + \epsilon \). So the equations get the same results, both eaqual to \( 2.5 + \epsilon \).
 
 
 # Exercise 1: One-pass algorithm for calculating variance
@@ -237,7 +237,7 @@ We evaluate its derivative using an analytical formula and compare it to the cen
 Using the starter code provided below, plot the relative error of the numerical approximation in a log-log scale.
 What do you expect the slope of the plotted line to be?
 
-```{r, eval=FALSE}
+```{r, eval=TRUE}
 #' Approximate derivative via centered-difference approximation
 approximate_deriv <- function(func, x, dx) {
   # Fill in
@@ -289,9 +289,9 @@ Explain why we observe such a slope in the relative error.
 (Hint: Consider a machine with 10 decimal digits of accuracy. What happens if we numerically differentiate $f(x) = x$ at $x = 1$ with $\Delta x = 0.1, 0.01, 0.001, \ldots$.)
 
 **Answers:**
-No, the relative error plot does not agree with what the mathematical theory predicts. The relative error should be decreasing as the step size decreases, but the plot shows that the relative error is decreasing at first but then slightly increasing as step sizes get smaller and smaller. This is due to the fact that the finite difference approximation is not accurate when the step size is too small, and the error is dominated by the round-off error when $\Delta x$ is too small in the $log(exp(x \pm \Delta x) / (1 + exp(x \pm \Delta x)))$.
+No, the first part of relative error plot where the line decreases does agree with what the mathematical theory predicts. The relative error should be decreasing as the step size decreases, since the error is on a $O(\Delta x^2)$ scale and if you differentiate against $- \Delta x$ you will get $-2O(\Delta x)$, that is why we are getting a decreasing line for the first part relative error plot where the line decreases.
 
-I think for the latter part, the slope is roughly the rounding error against the step size on a log-log scale, roughly equal to 1, which means that the change of errors is basically the same as the change of step size on a log-log scale. 
+but the latter part of the plot shows that the relative error is increasing as step size gets smaller and smaller, which contradicts to the math theory. Further more, the slope of the relative error is roughly 1. This is due to the finite precision arithmetic and the consequent rounding error. When the step size is too small, the difference between \( f(x + \Delta x) \) and \( f(x - \Delta x) \) is too small and almost remain constant due to the round off error, however the denominator \( 2 \Delta x \) is getting smaller and smaller (changing by $2^{-1}$ each time), thus the relative error is increasing and the slope is roughly 1, since $\epsilon_{rel} \approx 1/\Delta x$ and $log(\epsilon_{rel}) \approx -log(\Delta x)$ and if we change to y and x notation it will be $y = -x$, so differentiating against $-x$ will give us a slope of 1.
 
 ## Part B: Extention to multivariate functions
 
