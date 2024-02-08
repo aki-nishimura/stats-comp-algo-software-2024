@@ -110,7 +110,7 @@ for(it in 1:1000){
 hist(res)
 ```
 
-Turns out to be a normal distribution. This is due to central limit theorem since the random variable (sample_sec_mom) is the sum of many iid random variables (in this case a shifted chi-square distribution) abd the sum should approaching a normal distribution, and (sample_mean) ^ 2 has really small variance thus almost constant. Thus the difference between them is approximately a normal distribution.
+Turns out to be a normal distribution. This is due to central limit theorem since the random variable (sample_sec_mom) is the sum of many iid random variables and the sum should approaching a normal distribution, and (sample_mean) ^ 2 has really small variance thus almost constant. Thus the difference between them is approximately a normal distribution.
 
 ## Things to commit/submit
 Answers to the questions above.
@@ -420,4 +420,4 @@ Please, pretty please, do not calculate an inverse of a matrix.
     
 ## Things to commit/submit
 
-[Link to the pull request](https://github.com/thepianistalex/hiperglm/pull/1).
+[Link to the pull request](https://github.com/thepianistalex/hiperglm/pull/2).
