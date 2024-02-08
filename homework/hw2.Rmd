@@ -209,11 +209,15 @@ If we use R's `runif()` function, however, this is _not_ what we observe because
 Check the number of duplicates from `runif(10^6)` against the expected value for a floating-point number with 32-bits of precision. 
 Check also that, using your implementation of random uniform from Part A, duplicates are indeed rare in double-precision.
 
-```{r, eval=FALSE}
+```{r, eval=TRUE}
 n_draw <- 10^6
 base_r_unif <- runif(n_draw, min = 1, max = 2)
 unif_rv <- sapply(1:n_draw, function (i) double_prec_runif())
 # Check the number of duplicates against the expected value
+print(paste0("The number of duplicates from runif(10^6) is: ", n_draw - length(unique(base_r_unif))))
+print(paste0("The expected number of duplicates from runif(10^6) is: ", calc_num_expected_duplicate(n_draw = n_draw, n_choice = 2^(32))))
+print(paste0("The number of duplicates from double_prec_runif() is: ", n_draw - length(unique(unif_rv))))
+print(paste0("The expected number of duplicates from double_prec_runif() is: ", calc_num_expected_duplicate(n_draw = n_draw, n_choice = 2^(52))))
 ```
 
 
@@ -240,7 +244,7 @@ $$
 We can then use a log transformation to further simplify the formula above and increase our numerical stability.
 $$d - n \left[1-\left(1-\frac{1}{n}\right)^d\right] \approx d(d-1)\frac{1}{2n} =\exp\left[\log(d) + \log(d-1) - \log(n) - \log(2)\right].$$
 
-Please see the remedied function above that uses this result. 
+Please see the remedied function above (under "Part B") that uses this result. 
 
 Here, we use this function to calculate the expected number of duplicates among $10^6$ Uniform(1, 2) random variables:
 ```{r}
@@ -248,8 +252,7 @@ n_duplicates <- calc_num_expected_duplicate(n_draw = 10^6, n_choice = 2^52)
 print(n_duplicates)
 ```
 
-**My answer to Part C:** 
-
+**My answer to Part C:** Please see the code above (under "Part C") for my implementations of the two requested checks. The number of duplicates from `runif(10^6)` (120) is close to the expected value for a floating-point number with 32-bits of precision (116.415205411613). Similarly, using my implementation of random uniform from Part A, duplicates are rare in double-precision; the number of duplicates (0) is very close to the expected value of 0.000111022191440213. 
 
 # Exercise 3: Numerical differentiation
 
