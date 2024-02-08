@@ -102,16 +102,20 @@ running_sum_sq / (n_sample-1) - sample_mean * running_sum / (n_sample-1) + n_sam
 running_sum_sq / (n_sample) - sample_mean * running_sum / (n_sample) + n_sample * sample_mean^2 / (n_sample)
 ```
 
+```{r}
+(running_sum_sq - n_sample * sample_mean^2) / (n_sample * (n_sample -1))
+```
+
 
 ## Things to commit/submit
 
 Answers to the questions above: No the estimate does not make sense. The estimated sample variance using this method is negative. The estimate changes, can be both positive and negative when varying the seeds
 
-The distribution of the estimator `sample_var_with_question_mark` under repeated Monte Carlo simulations is normal distribution by central limit theorem?
+The distribution of the estimator `sample_var_with_question_mark` under repeated Monte Carlo simulations is normal distribution with mean 0 by central limit theorem?
 
 ```{r}
-#sample_mean
-#sample_sec_mom
+sample_mean
+sample_sec_mom
 sample_var_with_question_mark
 ```
 
@@ -220,7 +224,7 @@ If we use R's `runif()` function, however, this is *not* what we observe because
 Check the number of duplicates from `runif(10^6)` against the expected value for a floating-point number with 32-bits of precision.
 Check also that, using your implementation of random uniform from Part A, duplicates are indeed rare in double-precision.
 
-```{r, eval=FALSE}
+```{r}
 n_draw <- 10^6
 base_r_unif <- runif(n_draw, min = 1, max = 2)
 unif_rv <- sapply(1:n_draw, function (i) double_prec_runif())
@@ -297,9 +301,9 @@ Explain why we observe such a slope in the relative error.
 (Hint: Consider a machine with 10 decimal digits of accuracy. What happens if we numerically differentiate $f(x) = x$ at $x = 1$ with $\Delta x = 0.1, 0.01, 0.001, \ldots$.)
 
 
-*Answer*: Yes the relative error plot agrees with the mathematical theory. log relative error is $log_2(\Delta x^2) = 2 log_2(\Delta x)$, and the plot agrees that there is a linear relationship between log2 step size and log2 relative error.
+*Answer*: The relative error plot partially agrees with the mathematical theory. The log relative error is $log_2(\Delta x^2) = 2 log_2(\Delta x)$, and  front part (higher step size) of the error plot agrees that there is a linear relationship between log2 step size and log2 relative error. The smaller the log step size, the smaller the log relative error. 
 
-The slope in the latter part of the plotted line is roughly 1, and which is increasing and is much less smooth than the earlier part. 
+But the latter part of the plot does not agree with the mathematical theory. The slope in the latter part of the plotted line is increasing, roughly one, and is much less smooth than the earlier part. This might be due to finite precision error of the computer. When doing exponential of two values with small difference, the computer precision may not be able to fully capture the actual difference between the two values, for example $f(x + \Delta) - f(x-\Delta)$ might differ very little very small $\Delta$, but the machine can only represent the small difference till some digit, so rounding off the difference creates greater error with smaller step size. This leads to unstable slope and larger error in the latter part.
 
 ## Part B: Extention to multivariate functions
 
@@ -311,10 +315,15 @@ To test this function, take as an example a quadratic function $f(\boldsymbol{x}
 First show that its gradient is given by $\nabla f(\boldsymbol{x}) = - \boldsymbol{\Phi} \boldsymbol{x}$; more generally, the gradient of a quadratic function $g(\boldsymbol{x}) = \boldsymbol{x}^\intercal \boldsymbol{A} \boldsymbol{x}$ is given by $\nabla g(\boldsymbol{x} = (\boldsymbol{A} + \boldsymbol{A}^\intercal) \boldsymbol{x}$ for any square matrix $\boldsymbol{A}$.
 Then compare a numerically approximated gradient to one computed via an analytical formula.
 
-```{r, eval=FALSE}
+```{r}
 approx_grad <- function(func, x, dx = .Machine$double.eps^(1/3)) {
   numerical_grad <- rep(0, length(x))
   # Fill in
+  for (i in seq_along(x)) {
+    zero_vector <- rep(0, length(x))
+    zero_vector[i] <- dx
+    numerical_grad[i] <- (func(x + zero_vector) - func(x - zero_vector)) / (2*dx)
+  }
   return(numerical_grad)
 }
 
@@ -330,7 +339,8 @@ gaussian_logp <- function(x, Sigma_inv) {
 }
 
 gaussian_grad <- function(x, Sigma_inv) {
-  grad <- rep(0, length(x)) # Replace with an actual formula
+  #grad <- rep(0, length(x)) # Replace with an actual formula
+  grad <- -1 * Sigma_inv %*% x
   return(grad)
 }
 
@@ -342,6 +352,7 @@ testthat::expect_true(are_all_close(
   analytical_grad, numerical_grad, abs_tol = Inf, rel_tol = 1e-3
 ))
 ```
+
 
 ## Things to commit/submit
 
