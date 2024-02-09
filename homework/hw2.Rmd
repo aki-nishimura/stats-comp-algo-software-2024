@@ -41,38 +41,39 @@ Why do we get the different result?
 
 **Explanation**: An important thing about double precision is that there are $2^{52}$ machine-representable values between two reals $2^k$ and $2^{k+1}$, with increment $2^k \times 2^{52}$. This means $2=2^1$ is not recognized as different from $2^1 + 2^{-52}$, but is different from $2^1 + 2^1 \times 2^{-52}$ in machine perspective. Shown as follows.
 
+Let $e = 2^{-52}$.
+
 ```{r}
 2 + .Machine$double.eps == 2 # TRUE, 2 = 2 + 2^-52
-2 + .Machine$double.eps * 2 == 2 # FALSE, 2 != 2 + 2^-51
+2 + .Machine$double.eps * 2 == 2 # FALSE, 2 != 2 + 2*2^-52 = 2 + 2^-51
 ```
 
-Similarly, $1 = 2^0$ is recognized as different from $2^0 + 2^0 \times \times 2^{-52}$, but not $1 + 2^{-1} \times 2^{-52}$
+Similarly, $1 = 2^0$ is recognized as different from $2^0 + 2^0 \times 2^{-52}$, but not different $1 + 2^{-1} \times 2^{-52}$
 
 ```{r}
 1 + .Machine$double.eps == 1  # FALSE
 1 + .Machine$double.eps / 2 == 1 # TRUE
 ```
 
-Let $e = 2^{-52}$.
 
 Case 1: in the first example example evaluated to false
 
-- on the LHS, $a + b = 1 + e + 1 + e$ which is evaluated to $2 + 2e$, because $2$ is different from $2+2e$, and $(a + b) +c$ is thus evaluated to $3 + 2e$.
+- on the LHS, $a + b = 1 + e + 1 + e$ is evaluated to $2 + 2e$, because $2$ is different from $2+2e$. $(a + b) + c = 2 + 2e + 1$ is thus evaluated to $3 + 2e$.
 - While on the RHS, $b + c = 1 + e + 1 = 2 + e$ evaluated to $2$, and $a + (b + c)$ is thus evaluated as $1 + e + 2 = 3 + e$ which is evaluated as $3$.
 - Thus LHS $\neq$ RHS
 
 Case 2: However, in the case of $b=0.5$, we have equality
 
-- $a = 1+e \neq 1$ as proven above, and 
-- $b = 0.5 + e \neq 0.5$ since the lowest it can be separated from is $2^{-1} + 2^{-1} \times e$. Therefore, 
+- $a = 1+e \neq 1$ as proven above 
+- $b = 0.5 + e \neq 0.5$ since the lowest it can be separated from is $2^{-1} + 2^{-1} \times e$ (shown below). Therefore, 
 - on the LHS, $a+b = 1 + e + 0.5 + e = 1.5  +2e$, $(a+b) + c = 1.5 + 2e + 1 = 2.5 + 2e$. 
 - on the RHS, $a + (b+c) = 1 + e + (0.5 + e + 1) = 1 + e + 1.5 + e = 2.5 + 2e$. 
 - Therefore, LHS $==$ RHS
 
 ```{r}
-0.5 + .Machine$double.eps == 0.5 # FALSE, 0.5 + 2^0 * e != 0.5
-0.5 + .Machine$double.eps / 2 == 0.5 # FALSE, 0.5 + 2^-1 * e != 0.5
-0.5 + .Machine$double.eps / 4 == 0.5 # TRUE, 0.5 + 2^-2 * e == 0.5
+0.5 + .Machine$double.eps == 0.5 # FALSE, 2^-1 + 2^0 * e != 2^-1 
+0.5 + .Machine$double.eps / 2 == 0.5 # FALSE, 2^-1 + 2^-1 * e != 2^-1 
+0.5 + .Machine$double.eps / 4 == 0.5 # TRUE, 2^-1 + 2^-2 * e == 2^-1 
 ```
 
 
@@ -117,14 +118,15 @@ Answers to the questions above:
 
 No, the estimate does not make sense. In the estimation, the code goes `theta <- 1e10 + rnorm(1)`, which means $\theta \sim N(10^{-10}, 1)$. The expected variance is 1, but here we get the estimated sample variance to be `-147456`.
 
-*Explanation*: `sample_var_with_question_mark` is trying to estimate this variance $=1$. However, due to finite precision, this estimate is not accurate at 1, but have large variation. If we change the seed, the estimated variance `sample_var_with_question_mark` can vary a lot, both positive and negative.
-
-The distribution of the estimator `sample_var_with_question_mark` under repeated Monte Carlo simulations is normal distribution with mean 1 by central limit theorem. Below we run the simulation 1000 times and got a normally distributed histogram with large variance.
-
 ```{r}
 sample_var_with_question_mark
 ```
 
+*Explanation*: `sample_var_with_question_mark` is trying to estimate this variance of $\theta=1$. However, due to finite precision, this estimate can vary a lot around $1$. `1e10 + rnorm(1)` is a large number plus a small error term $\epsilon$, and when we are squaring it in calculating the second moment, this large number $+ \epsilon$ squared requires more than 52 fraction bits to represent. Therefore, machine cannot represent this number accurately. $\theta^2$ gets rounded up or rounded down by the machine; the estimated sample variance is no longer accurate at $1$, but can vary around 1 by a lot. 
+
+If we change the seed, the estimated variance `sample_var_with_question_mark` can vary a lot around 1, both positive and negative.
+
+The distribution of the estimator `sample_var_with_question_mark` under repeated Monte Carlo simulations is normal distribution with mean 1 by central limit theorem. Below we obtain 1000 sample variance values from 1000 simulation, and get a histogram that resembles normally distribution with large variance.
 
 ```{r}
 test <- function(i) {
@@ -324,13 +326,13 @@ Explain why we observe such a slope in the relative error.
 
 *Answer*: The relative error plot partially agrees with the mathematical theory. 
 
-The log error is $log_2(\Delta x^2) = 2 log_2(\Delta x)$, so in theory when plotting the relative error against the log step size, the slope is 2. 
+The log error is $log_2(\Delta x^2) = 2 log_2(\Delta x)$, so in theory, when plotting the log relative error against the log step size, the slope is 2. 
 
-- This is what we observe in the front part (higher step size) of the error plot. The plot shows that there is a linear relationship between log2 step size and log2 relative error with slope at 2. The smaller the log step size, the smaller the log relative error. 
+- This is what we observe in the front part (higher step size) of the error plot. The plot shows that there is a linear relationship between log2 step size and log2 relative error with slope at 2. The smaller the log2 step size, the smaller the log2 relative error. 
 
-- But the latter part of the plot does not agree with the mathematical theory. The slope in the latter part of the plotted line is increasing, roughly one, and is much less smooth than the earlier part. 
-  - The linear increase in error might be due to finite precision of the machine representation. When decreasing the step size, the denominator $2\Delta$ divide by 2. In theory, $f(x + \Delta) - f(x-\Delta)$ in the numerator should also be halved just like in the front part of the plot. However, due to finite precision error, the the numerator $f(x + \Delta) - f(x-\Delta)$ gets so small that it can be not represented accurately by the machine. Everytime the error gets smaller and requires another fraction bit to represent the error, the error gets rounded up or down, losing precision. The log2 of the lost precision divided by step size will give us roughly 1, which explains a linear increase log2 relative error against log step size
-  - the unstable slope might be because the error can get either rounded up or down, so whether the estimated value is smaller or larger than the actual value is not stable, causing unstable slope
+- But the latter part of the plot does not agree with the mathematical theory. The log2 relative error increases when log2 step size decreases. The slope in the latter part of the plotted line is roughly $-1$, and is much less smooth than the earlier part. 
+  - The linear increase in (log2) relative error with smaller (log2) step size is due to finite precision of the machine representation. When decreasing the step size, the denominator $2\Delta x$ divide by 2. In theory, $f(x + \Delta x) - f(x-\Delta x)$ in the numerator should also decrease just like in the front part of the plot. However, due to finite precision error, the the numerator $f(x + \Delta x) - f(x-\Delta x)$ gets so small that it can be not represented accurately by the machine. Every time the numerator in theory should get smaller, it requires another fraction bit outside the 52 bits to be represented. The numerator then gets rounded up or down, losing precision. The log2 of the lost precision divided by step size will give us roughly $-1$, which explains a linear increase in log2 relative error against decrease in log step size
+  - The unstable slope might be because the error can get either rounded up or down, so whether the estimated value is smaller or larger than the actual value is not stable, causing unstable slope
 
 ## Part B: Extention to multivariate functions
 
@@ -412,4 +414,5 @@ Remember that you can use [`devtools::load_all()`](https://r-pkgs.org/code.html#
 
 ## Things to commit/submit
 
-Link to the pull request.
+Link to the pull request: https://github.com/yanxiliu230/hiperglm/pull/2
+
