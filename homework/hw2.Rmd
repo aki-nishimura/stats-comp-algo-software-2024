@@ -279,7 +279,7 @@ log_logistic_deriv <- function(x) {
 
 # Calculate and plot the relative errors of finite difference approximations
 set.seed(615)
-x <- rnorm(1)
+x <- rnorm(1) # hmm, the resulting plot looks the same even if x = 1 exactly
 
 log2_dx <- - seq(1, 52)
 numerical_deriv <- sapply(
@@ -312,9 +312,13 @@ Also, what is the slope in the "latter part" of your plotted line, roughly speak
 Explain why we observe such a slope in the relative error. 
 (Hint: Consider a machine with 10 decimal digits of accuracy. What happens if we numerically differentiate $f(x) = x$ at $x = 1$ with $\Delta x = 0.1, 0.01, 0.001, \ldots$.)
 
-**Answers:** Since the centered difference approximates the derivative up to $O(\Delta x^2)$, and we are plotting on a log-log scale, I expect the slope to be 2. Indeed, from -15 to 0 (reading from right to left on this plot), the slope is 2. Meanwhile, the slope from -50 to -15 appears to be roughly -1. I think this happens because numeric instability, like if $f(x + \Delta x) - f(x - \Delta x)$ gets truncated to $f(x) - f(x) = 0$ because $\Delta x$ is too small for the machine (so $x + \Delta x$ gets truncated to $x$).
+**Answers:** Since the centered difference approximates the derivative up to $O(\Delta x^2)$, and we are plotting on a log-log scale, I expect the slope to be 2. Indeed, from -17 to 0 (reading from right to left on this plot), the slope is 2.
 
-<!-- the numerator of $\frac{f(x + \Delta x) - f(x - \Delta x)}{2 \Delta x}$ -->
+Meanwhile, the slope from -52 to -17 is much more jagged and appears to be roughly -1 on average. I'm not sure why there is numeric instability here, since all the step sizes are larger than machine epsilon. Maybe we lose precision (i.e., go beyond machine epsilon) when we perform functions like `log()` and `exp()` on these small numbers. Maybe the jaggedness of the line is due to $x$ (which was randomly generated) having fractional parts that get perturbed by our small steps sizes.
+
+Anyhow, if $f(x + \Delta x) - f(x - \Delta x)$ gets truncated to $f(x) - f(x) = 0$, then the centered difference estimate of the derivative at $x$ will be 0, and the relative error will be 1. The log base 2 relative error will be 0. Hmm, this would lead to a slope of 0, not -1. So I am not sure why the slope is -1 from -52 to -17.
+
+<!-- Wrong definition of relative error: relative error = truth/step size \implies log(relative error) = log(truth) - log(step size) \implies change in log(relative error) = log(step size) - log(step size/2) = log(step size)/2. Since change in step size is also log(step size)/2, the slope is 1. -->
 
 ## Part B: Extention to multivariate functions
 
