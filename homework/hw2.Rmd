@@ -307,6 +307,8 @@ testthat::expect_true(are_all_close(
 For Part A, completed code and answers to the questions.
 For Part B, derivation of the gradient and completed code that passes the test.
 
+From Methods Term 1, we know that the gradient of a quadratic form $x^TAx$ where $A$ is symmetric is given by $2Ax$ , so in the case of $-\frac{1}{2}x^T\Phi x$ we get $2\Phi x$.
+
 # Exercise 4: Continuing development of `hiperglm` --- finding MLE via `stats::optim()` and testing it
 
 We will continue the development of the `hiperglm` package.
