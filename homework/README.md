@@ -2,7 +2,7 @@
 
 In this course, you will complete and submit assignments using Git and Github.
 
-To start, [fork this class repo into your Github account](https://docs.github.com/en/pull-requests/collaborating-with-pull-requests/working-with-forks/fork-a-repo).
+To start, [fork](https://docs.github.com/en/pull-requests/collaborating-with-pull-requests/working-with-forks/fork-a-repo) this class repo into your Github account.
 Then complete and submit the first assignment as follows: 
 1) make a `hw1` branch from the `main` branch,
 2) commit a completed assignment in the `hw1` branch, and
