@@ -389,7 +389,7 @@ Remember that you can use [`devtools::load_all()`](https://r-pkgs.org/code.html#
 
 0. Make and check out (`git branch` and `git checkout`) a development branch (call it `develop`) where you will commit the work below.
 1. Set up the use of `testthat`.
-2. Copy the helper functions `are_all_close()` and `simulate_data()` from the instructor's repo.
+2. Copy the helper functions `are_all_close()` and `simulate_data()` from [the instructor's repo](https://github.com/aki-nishimura/hiperglm/blob/3706c61e1492fe8ccc77e414626d43219b65e659/tests/testthat/helper.R).
 3. Test the `are_all_close()` function. 
 Write a test to cover at least three cases: the function 1) correctly returns `TRUE`, 2) correctly returns `FALSE` because the relative error is above `rel_tol`, and 3) correctly returns `FALSE` because the absolute error is above `abs_tol`. 
 Make sure that the logic of the test is clear and easy to understand &mdash; tests are there to clarify and validate the code's behavior; unreadable tests defeat the purpose.
