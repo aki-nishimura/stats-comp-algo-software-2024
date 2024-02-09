@@ -414,5 +414,4 @@ Remember that you can use [`devtools::load_all()`](https://r-pkgs.org/code.html#
 
 ## Things to commit/submit
 
-Link to the pull request: https://github.com/yanxiliu230/hiperglm/pull/2
-
+Link to the pull request: https://github.com/yanxiliu230/hiperglm/pull/4
