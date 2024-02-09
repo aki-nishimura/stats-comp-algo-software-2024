@@ -10,3 +10,8 @@
 lecture/libs/*
 lecture/*.pdf
 !lecture/mathjax_config.html
+
+homework/git_experiment/edit_and_commit_original.sh
+homework/git_experiment/git_repo_size_history_ok.txt
+homework/git_experiment/git_repo_size_history_v1.txt
+homework/git_experiment/foo.*
