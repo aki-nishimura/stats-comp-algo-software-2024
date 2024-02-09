@@ -100,9 +100,18 @@ The `calc_num_expected_duplicate()` function below implements the above formula 
 
 ```{r}
 calc_num_expected_duplicate <- function (n_draw, n_choice) {
-  # To be remedied.
-  prob_item_never_chosen <- (1 - 1 / n_choice) ^ n_draw
+  
+  x = 1/n_choice
+  d = n_draw 
+  
+  f_0 <- 1 
+  f_1 <- -d*x
+  f_2 <- ((d^2)/2)*x^2
+  
+
+  prob_item_never_chosen <- f_0 + f_1 + f_2
   n_expected_unique <- n_choice * (1 - prob_item_never_chosen)
+  n_expected_unique <- d - ((d^2)*x/2 )
   return(n_draw - n_expected_unique)
 }
 ```
@@ -119,12 +128,19 @@ The expected number from Part B, if you calculated it correctly, suggests that i
 n_draw <- 10^6
 base_r_unif <- runif(n_draw, min = 1, max = 2)
 unif_rv <- sapply(1:n_draw, function (i) double_prec_runif())
+
+
+#sum(duplicated(unif_rv))
+#0
+#sum(duplicated(base_r_unif))
+#113
+
 # Check the number of duplicates against the expected value
 ```
 
 ## Things to commit/submit
 
-Answers to the tasks/questions above.
+***The number of duplicates using double-precision is 0. The number of duplicates using base R 32-bit precision is over a 100. This is because the base-R values are lesser number of values to choose from.***
 
 # Exercise 3: Numerical differentiation
 
