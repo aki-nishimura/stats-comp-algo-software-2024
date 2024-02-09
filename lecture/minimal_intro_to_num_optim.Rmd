@@ -278,9 +278,7 @@ How do we choose a stepsize?
 
 ---
 
-When do we stop the iterations? 
---
-(Eyeball it?)
+When do we stop the iterations (other than eyballing it)?
 
 --
 
@@ -310,10 +308,21 @@ layout: false
 
 --
 
-![:vspace 13ex]
+![:vspace 10ex]
 
 > You are smart, you'll figure it out. 
 <p style="margin-left: 11em; margin-top: -1ex;"> &mdash; Marc Suchard </p>
+
+![:vspace 8ex]
+
+
+--
+
+That said, here is a tip to simplify some of the formulas and hence their implementations &mdash;
+if $g(\bm{\beta}) = f(\bm{X} \bm{\beta})$, then 
+$$\nabla g(\bm{\beta}) = \bm{X}^\intercal \nabla f(\bm{X} \bm{\beta})
+  \ \text{ and } \
+  \hess_g(\bm{\beta}) = \bm{X}^\intercal \left[ \hess_f(\bm{X} \bm{\beta}) \right] \bm{X}.$$
 
 ---
 

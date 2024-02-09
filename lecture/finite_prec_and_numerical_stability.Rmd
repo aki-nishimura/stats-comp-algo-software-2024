@@ -59,24 +59,9 @@ layout: true
 ---
 
 ![](figure/double_precision_number.png)
-![:vspace -1ex]
+![:vspace -1.5ex]
 
-52-bits fraction:<br>
-$\qquad$ 10110... = 1/2 + 0/4 + 1/8 + 1/16 + 0/32 + ...
-
---
-
-```{r, eval=TRUE}
-c((1 + 2^(-52)) - 1, 
-  (1 + 2^(-53)) - 1)
-```
-
----
-
-![](figure/double_precision_number.png)
-![:vspace -1ex]
-
-11-bits exponent:<br>
+Magnitude (in base 2) is represented by 11-bits exponent:<br>
 $\qquad$ $2^{11} = 2048$, covering −1022 to +1023
 ![:vspace -.75ex]
 
@@ -97,6 +82,27 @@ This example is a bit of a surprise b/c `2^(-1022 - 52)` only has 1-binary digit
 
 ---
 
+![](figure/double_precision_number.png)
+![:vspace -1.5ex]
+
+Signif digits (in base 2) are given by 52-bits fraction part:<br>
+$\qquad$ 10110... = 1/2 + 0/4 + 1/8 + 1/16 + 0/32 + ...
+
+![:vspace -.5ex]
+
+In other words, there're $2^{52}$ machine-representable values in between two reals $2^k$ and $2^{k + 1}$ w/ increment $2^k \times 2^{-52}$.
+
+--
+
+![:vspace -.75ex]
+
+```{r, eval=TRUE}
+c((1 + 2^(-52)) - 1, 
+  (1 + 2^(-53)) - 1)
+```
+
+---
+
 Limit of relative approx is called "machine epsilon":
 ![:vspace -.75ex]
 
@@ -111,8 +117,8 @@ What does this mean in practical terms?
 
 ```{r}
 a <- 1e6 * rnorm(1)
-a * (1 + .Machine$double.eps) == a
-a * (1 + .Machine$double.eps / 2) == a
+(a + a * .Machine$double.eps) == a
+(a + a * .Machine$double.eps / 2.1) == a
 ```
 
 ---
@@ -224,7 +230,7 @@ set.seed(1918)
 n_pred <- 10^6
 n_category <- 3
 
-x_1 <- rnorm(n_pred)
+x <- rnorm(n_pred)
 reg_coef <- matrix(
   rnorm(n_pred * n_category), 
   n_pred, n_category
@@ -237,7 +243,7 @@ reg_coef <- matrix(
 
 ![:vspace -3.1ex]
 ```{r, eval=FALSE}
-category_logp <- as.vector(t(x_1) %*% reg_coef)
+category_logp <- as.vector(t(x) %*% reg_coef)
 category_prob <- exp(category_logp) / sum(exp(category_logp))
 ```
 
@@ -245,7 +251,7 @@ category_prob <- exp(category_logp) / sum(exp(category_logp))
 
 ![:vspace -3.1ex]
 ```{r}
-category_logp <- as.vector(t(x_1) %*% reg_coef)
+category_logp <- as.vector(t(x) %*% reg_coef)
 category_prob <- exp(category_logp) / sum(exp(category_logp))
 category_prob
 ```
@@ -254,7 +260,7 @@ category_prob
 
 ![:vspace -3.1ex]
 ```{r}
-category_logp <- as.vector(t(x_1) %*% reg_coef)
+category_logp <- as.vector(t(x) %*% reg_coef)
 category_prob <- exp(category_logp) / sum(exp(category_logp))
 category_logp
 ```
@@ -411,7 +417,7 @@ ancestor_factor <- rbinom(n_pred, 1, prob = .1)
 for (i in 1:n_obs) {
   X[i, ] <- ancestor_factor
   rand_indx <- sample.int(n_pred, 10)
-  X[i, rand_indx] <- 1 - X[i, rand_indx]
+  X[i, rand_indx] <- 1 - X[i, rand_indx] # Flip 0 and 1
 }
 ```
 
@@ -443,7 +449,7 @@ Model fit looks acceptable when allowing "singular":
 ![:vspace -1ex]
 
 ```{r, eval=FALSE}
-lm_out <- lm(y ~ X)
+lm_out <- lm(y ~ X) # Default is `singular.ok = TRUE`
 coef(lm_out)[1:12]
 ```
 ```{r, echo=FALSE}
@@ -538,7 +544,7 @@ sq_exp_cov <- function(dist, range) {
 loc_obs <- c(seq(0, .4, .01), seq(.6, 1, .01))
 n_obs <- length(loc_obs)
 
-set.seed(2021)
+set.seed(2021) # Inaugural year of this course
 corr_range <- .2
 dist_obs <- as.matrix(dist(loc_obs))
 Sigma_obs <- sq_exp_cov(dist_obs, corr_range)
@@ -549,25 +555,7 @@ plot(loc_obs, y_obs, xlab="s", ylab="y(s)",
      col=jhu_color$spiritBlue, frame.plot = F)
 ```
 
-<!--
-How we simulated a function from a GP with squared exponential covariance in the previous plot:
-
-```{r, eval=FALSE}
-sq_exp_cov <- function(dist, range) {
-  return(exp(-(dist / range)^2))
-}
-
-loc_obs <- c(seq(0, .4, .01), seq(.6, 1, .01))
-n_obs <- length(loc_obs)
-
-set.seed(2021)
-corr_range <- .2
-dist_obs <- as.matrix(dist(loc_obs))
-Sigma_obs <- sq_exp_cov(dist_obs, corr_range)
-y_obs <- mvrnorm(mu = rep(0, n_obs), Sigma = Sigma_obs)
-plot(loc_obs, y_obs)
-```
--->
+<!-- (Observed values simulated from GP with sq exp cov.) -->
 
 ---
 
@@ -761,6 +749,7 @@ are {1, 1}.
 But those of $\begin{bmatrix} 1 & 10^{16} \\ 10^{-16} & 1 \end{bmatrix}$ are {0, 2}.
 
 $\qquad$ (To see this, note that $\lambda_1 \lambda_2 = 0$ and $\lambda_1 + \lambda_2 = 2$.)
+<!-- b/c the product and sum of the eigenvalues coincides with the determinant and trace. -->
 
 --
 
@@ -781,20 +770,12 @@ layout: true
 
 ### Review: eigen/singular value decomposition 
 
-<!-- TODO: Consider actually discussing SVD. -->
-<!-- Also, Cholesky decomposition may be worth discussing given that we do explicitly use it every now and then. -->
-<!-- And a bit of complexity analysis along with it could be useful to see it once. -->
-
 --
 
-Symmetric $\bA$ is _positive definite_ if $\bv^\intercal \bA \bv > 0$ for $\bv \neq \boldsymbol{0}$.
-
---
-
-Any positive-definite $\bA$ admits the eigen decomposition
+Any symmetric $\bA = \bA^\intercal$ admits the eigen decomposition
 $$\boldsymbol{A} = \bm{U} \boldsymbol{\Lambda} \bm{U}^\intercal, \text{ where}$$
 * $\bm{U}$ orthogonal, i.e. $\bm{U}^\intercal \bm{U} = \boldsymbol{I} \,$ or $\, \langle \bu_j, \bu_k \rangle = \ind\{ j = k \}$;
-* $\boldsymbol{\Lambda} = \textrm{diag}(\lambda_1, \ldots, \lambda_p) \,$ for $\, \lambda_1 \geq \ldots \geq \lambda_p > 0$.
+* $\boldsymbol{\Lambda} = \textrm{diag}(\lambda_1, \ldots, \lambda_p) \,$ for $\, \lambda_1 \geq \ldots \geq \lambda_p$.
 
 --
 
@@ -806,6 +787,10 @@ $$
   = \lambda_j \bm{U} \boldsymbol{e}_j
   = \lambda_j \bu_j.
 $$
+
+--
+
+If additionally $\bA$ is _positive definite_, i.e. $\bv^\intercal \bA \bv \hspace{-.1ex} > \hspace{-.1ex} 0$ for $\bv \neq \boldsymbol{0}$, then all the eigenvalues are necessarily positive.
 
 ---
 
@@ -841,18 +826,21 @@ $$
 
 **Note:** ![:vspace -.75ex]
 * If $\bX = \bm{V} \boldsymbol{\Gamma} \bm{U}^\intercal$, then $\bX^\intercal \bX = \bm{U} \boldsymbol{\Gamma}^2 \bm{U}^\intercal$. 
---
-("SVD on design matrix is equivalent to eigen on empirical cov.")
+<br>
+("SVD on design is equiv to eigen on empirical cov.")
 
 ---
 
 ### Review: eigen/singular value decomposition 
 
-The largest eigen/singular values of $\bA$ in particular cocides with its _matrix norm_:
+Largest eigen/singular value cocides w/ the _matrix norm_:
 
 $$\| \bA \| := \max_{\| \bv \| = 1} \| \bA \bv \| = \max_{\bv \neq \bm{0}} \frac{\| \bA \bv \|}{\| \bv \|} = \gamma_\max (\bA).$$
 
-(It follows from the definition that $\| \bA \bv \| / \| \bv \| \leq \| \bA \|$.)
+--
+
+In particular, by definition $\| \bA \bv \| / \| \bv \| \leq \| \bA \|$ for any $\bv \neq \bm{0}$.<br>
+(So the matrix norm bounds rel dilation of $\bv$ by $\bv \to \bA \bv$.)
 
 --
 
@@ -870,10 +858,6 @@ $$\kappa := \lim_{\| \bdelta \bx \| \to 0} \sup_{\bdelta \bx}
   }{
   \| \bdelta \bx \| / \| \bx \|
 }.$$
-
-<!-- TODO: Consider spending a bit more time explaining the matrix norm.  -->
-<!-- Or, the condition number can be explained as the ratio of the greatest dilation and contraction of a vector by $\boldsymbol{A}$.  -->
-<!-- (And we can then note that $\| \boldsymbol{A}^{-1} \| = 1 / | \boldsymbol{A} |$.) -->
 
 --
 
@@ -1017,7 +1001,7 @@ layout: true
 
 Finite precision can cause an error when there is a perfectly fine mathematical/statistical answer.
 <p style="margin-top: -1ex;"> </p>
-* Don't stress for the first version, but figure it out and fix properly when errors arise. 
+* Don't stress in your first implementation, but fix properly when errors arise. 
 --
 (No "hack" please.)
 
@@ -1031,10 +1015,14 @@ Magnitude of error in numerical linalg is typically proportional to $\kappa(\bol
 
 When we encounter an ill-conditioned problem, we need to figure out what would be a "statistically right" answer.
 
+--
+
 ![:vspace -.5ex]
 ### Example: ill-conditioned regression
 ![:vspace -.75ex]
-If a linear (mixed) model doesn't fit and $\kappa(\boldsymbol{X}^\intercal \boldsymbol{X})$ is huge, perhaps  you have more params than reliably estimable.
+If a linear (mixed) model doesn't fit and $\kappa(\boldsymbol{X}^\intercal \boldsymbol{X})$ is huge, perhaps you have more params than reliably estimable.
+
+--
 
 ![:vspace -.5ex]
 One potential solution here is to reduce an effective number of parameters via regularization; e.g. consider

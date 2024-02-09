@@ -627,7 +627,7 @@ $$\bm{L}_3 \bm{L}_2 \bm{L}_1
 --
 
 In other words, 
-$$\bA = \bm{L} \bm{L}^\intercal \text{ for } \bm{L} =  \bm{L}_1^{-1} \bm{L}_2^{-1} \bm{L}_3^{-1}.$$
+$$\bA = \bm{L} \bm{L}^\intercal \text{ for } \bm{L} = \bm{L}_1^{-1} \bm{L}_2^{-1} \bm{L}_3^{-1}.$$
 
 ---
 
@@ -700,20 +700,27 @@ Here's how I'd re-write the previous code:
 
 ```{r}
 cholesky <- function(A) {
-  L <- matrix(0, nrow = nrow(A), ncol=ncol(A))
+  L <- matrix(0, nrow = nrow(A), ncol = ncol(A))
   for (row_indx in 1:nrow(A)) {
-    A_sub <- A[1:row_indx, 1:row_indx, drop = FALSE]
+    A_curr_row <- A[row_indx, 1:row_indx]
+    L_prev <- L[1:(row_indx - 1), 1:(row_indx - 1), drop=F]
     L[row_indx, 1:row_indx] <- 
-      calc_chol_row(row_indx, A_sub, L)
+      calc_chol_row(row_indx, A_curr_row, L_prev)
   }
   return(L)
 }
+```
 
-calc_chol_row <- function(i, A, L) {
+![:vspace -.8ex]
+
+```{r}
+calc_chol_row <- function(i, A_i, L_prev) {
+  L_i <- rep(0, i) # the new i-th row of L
   for (j in 1:i) {
-    L[i, j] <- calc_chol_entry(i, j, A, L)
+    L_i[j] <- 
+      calc_chol_entry(i, j, A_i, L_prev, L_i[1:(j - 1)])
   }
-  return(L[i, 1:i])
+  return(L_i)
 }
 ```
 
@@ -722,63 +729,13 @@ calc_chol_row <- function(i, A, L) {
 Here's how I'd re-write the previous code:
 
 ```{r}
-calc_chol_entry <- function(i, j, A, L) {
-  row_ij_inner_prod <- 0
-  for (k in seq_len(j - 1)) {
-    row_ij_inner_prod <- 
-      row_ij_inner_prod + L[i, k] * L[j, k]
-  }
-  if (j < i) {
-    chol_entry <- (A[i, j] - row_ij_inner_prod) / L[j, j]
-  } else {
-    chol_entry <- sqrt(A[i, i] - row_ij_inner_prod)
-  }
-  return(chol_entry)
-}
-```
-
----
-
-This is even better:
-
-```{r}
-cholesky <- function(A) {
-  L <- matrix(0, nrow = nrow(A), ncol=ncol(A))
-  for (row_indx in 1:nrow(A)) {
-    A_sub <- A[1:row_indx, 1:row_indx, drop = FALSE]
-    L_prev <- L[1:(row_indx - 1), 1:(row_indx - 1), drop=F]
-    L[row_indx, 1:row_indx] <- 
-      calc_chol_row(row_indx, A_sub, L_prev)
-  }
-  return(L)
-}
-```
-
-![:vspace -.7ex]
-
-```{r}
-calc_chol_row <- function(i, A, L_prev) {
-  L_i <- rep(0, i) # the new "i"th row of L
-  for (j in 1:i) {
-    L_i[j] <- 
-      calc_chol_entry(i, j, A, L_prev, L_i[1:(j - 1)])
-  }
-  return(L_i)
-}
-```
-
----
-
-This is even better:
-
-```{r}
-calc_chol_entry <- function(i, j, A, L, L_i) {
+calc_chol_entry <- function(i, j, A_i, L_prev, L_i) {
   to_subtract <- 0
   if (j < i) {
     for (k in seq_len(j - 1)) {
-      to_subtract <- to_subtract + L_i[k] * L[j, k]
+      to_subtract <- to_subtract + L_i[k] * L_prev[j, k]
     }
-    chol_entry <- (A[i, j] - to_subtract) / L[j, j]
+    chol_entry <- (A_i[j] - to_subtract) / L_prev[j, j]
   } else {
     chol_entry <- sqrt(A[i, i] - sum(L_i^2))
   }
@@ -854,13 +811,21 @@ chol_factor_solve <- function(L, b) {
 
 Here's another use case of Cholesky:
 
+<style>
+.smaller-code .remark-code{
+  font-size: 49%
+}
+</style>
+
+.smaller-code[
 ```{r}
 Sigma_inv <- A
 
-L <- chol(Sigma_inv) # Use the built-in ver
+R <- chol(Sigma_inv) # Built-in ver: t(R) %*% R == Sigma_inv
 z <- rnorm(size)
-x <- forwardsolve(L, z)
+x <- backsolve(R, z)
 ```
+]
 
 --
 
@@ -887,6 +852,8 @@ $$(\bm{A} + \Delta \bm{A}) \, \bx_\textrm{mach}
   \ \text{ for } \
   \frac{\| \Delta \bm{A} \|}{\| \bm{A} \|} = O(\epsilon_\textrm{mach}).$$
   
+--
+
 The above result in particular implies
 
 $$\| \bx_\textrm{mach} - \bA^{-1} \bm{b} \| = O(\kappa(A) \epsilon_\textrm{mach}).$$
@@ -1034,44 +1001,48 @@ X <- matrix(rnorm(n * p), nrow = n, ncol = p)
 B <- matrix(rnorm(p * k), nrow = p, ncol = k)
 ```
 
+.smaller-code[
 ```{r, eval=FALSE}
 row_max <- function(A) { 
   sapply(1:nrow(A), function(i) max(A[i, ]))
 }
 
-rep_col <- function(x, ncol) {
-  outer(x, rep(1, ncol))
+rep_col_vec <- function(col_vec, ncol) {
+  outer(col_vec, rep(1, ncol))
 }
 
 Z <- X %*% B # O(npk); everything else O(nk)
-Z <- Z - rep_col(row_max(Z), ncol(Z))
+Z <- Z - rep_col_vec(row_max(Z), ncol(Z))
 Pi <- exp(Z) 
 Pi_rowsum <- rowSums(Pi) 
 Pi <- rep_col(1 / Pi_rowsum, ncol(Pi)) * Pi 
 ```
+]
 
 ---
 
 Or, it could look like
 
+.smaller-code[
 ```{r, eval=FALSE}
 row_max <- function(A) { 
   sapply(1:nrow(A), function(i) max(A[i, ]))
 }
 
-rep_col <- function(x, ncol) {
-  outer(x, rep(1, ncol))
+rep_col_vec <- function(col_vec, ncol) {
+  outer(col_vec, rep(1, ncol))
 }
 
 category_logp <- X %*% B
 n_cat <- ncol(category_logp)
 category_logp <- 
-  category_logp - rep_col(row_max(category_logp), n_cat)
+  category_logp - rep_col_vec(row_max(category_logp), n_cat)
 category_prob <- exp(category_logp)
 row_normalizer <- 1 / rowSums(category_prob)
 row_normalizer <- rep_col(row_normalizer, n_cat)
 category_prob <- row_normalizer * category_prob
 ```
+]
 
 ---
 
@@ -1201,6 +1172,7 @@ The same cost for solving $\bm{L}^\intercal \bx = \bm{z}$ via backward sub.
 
 So the overall cost of solving $\bA \bx = \bm{b}$ via Cholesky is 
 $$\frac{1}{3} p^3 + 2 p^2 \sim \frac{1}{3} p^3 = O(p^3).$$
+
 --
 
 In particular, once the problem size $p$ becomes large enough, the costs of forward/back subs are negligible.
@@ -1418,12 +1390,6 @@ Computational complexity of solving least-sq via QR?
 --
 
 Overall, the factorization part dominates with $2 n p^2$ cost. 
-
---
-
-The $- \frac{2}{3} p^3$ part reduces the cost a bit, but only when $n \approx p$.
-* If $n = p$, then $2 n p^2 - \frac{2}{3} p^3 = \frac{4}{3} p^3$.
-* If $n = 4p$, then $2 n p^2 - \frac{2}{3} p^3 = \left( 8 - \frac{2}{3} \right) p^3$.
 
 <!-- 
 See Trefethen Algorithm 10.2:
