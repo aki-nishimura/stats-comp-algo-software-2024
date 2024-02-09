@@ -40,23 +40,23 @@ Why do we get the different result?
 In the first example, `a` and `b` are both equal to `1 + .Machine$double.eps`, which is slightly greater than 1. When we add `a` and `b` together, the result is a number that is slightly greater than 2 (`2 + 2*.Machine$double.eps`). When this number is added to `c` (which is equal to 1), we get a number that is slightly greater than 3 (`3 + 2*.Machine$double.eps`). On the other hand, when we add `a` to `b + c`, the result is exactly 3 because `1 + .Machine$double.eps` and `2 + .Machine$double.eps` are indistinguishable (for the computer) from 1 and 2, respectively. Hence, `(a + b) + c` is not equal to `a + (b + c)`, and the expression returns `FALSE`. This paragraph is also written in mathematical notation below:
 
 LHS:
-$$(a+b)+c \to (1+\epsilon+1+\epsilon)+1 \to (2+2\epsilon)+1 \to 3+2\epsilon.$$
+$$(a+b)+c \to 2(1+\epsilon)+1 \to (2+2\epsilon)+1 \to 3+2\epsilon.$$
 RHS:
 $$a+(b+c) \to 1+\epsilon+(1+\epsilon+1) \to 1+\epsilon+(2+\epsilon) \to 1+\epsilon+(2) \to 1+(2) \to 3.$$
 
 Hence:
 $$3+2\epsilon \neq 3.$$
 
-In the second example, `b` is equal to `0.5 + .Machine$double.eps`, which is slightly greater than 0.5. When we add `a` (which is slightly greater than 1) and `b`, the result is a number that is slightly greater than 1.5. This number is still representable with floating-point precision when it is added to `c` (which is 1), and we get a number that is slightly greater than 2.5 (`2.5 + 2*.Machine$double.eps`). Similarly, when we add `a` to `b + c`, the result is a number that is slightly greater than 2.5 (`2.5 + 2*.Machine$double.eps`) since `b + c` (which is `1.5 + .Machine$double.eps`) is representable with floating-point precision when it is added to `a` (which is `1 + .Machine$double.eps`). Hence, `(a + b) + c` is equal to `a + (b + c)`, and the expression returns `TRUE`. This paragraph is also written in mathematical notation below:
+In the second example, `b` is equal to `0.5 + .Machine$double.eps`, which is slightly greater than 0.5. When we add `a` (which is slightly greater than 1) and `b`, the result is a number that is slightly greater than 1.5. This number is still representable with floating-point precision when it is added to `c` (which is 1), and we get a number that is slightly greater than 2.5 (`2.5 + .Machine$double.eps`). Similarly, when we add `a` to `b + c`, the result is a number that is slightly greater than 2.5 (`2.5 + .Machine$double.eps`) since `b + c` (which is `1.5 + .Machine$double.eps`) is representable with floating-point precision when it is added to `a` (which is `1 + .Machine$double.eps`). Hence, `(a + b) + c` is equal to `a + (b + c)`, and the expression returns `TRUE`. This paragraph is also written in mathematical notation below:
 
 LHS:
-$$(a+b)+c \to (1+\epsilon+0.5+\epsilon)+1 \to (1.5+2\epsilon)+1 \to 2.5+2\epsilon.$$
+$$(a+b)+c \to (1+\epsilon+0.5+\epsilon)+1 \to (1+0.5+\epsilon)+1 \to (1.5+\epsilon)+1 \to 2.5+\epsilon.$$
 
 RHS:
-$$a+(b+c) \to 1+\epsilon+(0.5+\epsilon+1) \to 1+\epsilon+(1.5+\epsilon) \to 2.5+2\epsilon.$$
+$$a+(b+c) \to 1+\epsilon+(0.5+\epsilon+1) \to 1+\epsilon+(1.5+\epsilon) \to 1+(1.5+\epsilon) \to 2.5+\epsilon.$$
 
 Hence:
-$$2.5+2\epsilon = 2.5+2\epsilon.$$
+$$2.5+\epsilon = 2.5+\epsilon.$$
 
 In summary, this exercise demonstrates that addition with floating point numbers and machine epsilon is not associative, and the order of addition operations can make a difference. 
 
@@ -252,7 +252,7 @@ n_duplicates <- calc_num_expected_duplicate(n_draw = 10^6, n_choice = 2^52)
 print(n_duplicates)
 ```
 
-**My answer to Part C:** Please see the code above (under "Part C") for my implementations of the two requested checks. The number of duplicates from `runif(10^6)` (120) is close to the expected value for a floating-point number with 32-bits of precision (116.415205411613). Similarly, using my implementation of random uniform from Part A, duplicates are rare in double-precision; the number of duplicates (0) is very close to the expected value of 0.000111022191440213. 
+**My answer to Part C:** Please see the code above (under "Part C") for my implementations of the two requested checks. The number of duplicates from `runif(10^6)` is close to the expected value for a floating-point number with 32-bits of precision (116.415205411613). Similarly, using my implementation of random uniform from Part A, duplicates are rare in double-precision; the number of duplicates is very close to the expected value of 0.000111022191440213. 
 
 # Exercise 3: Numerical differentiation
 
@@ -264,18 +264,18 @@ We evaluate its derivative using an analytical formula and compare it to the cen
 Using the starter code provided below, plot the relative error of the numerical approximation in a log-log scale.
 What do you expect the slope of the plotted line to be?
 
-```{r, eval=FALSE}
+```{r, eval=TRUE}
 #' Approximate derivative via centered-difference approximation
 approximate_deriv <- function(func, x, dx) {
-  # Fill in
+  return((func(x+dx) - func(x-dx))/(2*dx))
 }
 
 log_logistic_func <- function(x) {
-  # Fill in
+  return(log(exp(x)/(1+exp(x))))
 }
 
 log_logistic_deriv <- function(x) {
-  # Fill in
+  return(1/(1+exp(x)))
 }
 
 # Calculate and plot the relative errors of finite difference approximations
@@ -324,10 +324,14 @@ First show that its gradient is given by $\nabla f(\boldsymbol{x}) = - \boldsymb
 more generally, the gradient of a quadratic function $g(\boldsymbol{x}) = \boldsymbol{x}^\intercal \boldsymbol{A} \boldsymbol{x}$ is given by $\nabla g(\boldsymbol{x} = (\boldsymbol{A} + \boldsymbol{A}^\intercal) \boldsymbol{x}$ for any square matrix $\boldsymbol{A}$.
 Then compare a numerically approximated gradient to one computed via an analytical formula.
 
-```{r, eval=FALSE}
+```{r, eval=TRUE}
 approx_grad <- function(func, x, dx = .Machine$double.eps^(1/3)) {
-  numerical_grad <- rep(0, length(x))
-  # Fill in
+  dimension <- length(x)
+  numerical_grad <- rep(0, dimension)
+  for(i in 1:dimension){
+    e_i = replace(rep(0, dimension), i, 1)
+    numerical_grad[i] = (func(x + dx*e_i) - func(x - dx*e_i))/(2*dx)
+  }
   return(numerical_grad)
 }
 
@@ -343,7 +347,7 @@ gaussian_logp <- function(x, Sigma_inv) {
 }
 
 gaussian_grad <- function(x, Sigma_inv) {
-  grad <- rep(0, length(x)) # Replace with an actual formula
+  grad <- -1 * Sigma_inv %*% x
   return(grad)
 }
 
@@ -361,6 +365,17 @@ testthat::expect_true(are_all_close(
 For Part A, completed code and answers to the questions.
 For Part B, derivation of the gradient and completed code that passes the test.
 
+**My answer to Part A:** Please see my completed code above under "Part A." 
+
+I expected the slope of the plotted line in the log-log scale to be -2. This is because the error of the centered difference approximation is proportional to $(\Delta x)^2$, so in a log-log scale, we can expect a straight line with slope -2. 
+
+However, the relative error plot only agreed with this prediction (based on mathematical theory) in the first part of the plot. As $\Delta x$ became very small (i.e., as we moved to the right on the x-axis), the slope of the line increased and became positive. This was due to round-off errors that became significant when $\Delta x$ was close to machine epsilon. When $\Delta x$ was too small, the difference $f(x + \Delta x) - f(x - \Delta x)$ became indistinguishable from zero due to the finite precision of the computer, and the round-off errors dominated, leading to an increase in the relative error.
+
+The slope in the "latter part" of the plotted line is roughly 1. This is because when $\Delta x$ is smaller than the square root of machine epsilon, the dominant error is the round-off error, which is proportional to $\Delta x$. Hence, in a log-log scale, the slope is 1.
+
+**My answer to Part B:** The gradient of a function $f(\boldsymbol{x}) = - \boldsymbol{x}^\intercal \boldsymbol{\Phi} \boldsymbol{x} / 2$ is given by $\nabla f(\boldsymbol{x}) = - \boldsymbol{\Phi} \boldsymbol{x}$. This can be shown by taking the derivative of $f(\boldsymbol{x})$ with respect to $\boldsymbol{x}$. More generally, for a quadratic function $g(\boldsymbol{x}) = \boldsymbol{x}^\intercal \boldsymbol{A} \boldsymbol{x}$, the gradient is given by $\nabla g(\boldsymbol{x}) = (\boldsymbol{A} + \boldsymbol{A}^\intercal) \boldsymbol{x}$ because the derivative of $\boldsymbol{x}^\intercal \boldsymbol{A} \boldsymbol{x}$ with respect to $\boldsymbol{x}$ is $(\boldsymbol{A} + \boldsymbol{A}^\intercal) \boldsymbol{x}$.
+
+Please see my completed code above under "Part B," which implements a function to approximate $\nabla f(\boldsymbol{x})$ via the centered difference method and passes the test. This implies that the numerically approximated gradient is close to the gradient computed using an analytical formula (i.e., is an accurate numerical approximation).
 
 # Exercise 4: Continuing development of `hiperglm` &mdash; finding MLE via `stats::optim()` and testing it
 
@@ -401,4 +416,4 @@ Please, pretty please, do not calculate an inverse of a matrix.
 
 Link to the pull request.
 
-**My answer:** Here is the link to the pull request:
+**My answer:** Here is the link to the pull request: <https://github.com/acolum/hiperglm/pull/1>
