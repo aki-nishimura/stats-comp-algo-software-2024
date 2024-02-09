@@ -416,4 +416,4 @@ Please, pretty please, do not calculate an inverse of a matrix.
 
 Link to the pull request.
 
-**My answer:** Here is the link to the pull request: <https://github.com/acolum/hiperglm/pull/1>
+**My answer:** Here is the link to the pull request: <https://github.com/acolum/hiperglm/pull/2>
