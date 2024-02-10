@@ -85,9 +85,7 @@ sample_var_with_question_mark <- (sample_sec_mom - (sample_mean)^2)
 # Answer
 We get a final sample variance of -147456, which is negative. The above solution does not make sense as the variance cannot be negative. Numerical instability arises due to the generation of random numbers using rnorm(1). This results in the addition of a small number to a very large number , leading to precision issues in floating-point arithmetic and causing significant loss of precision in the calculations.
 
-Particularly, when computing running_sum_sq, squaring theta yields extremely large numbers due to the large value of theta combined with random fluctuations from rnorm(1). Summing up these large squared values over 1000 times compounds the precision issues.
-
-Consequently, the calculation of sample_var_with_question_mark is prone to substantial round-off errors, as subtracting a large squared mean from a large second moment is likely to lose significant digits of precision. 
+Particularly, when computing running_sum_sq, squaring theta yields extremely large numbers due to the large value of theta combined with random fluctuations from rnorm(1). Summing up these large squared values over 1000 times compounds the precision issues. Consequently, the calculation of sample_var_with_question_mark is prone to substantial round-off errors, as subtracting a large squared mean from a large second moment is likely to lose significant digits of precision. 
 
  I ran the simulations over a large number of seeds and got the following values for the variances(shown as a histogram)-
 
@@ -147,7 +145,7 @@ Write a function to generate a Uniform(1, 2) random variable in double-precision
 Check the function's behavior by plotting a histogram of random variables generated from it. 
 
 ```{r, eval=FALSE}
-double_prec_runif <- function () {
+d_prec_unif <- function () {
   bits <- rbinom(52, size = 1, prob = 0.5)
   weight_vec=2^-(1:52)
   fraction <- sum(bits *  weight_vec)
@@ -156,7 +154,7 @@ double_prec_runif <- function () {
 }
 
 n_draw <- 10^5
-unif_rv <- sapply(1:n_draw, function (i) double_prec_runif())
+unif_rv <- sapply(1:n_draw, function (i) d_prec_unif())
 
 rv_hist <- hist(unif_rv, breaks = 21, plot = FALSE)
 plot(
@@ -171,7 +169,7 @@ plot(
 # Answer
 <img src="https://github.com/achatto4/stats-comp-algo-software-2024/blob/main/homework/figure/Capturea2.2.JPG?raw=true" alt="Place the screenshot here"/>
 
-The histogram looks quite good! We also check if the data is uniform by running a Kolmogorov Smirnov Test. ALthough the data looks good to the naked eye, the KS test rejects it!
+The histogram looks quite good! We also check if the data is uniform by running a Kolmogorov Smirnov Test. The Kolmogorov Smirnov test also passes. 
 
 ```{r}
 ks.test(unif_rv, "punif", min = 1, max = 2)
@@ -194,7 +192,7 @@ What is the issue?
 
 # Answer- 
 As described by Aki, formulas involving $1 + x$ for $|x| \ll 1$ ($x = - n^{-1}$ in the above case) often run into problems pertaining to precision. This is because When $|x|$ is very small, the addition of 
-1 to $x$ can result in a number that is extremely close to 1(and so are the values obtaied after taking power $n_draw). The multiplication of a very large number with a small number to find $calc_num_expected_duplicate$ also contributeds to the same. In double-precision floating-point representation, where the significand has 52 bits, the representation of numbers very close to 
+1 to $x$ can result in a number that is extremely close to 1(and so are the values obtained after taking power $n_draw$). The multiplication of a very large number with a small number to find $calc_num_expected_duplicate$ also contributeds to the same. In double-precision floating-point representation, where the significand has 52 bits, the representation of numbers very close to 
 1 may lack the necessary precision to accurately capture the result of the addition. 
 
 ```{r}
@@ -252,7 +250,7 @@ Check also that, using your implementation of random uniform from Part A, duplic
 set.seed(1)
 n_draw <- 10^6
 base_r_unif <- runif(n_draw, min = 1, max = 2)
-unif_rv <- sapply(1:n_draw, function (i) double_prec_runif())
+unif_rv <- sapply(1:n_draw, function (i) d_prec_unif())
 
 #Observed duplications in 32-bit system.
 sum(duplicated(base_r_unif))
@@ -266,7 +264,7 @@ expected_duplicates <- calc_num_expected_duplicate(n_draw, n_choice)
 print(expected_duplicates)
 
 #checking number of duplications in part A implementation
-double_prec_runif <- function () {
+d_prec_unif <- function () {
   bits <- rbinom(52, size = 1, prob = 0.5)
   weight_vec=2^-(1:52)
   fraction <- sum(bits *  weight_vec)
@@ -275,7 +273,7 @@ double_prec_runif <- function () {
 }
 
 n_draw <- 10^6
-unif_rv <- sapply(1:n_draw, function (i) double_prec_runif())
+unif_rv <- sapply(1:n_draw, function (i) d_prec_unif())
 sum(duplicated(unif_rv))
 
 ```
@@ -300,9 +298,7 @@ What do you expect the slope of the plotted line to be?
 
 # Answer 
 
-I anticipate that when plotted on a log-log scale, the resulting line will be straight, exhibiting a slope of $-2$. 
-
-The central difference approximation is given by:
+I anticipate that when plotted on a log-log scale, the resulting line will be straight, exhibiting a slope of $-2$. We know that the central difference approximation is given by:
 \[
 \frac{f(x + \Delta x) - f(x - \Delta x)}{2 \Delta x} \approx f'(x) + \frac{(\Delta x)^2f'''(x)}{6} = f'(x) + \Theta((\Delta x)^2)
 \]
