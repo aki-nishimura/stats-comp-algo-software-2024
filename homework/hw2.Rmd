@@ -1,6 +1,8 @@
 ---
 title: 'Homework: Finite Precision Arithmetic & Gradient Descent'
 output:
+  html_document:
+    df_print: paged
   html_notebook:
     code_folding: none
     highlight: textmate
@@ -144,7 +146,7 @@ The amount of randomness in it, therefore, is equivalent to 52 Bernoulli random 
 Write a function to generate a Uniform(1, 2) random variable in double-precision with randomness coming only from the `rbinom()` function.
 Check the function's behavior by plotting a histogram of random variables generated from it. 
 
-```{r, eval=FALSE}
+```{r, imp}
 d_prec_unif <- function () {
   bits <- rbinom(52, size = 1, prob = 0.5)
   weight_vec=2^-(1:52)
@@ -171,7 +173,8 @@ plot(
 
 The histogram looks quite good! We also check if the data is uniform by running a Kolmogorov Smirnov Test. The Kolmogorov Smirnov test also passes. 
 
-```{r}
+```{r imp1}
+unif_rv<-c(unif_rv)
 ks.test(unif_rv, "punif", min = 1, max = 2)
 ```
 
@@ -374,18 +377,50 @@ compute_signs <- function(vec) {
   return(signs)
 }
 
+log_logistic_func <- function(x) {
+   return_ans <- log(exp(x) / (1 + exp(x)))
+   return(return_ans)
+}
+
+log_logistic_deriv <- function(x) {
+   f_x <- 1 / (1 + exp(x))
+   return_ans <- f_x 
+   return(return_ans)
+}
+
+approximate_deriv <- function(func, x, dx) {
+  deriv=(func(x + dx) - func(x - dx))/(2*dx)
+  return(deriv)
+}
+
+# Calculate and plot the relative errors of finite difference approximations
+set.seed(615)
+x <- rnorm(1)
+
+log2_dx <- - seq(1, 52)
+numerical_deriv <- sapply(
+  2^log2_dx, function(dx) approximate_deriv(log_logistic_func, x, dx)
+)
+analytical_deriv <- log_logistic_deriv(x)
+rel_err <- abs(
+  (analytical_deriv - numerical_deriv) / analytical_deriv
+)
+
+
+fontsize <- 1.2
+
 plot(
  log2_dx[-1],  compute_signs(log2(rel_err)),
   frame = FALSE, # Remove the ugly box
   xlab = "log2 stepsize for finite difference",
-  ylab = "log2 rel errors",
+  ylab = "change in log2 rel errors",
   xlim = rev(range(log2_dx)),
   cex.lab = fontsize,
   cex.axis = fontsize,
   type = 'l'
 )
 ```
-<img src="https://github.com/achatto4/stats-comp-algo-software-2024/blob/main/homework/figure/Capturea3.1.JPG?raw=true" alt="Place the screenshot here"/>
+<img src="https://github.com/achatto4/stats-comp-algo-software-2024/blob/main/homework/figure/Capturea3.11.JPG?raw=true" alt="Place the screenshot here"/>
 
 The discrepancy between the observed relative error plot and the theoretical expectation of a straight line with a slope of -2 on a log-log scale can be attributed to the interplay of numerical precision and approximation error. Initially, for larger $\Delta x$ values, the approximation error predominates, resulting in a linear decrease in relative error with a slope close to -2, consistent with theoretical predictions. However, as $\Delta x$ decreases, numerical errors become increasingly significant relative to the approximation error. These errors stem from the finite precision of floating-point arithmetic, leading to inaccuracies in the evaluation of $f(x + \Delta x)$ and $f(x - \Delta x)$. As $\Delta x$ becomes very small, numerical issues such as round-off errors and numerical stability may further influence the relative error, deviating from the expected theoretical behavior. Therefore, while the theoretical expectation suggests a slope of -2, the presence of numerical errors and computational constraints may cause deviations from this ideal behavior in practice. The fluctuations in the log error stem from round-off errors, influenced by the least significant digits of $f(x + \Delta x) - f(x - \Delta x)$. Although the round-off error is anticipated to double with each increase in $k$, the actual error may vary, as illustrated by the accompanying sign graph. Consequently, the log error displays an upward trend interspersed with fluctuations.
 
