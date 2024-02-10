@@ -210,7 +210,11 @@ Does the relative error plot agree with what the mathematical theory predicts? E
 
 Also, what is the slope in the "latter part" of your plotted line, roughly speaking? 
 Explain why we observe such a slope in the relative error. 
-(Hint: Consider a machine with 10 decimal digits of accuracy. What happens if we numerically differentiate $f(x) = x$ at $x = 1$ with $\Delta x = 0.1, 0.01, 0.001, \ldots$.)
+
+Here is a hint/example to help you think about the latter question. 
+Imagine a machine with five decimal digits of accuracy.
+What happens if we, on this machine, numerically differentiate $f(x) = x$ at $x = 1$ with $\Delta x = \frac{1}{2} \times 0.11111 \times 10^{-k}$ for $k = 0, 1, 2, \ldots$?
+Since $(0.11111)^{-1} = 9 \times (1 + 10^{-5} + 10^{-10} + \ldots)$, you can assume that division by $2 \Delta x$ is equivalent to multiplication by $9 \times 10^k$ on this five-decimal-digits machine.
 
 ## Part B: Extention to multivariate functions
 
