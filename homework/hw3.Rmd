@@ -8,7 +8,7 @@ output:
 
 # Exercise: Continuing development of `hiperglm` &mdash; supporting the logistic model
 
-From the previous assignments, you should now have a `hiperglm` package that  implement an MLE finder via `stats::optim(..., method="BFGS")`, whose output has been tested against the least-sq via pseudo-inverse formula under the linear model.
+From the previous assignments, you should now have a `hiperglm` package that implement an MLE finder via `stats::optim(..., method="BFGS")`, whose output has been tested against the least-sq via pseudo-inverse formula under the linear model.
 In this assignment, we will extend the package to support the logistic model.
 We will work toward implementing Newton's method for finding MLE and test its output against BFGS's.
 

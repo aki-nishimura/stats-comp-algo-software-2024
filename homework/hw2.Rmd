@@ -126,7 +126,7 @@ calc_num_expected_duplicate <- function (n_draw, n_choice) {
 ```
 
 Formulas involving $1 + x$ for $|x| \ll 1$ ($x = - n^{-1}$ in the above case) occur commonly enough in statistics/scientific computing that R provides a function `log1p(x)` for computing $\log(1 + x)$ to deal with one such situation.
-In more general calculations involving $|x| \ll 1$ (e.g. for a "sinc" funciton $\operatorname{sinc}(x) = \sin(x) / x$), a Taylor expansion provides a general approach to control truncation errors.
+In more general calculations involving $|x| \ll 1$ (e.g. for a "sinc" function $\operatorname{sinc}(x) = \sin(x) / x$), a Taylor expansion provides a general approach to control truncation errors.
 
 Remedy the `calc_num_expected_duplicate()` function by applying the second-order Taylor expansion to $(1 - x)^d$ and simplifying the formula $d - x^{-1} [1 - (1 - x)^d]$ to avoid truncation errors. 
 (Remark: i) in this specific case, you could use the binomial expansion and calculate it exactly; 
