@@ -16,7 +16,7 @@ Before you start this assignment, remember to first address all the feedback fro
 Then create a new `logit-model` branch from there, check out the `logit-model` branch, and commit all your work for this assignment there.
 Finally, open a pull request into your main branch after completing the assignment and request a review from the TA.
 
-1. Update the helper function `simulate_data()` to support binary outcomes: do this by copying the updated function from the master branch of the instructor's repo.
+1. Update the helper function `simulate_data()` to support binary outcomes: do this by copying the updated function from [the instructor's repo](https://github.com/aki-nishimura/hiperglm/tree/logit-dev-ready/).
 Supporting a non-binary binomial outcome is optional; you are allowed to implement everything assuming that the `outcome` input for the logistic model is always binary.
 In case you decide to try supporting the more general case, _please still start with the binary case, only extend it after completing Step 7, and keep the extension work in separate commits_.
 This is not only a reasonable development approach, but will also help us keep this optional part separate when grading the assignment.
