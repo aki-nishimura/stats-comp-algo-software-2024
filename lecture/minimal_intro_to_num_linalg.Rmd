@@ -1366,7 +1366,7 @@ $$\bX = \bm{Q} \bm{R} = \bm{Q}_{n \times p} \bm{R}_{p \times p}.$$
 * Note analogy with LU decomp &mdash; applying a seq of transformations, whose prod has the same structure.
 --
 
-* Computing the $\bm{Q}^\intercal \by = \bm{Q}_p \ldots \bm{Q}_1 \by$ part of $\hat{\bm{\beta}} = \bm{R}^{-1} \bm{Q}^\intercal \by$ in practice can be done via matvecs $\bv \to (\bm{I} - 2 \bu_j \bu_j^\intercal ) \, \bv$.
+* Computing the $\bm{Q}^\intercal \by = \bm{Q}_1^\intercal \ldots \bm{Q}_p^\intercal \by$ part of $\hat{\bm{\beta}} = \bm{R}^{-1} \bm{Q}^\intercal \by$ in practice can be done via matvecs $\bv \to (\bm{I} - 2 \bu_j \bu_j^\intercal ) \, \bv$.
 --
 
   * Most obvious in concept may _not_ be most efficient in implementation.
