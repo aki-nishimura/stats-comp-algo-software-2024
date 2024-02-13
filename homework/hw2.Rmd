@@ -289,7 +289,7 @@ The test should make two separate calls to `hiper_glm()` to find the MLE via pse
 5. Implement the MLE finder via peudo-inverse. 
 Please, pretty please, do not calculate an inverse of a matrix. 
 (Otherwise, it's fine to use `solve()` instead of `chol()`.)
-6. Implement the MLE finder via BFGS:
+6. Implement the MLE finder via `stats::optim()`'s BFGS:
     a. Implement functions to calculate the log-likelihood and gradient under a linear model. 
     This function technically requires an estimate of the residual variance, but its value does not affect the MLE for the coefficients and hence is irrelevant for our purpose. 
     You can just specify it as an optional parameter e.g. as `function(..., noise_var = 1)`.
