@@ -283,7 +283,9 @@ Remember that you can use [`devtools::load_all()`](https://r-pkgs.org/code.html#
 Write a test to cover at least three cases: the function 1) correctly returns `TRUE`, 2) correctly returns `FALSE` because the relative error is above `rel_tol`, and 3) correctly returns `FALSE` because the absolute error is above `abs_tol`. 
 Make sure that the logic of the test is clear and easy to understand &mdash; tests are there to clarify and validate the code's behavior; unreadable tests defeat the purpose.
 <br> _Remark:_ This is just an exercise, but in general there is nothing strange about testing a function you use to test another function. It is perfectly reasonable to consider testing any functions complicated enough to potentially contain insiduous bugs.
-4. Set up the (currently failing) test to compare the MLE estimated via pseudo-inverse and via BFGS. 
+4. Set up a (currently failing) test to compare the MLE estimated via pseudo-inverse and via BFGS. 
+In writing this test, add an option to the `hiper_glm()` function to use different optimizers as specified. 
+The test should make two separate calls to `hiper_glm()` to find the MLE via pseudo-inverse and via BFGS and use the `coef()` S3 generic to compare their outputs. 
 5. Implement the MLE finder via peudo-inverse. 
 Please, pretty please, do not calculate an inverse of a matrix. 
 (Otherwise, it's fine to use `solve()` instead of `chol()`.)
