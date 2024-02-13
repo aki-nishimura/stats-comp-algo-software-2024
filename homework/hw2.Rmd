@@ -1,6 +1,8 @@
 ---
 title: 'Homework: Finite Precision Arithmetic & Gradient Descent'
 output:
+  html_document:
+    df_print: paged
   html_notebook:
     code_folding: none
     highlight: textmate
@@ -34,6 +36,16 @@ b <- 0.5 + .Machine$double.eps
 ```
 
 Why do we get the different result?
+
+**Answer:**
+
+There're \( 2^{52} \) machine-representable values in between two reals \( 2^{k} \) and \( 2^{k+1} \) w/ \( 2^{k} \times 2^{-52} \) increment. 
+
+Notice, for numbers between \( 2^{1} \) and \( 2^{2} \), the smallest increment is \( 2^{-52} \times 2^{1} = 2^{-51} \), and for numbers between \( 2^{0} \) and \( 2^{1} \), the smallest increment is \( 2^{-52} \times 2^{0} = 2^{-52} \).
+
+For the first equation, b+c is within the range of \( 2^{1} \) and \( 2^{2} \), thus the epsilon is not distinguishable in \( b + c = 2 + \epsilon \) and it becomes \( b + c = 2 \). And eventually \( a + (b + c) = 2 + 1 = 3 \) and \( (a + b) + c = 2 + 1 = 3 + 2 \epsilon \), thus they are not the same.
+
+However, for the second equation, b+c is within the range of \( 2^{0} \) and \( 2^{1} \), thus the epsilon is distinguishable in \( b + c = 1.5 + \epsilon \). So the equations get the same results, both eaqual to \( 2.5 + \epsilon \).
 
 
 # Exercise 1: One-pass algorithm for calculating variance
@@ -70,6 +82,36 @@ sample_sec_mom <- running_sum_sq / n_sample
 sample_var_with_question_mark <- (sample_sec_mom - (sample_mean)^2)
 ```
 
+**Answers:**
+
+The estimate for mean makes sense but the variance does not. The variance should be close to 1, but the estimate is way off from 1, and even negative. Because the correct way for estimating variance is to subtract the sample mean from each sample, and then square and sum them up, and then divide by n-1. Which is clearly not equivalent to square the samples and sum them up and divide by n, then subtract the mean's square.
+
+When I change the seed, the estimate changes a lot, from -147456 to -81920.
+
+
+**Bonus answer:**
+```{r}
+res <- c()
+for(it in 1:1000){
+  running_sum <- 0
+  running_sum_sq <- 0
+  
+  n_sample <- 10 ^ 3
+  for (i in 1:n_sample) {
+    theta <- 1e10 + rnorm(1)
+    running_sum <- running_sum + theta
+    running_sum_sq <- running_sum_sq + theta ^ 2
+  }
+  sample_mean <- running_sum / n_sample
+  sample_sec_mom <- running_sum_sq / n_sample
+  
+  res <- c(res,sample_var_with_question_mark <- (sample_sec_mom - (sample_mean) ^ 2))
+}
+hist(res)
+```
+
+Turns out to be a normal distribution. This is due to central limit theorem since the random variable (sample_sec_mom) is the sum of many iid random variables and the sum should approaching a normal distribution, and (sample_mean) ^ 2 has really small variance thus almost constant. Thus the difference between them is approximately a normal distribution.
+
 ## Things to commit/submit
 Answers to the questions above.
 
@@ -84,9 +126,12 @@ The amount of randomness in it, therefore, is equivalent to 52 Bernoulli random 
 Write a function to generate a Uniform(1, 2) random variable in double-precision with randomness coming only from the `rbinom()` function.
 Check the function's behavior by plotting a histogram of random variables generated from it. 
 
-```{r, eval=FALSE}
-double_prec_runif <- function () {
+```{r, eval=TRUE}
+double_prec_runif <- function(){
   # Fill in
+  decimals <- 1/2^(1:52)
+  digits <- rbinom(52, size = 1, prob = 0.5)
+  return(decimals %*% digits + 1)
 }
 
 n_draw <- 10^5
@@ -119,11 +164,26 @@ What is the issue?
 ```{r}
 calc_num_expected_duplicate <- function (n_draw, n_choice) {
   # To be remedied.
-  prob_item_never_chosen <- (1 - 1 / n_choice) ^ n_draw
-  n_expected_unique <- n_choice * (1 - prob_item_never_chosen)
-  return(n_draw - n_expected_unique)
+  # prob_item_never_chosen <- (1 - 1 / n_choice) ^ n_draw
+  # n_expected_unique <- n_choice * (1 - prob_item_never_chosen)
+  d <- n_draw
+  n <- n_choice
+  res <- d*(d-1)/(2*n)
+  return(res)
 }
+calc_num_expected_duplicate(n_draw = 10^6, n_choice = 2^52)
 ```
+
+**Issue:**
+
+n_choice * (1 - prob_item_never_chosen) is indistinguishable from n_choice (1e+06) due to finite precision arithmetic (1e+06 is between \( 2^{23} \) and \( 2^{24} \), with a minimum distinguishable increment of 199840144), thus the returned result will be 1e+06 - 1e+06 = 0.
+
+
+Using second order taylor expansion, we can simplify the formula $d - n [1 - (1 - n^{-1})^d]$
+
+Firstly, $(1-x)^{d} \approx 1 - xd + \frac{1}{2}x^{2}d(d-1)$, so $(1 - n^{-1})^d \approx 1 - d n^{-1} + \frac{1}{2}d(d-1)n^{-2}$.
+
+Then, $d - n [1 - (1 - n^{-1})^d] \approx d - n [1 - (1 - d n^{-1} + \frac{1}{2}d(d-1)n^{-2})] = d - n(dn^{-1}-\frac{1}{2}d(d-1)n^{-2}) = d - d + \frac{1}{2n}d(d-1) = \frac{d(d-1)}{2n}$.
 
 Formulas involving $1 + x$ for $|x| \ll 1$ ($x = - n^{-1}$ in the above case) occur commonly enough in statistics/scientific computing that R provides a function `log1p(x)` for computing $\log(1 + x)$ to deal with one such situation.
 In more general calculations involving $|x| \ll 1$ (e.g. for a "sinc" function $\operatorname{sinc}(x) = \sin(x) / x$), a Taylor expansion provides a general approach to control truncation errors.
@@ -141,11 +201,25 @@ If we use R's `runif()` function, however, this is _not_ what we observe because
 Check the number of duplicates from `runif(10^6)` against the expected value for a floating-point number with 32-bits of precision. 
 Check also that, using your implementation of random uniform from Part A, duplicates are indeed rare in double-precision.
 
-```{r, eval=FALSE}
+```{r, eval=TRUE}
 n_draw <- 10^6
 base_r_unif <- runif(n_draw, min = 1, max = 2)
 unif_rv <- sapply(1:n_draw, function (i) double_prec_runif())
 # Check the number of duplicates against the expected value
+```
+**Expected number of duplicates for 32 bits:**
+```{r}
+calc_num_expected_duplicate(n_draw, 2^32)
+```
+
+**Number of duplicates for base R uniform:**
+```{r}
+n_draw - length(unique(base_r_unif))
+```
+
+**Number of duplicates for double precision uniform:**
+```{r}
+n_draw - length(unique(unif_rv))
 ```
 
 
@@ -163,18 +237,21 @@ We evaluate its derivative using an analytical formula and compare it to the cen
 Using the starter code provided below, plot the relative error of the numerical approximation in a log-log scale.
 What do you expect the slope of the plotted line to be?
 
-```{r, eval=FALSE}
+```{r, eval=TRUE}
 #' Approximate derivative via centered-difference approximation
 approximate_deriv <- function(func, x, dx) {
   # Fill in
+  (func(x + dx) - func(x - dx)) / (2 * dx)
 }
 
 log_logistic_func <- function(x) {
   # Fill in
+  log(exp(x) / (1 + exp(x)))
 }
 
 log_logistic_deriv <- function(x) {
   # Fill in
+  1/(1 + exp(x))
 }
 
 # Calculate and plot the relative errors of finite difference approximations
@@ -202,7 +279,6 @@ plot(
   cex.axis = fontsize,
   type = 'l'
 )
-
 ```
 
 **Questions:**
@@ -216,6 +292,11 @@ Imagine a machine with five decimal digits of accuracy.
 What happens if we, on this machine, numerically differentiate $f(x) = x$ at $x = 1$ with $\Delta x = \frac{1}{2} \times 0.11111 \times 10^{-k}$ for $k = 0, 1, 2, \ldots$?
 Since $(0.11111)^{-1} = 9 \times (1 + 10^{-5} + 10^{-10} + \ldots)$, you can assume that division by $2 \Delta x$ is equivalent to multiplication by $9 \times 10^k$ on this five-decimal-digits machine.
 
+**Answers:**
+No, the first part of relative error plot where the line decreases does agree with what the mathematical theory predicts. The relative error should be decreasing as the step size decreases, since the error is on a $O(\Delta x^2)$ scale and if you differentiate against $- \Delta x$ you will get $-2O(\Delta x)$, that is why we are getting a decreasing line for the first part relative error plot where the line decreases.
+
+but the latter part of the plot shows that the relative error is increasing as step size gets smaller and smaller, which contradicts to the math theory. Further more, the slope of the relative error is roughly 1. This is due to the finite precision arithmetic and the consequent rounding error. When the step size is too small, the difference between \( f(x + \Delta x) \) and \( f(x - \Delta x) \) is too small and almost remain constant due to the round off error, however the denominator \( 2 \Delta x \) is getting smaller and smaller (changing by $2^{-1}$ each time), thus the relative error is increasing and the slope is roughly 1, since $\epsilon_{rel} \approx 1/\Delta x$ and $log(\epsilon_{rel}) \approx -log(\Delta x)$ and if we change to y and x notation it will be $y = -x$, so differentiating against $-x$ will give us a slope of 1.
+
 ## Part B: Extention to multivariate functions
 
 As mentioned in the lecture, the finite difference method extends to a function with multivariate input $f: \mathbb{R}^d \to \mathbb{R}$ and can be used to approximate the gradient $\nabla f(\boldsymbol{x})$.
@@ -227,10 +308,51 @@ First show that its gradient is given by $\nabla f(\boldsymbol{x}) = - \boldsymb
 more generally, the gradient of a quadratic function $g(\boldsymbol{x}) = \boldsymbol{x}^\intercal \boldsymbol{A} \boldsymbol{x}$ is given by $\nabla g(\boldsymbol{x} = (\boldsymbol{A} + \boldsymbol{A}^\intercal) \boldsymbol{x}$ for any square matrix $\boldsymbol{A}$.
 Then compare a numerically approximated gradient to one computed via an analytical formula.
 
-```{r, eval=FALSE}
+**Answers:**
+The gradient of a quadratic function :
+
+Given the function 
+
+\[ g(\boldsymbol{x}) = \boldsymbol{x}^\intercal \boldsymbol{A} \boldsymbol{x} \]
+
+we want to find its gradient \( \nabla g(\boldsymbol{x}) \).
+
+The function \( g(\boldsymbol{x}) \) can be expanded into its scalar components:
+
+\[ g(\boldsymbol{x}) = \sum_{i=1}^n \sum_{j=1}^n x_i A_{ij} x_j \]
+
+Now take derivative:
+
+\[ \frac{\partial g(\boldsymbol{x})}{\partial x_k} = \frac{\partial}{\partial x_k} \sum_{i=1}^n \sum_{j=1}^n x_i A_{ij} x_j \]
+
+When differentiating, we treat \( x_k \) as the variable and all other \( x_i \)'s as constants. There are two cases to consider:
+
+1. When \( i = k \), the derivative of \( x_i A_{ij} x_j \) with respect to \( x_k \) is \( A_{kj} x_j \) since \( A_{ij} x_j \) is treated as a constant coefficient.
+2. When \( j = k \), the derivative of \( x_i A_{ij} x_j \) with respect to \( x_k \) is \( x_i A_{ik} \), by the same logic.
+
+Combining both cases, we get:
+
+\[ \frac{\partial g(\boldsymbol{x})}{\partial x_k} = \sum_{j=1}^n A_{kj} x_j + \sum_{i=1}^n x_i A_{ik} \]
+
+The first term is the \( k \)-th component of the matrix-vector product \( \boldsymbol{A} \boldsymbol{x} \), and the second term is the \( k \)-th component of the matrix-vector product \( \boldsymbol{A}^\intercal \boldsymbol{x} \) (since transposing swaps the indices).
+
+Therefore, the gradient \( \nabla g(\boldsymbol{x}) \) is:
+
+\[ \nabla g(\boldsymbol{x}) = \boldsymbol{A} \boldsymbol{x} + \boldsymbol{A}^\intercal \boldsymbol{x} \]
+
+If \( \boldsymbol{A} \) is symmetric (\( \Phi \)), then this simplifies to \( 2 \Phi \boldsymbol{x} \). So we have \(\nabla f(\boldsymbol{x}) = - 2\boldsymbol{\Phi} \boldsymbol{x}/2 = - \boldsymbol{\Phi} \boldsymbol{x} \)
+
+
+```{r, eval=TRUE}
 approx_grad <- function(func, x, dx = .Machine$double.eps^(1/3)) {
   numerical_grad <- rep(0, length(x))
+  D <- length(x)
   # Fill in
+  for(d in 1:D){
+    e_d <- rep(0, D)
+    e_d[d] <- 1
+    numerical_grad[d] <- (func(x + dx * e_d) - func(x - dx * e_d)) / (2 * dx)
+  }
   return(numerical_grad)
 }
 
@@ -246,7 +368,7 @@ gaussian_logp <- function(x, Sigma_inv) {
 }
 
 gaussian_grad <- function(x, Sigma_inv) {
-  grad <- rep(0, length(x)) # Replace with an actual formula
+  grad <- -1 * Sigma_inv %*% x
   return(grad)
 }
 
@@ -304,4 +426,4 @@ Please, pretty please, do not calculate an inverse of a matrix.
     
 ## Things to commit/submit
 
-Link to the pull request.
+[Link to the pull request](https://github.com/thepianistalex/hiperglm/pull/2).
