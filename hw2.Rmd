@@ -1,0 +1,364 @@
+---
+title: 'Homework: Finite Precision Arithmetic & Gradient Descent'
+output:
+  html_notebook:
+    code_folding: none
+    highlight: textmate
+---
+
+
+```{r setup, include=FALSE}
+install.packages(c("Matrix", "testthat"))
+library(Matrix)
+library(testthat)
+```
+
+# Exercise 0: Checking your understanding of floating point numbers and finite precision arithmetic
+
+We observed in the class that the following code returns `FALSE`:
+
+```{r, eval=FALSE}
+a <- 1 + .Machine$double.eps
+b <- 1 + .Machine$double.eps 
+c <- 1
+
+(a + b) + c == a + (b + c)
+```
+
+On the other hand, the following modification results in `TRUE`:
+
+```{r, eval=FALSE}
+b <- 0.5 + .Machine$double.eps
+
+(a + b) + c == a + (b + c)
+```
+
+Why do we get the different result?
+
+The second result returns TRUE because $a + (b + c) = 1 + \epsilon + 1.5 + \epsilon = 2^0(1 + 2^{-52}) + 2^{0}(1 + 2^{-1} + 2^{-52}) = 2^0(2^1 + 2^{-1} + 2^{-51})$ and $(a + b) + c = (1.5 + 2\epsilon) + 1 = 2^0(1 + 2^{-1} + 2^{-51}) + 2^0(1) = 2^0(2^1 + 2^{-1} + 2^{-51})$, all of which are greater than $\epsilon$, so R does not truncate either side, so it recognizes this equality as TRUE.
+
+# Exercise 1: One-pass algorithm for calculating variance
+
+Let's say you are running a Monte Carlo simulation to estimate the mean and variance of some random variable $\boldsymbol{\theta}$. 
+Imagine that $\boldsymbol{\theta}$ is high-dimensional, so you don't want to keep all the Monte Carlo samples $\boldsymbol{\theta}_i$ due to the memory burden.
+(If $\boldsymbol{\theta}$ is $10^6$-dimensional, for example, storing 1,000 Monte Carlo samples would require 8GB of memory.)
+And it occurs to you that you can write a "one-pass" algorithm to calculate the sample mean and sample second moment of $\boldsymbol{\theta}$ by only keeping track of running totals of Monte Carlo samples. 
+You can then, in theory, calculate the sample variance from these quantities.
+
+The above idea is implemented and applied below. 
+Try it and see what you get. 
+Does the estimate make sense? If not, why?
+How does the estimate change if you change the seed?
+
+
+
+## Answer
+The estimate for the sample variance with the seed of 140778 is -147456. This does not make sense because variance must be positive.
+
+Changing the seed does not solve the problem. With a seed of 456, the estimate is -507904. With a seed of 1, the estimate is -49152.
+
+The problem is that 10^20 in binary takes up 67 digits, while R only recognizes 52. Therefore, the number 10^20 is truncated in binary, so that a small addition to 10^20 will not be recognized as a different number in R. When squaring ${\theta}$, R will not recognize many of the iterations of added noise created by rnorm(1) because the number will be truncated before the difference is recognized. However, it will recognize small subtractions, because the change in binary happens before the truncation occurs. This leads to sample_sec_mom being smaller than it should be, which then causes the sample variance to be negative.
+
+**Bonus question:** 
+What is, roughly speaking, the distribution of the estimator `sample_var_with_question_mark` under repeated Monte Carlo simulations (i.e. without a fixed seed)?
+
+```{r}
+set.seed(140778)
+
+running_sum <- 0
+running_sum_sq <- 0
+
+n_sample <- 10^3
+for (i in 1:n_sample) {
+  theta <- 1e10 + rnorm(1)
+  running_sum <- running_sum + theta
+  running_sum_sq <- running_sum_sq + theta^2
+}
+sample_mean <- running_sum / n_sample
+sample_sec_mom <- running_sum_sq / n_sample
+
+sample_var_with_question_mark <- (sample_sec_mom - (sample_mean)^2)
+```
+
+## Things to commit/submit
+Answers to the questions above.
+
+
+# Exercise 2: Generating random real numbers in finite precision arithmetic
+
+## Part A
+
+You learned in the class that numeric values in computers are typically represented with 64-bits double-precision numbers, having 52-bits fraction. 
+In particular, a "Uniform(1, 2)" random variable in double-precision generates a number from the $2^{52}$ unique values between $1$ and $2$.
+The amount of randomness in it, therefore, is equivalent to 52 Bernoulli random variables.
+Write a function to generate a Uniform(1, 2) random variable in double-precision with randomness coming only from the `rbinom()` function.
+Check the function's behavior by plotting a histogram of random variables generated from it. 
+
+```{r, eval = T}
+double_prec_runif <- function () {
+  rand = rbinom(52, 1, 0.5)
+  rv = 1 + sum(rand * 2^(-(1:52)))
+  return(rv)
+  }
+
+double_prec_runif()
+
+n_draw <- 10^5
+unif_rv <- sapply(1:n_draw, function (i) double_prec_runif())
+
+rv_hist <- hist(unif_rv, breaks = 21, plot = FALSE)
+plot(
+  rv_hist,
+  freq = FALSE,
+  xlab = "Realized values",
+  col = "blue", # JHU Spirit Blue with saturation and luminance adjusted: https://hslpicker.com/#bdcedb
+  border = "white" # Another variation of JHU Spirit Blue
+)
+```
+
+## Part B
+
+As we observed above, a Uniform(1, 2) random variable in double-precision takes one of the $2^{52}$ unique values.
+Two independently drawn random variables, therefore, has small but positive probability of having exactly the same value.
+We can calculate the expected number of duplicate values in i.i.d. Uniform(1, 2) random variables as follows.
+When drawing with replacement $d$ independent random variables out of $n$ choices, the probability of the $i$-th element never selected is $(1 - n^{-1})^d$ for $i = 1, \ldots, n$. 
+The expected number of unique items drawn, therefore, is $n [1 - (1 - n^{-1})^d]$.
+In turn, the expected number of duplicates is $d - n [1 - (1 - n^{-1})^d]$.
+For the case of double-precision uniform random variables, we have $n = 2^{52}$ for the number of choices.
+
+The `calc_num_expected_duplicate()` function below implements the above formula for the expected number of duplicates. 
+When you call `calc_num_expected_duplicate(n_draw = 10^6, n_choice = 2^52)` to calculate the expected number for $10^6$ Uniform(1, 2) random variables, however, the function returns _exact zero_ due to a finite precision error. 
+What is the issue?
+
+## Answer
+
+The issue stems from the small magnitude of n_draw compared to n_choice. The expected number of duplicates is 0 because the difference between n_draw and n_expected_unique becomes smaller than the Machine epsilon, so R cannot differentiate it from 0.
+
+```{r}
+calc_num_expected_duplicate <- function (n_draw, n_choice) {
+  # To be remedied.
+  #prob_item_never_chosen <- (1 - 1 / n_choice) ^ n_draw
+  #n_expected_unique <- n_choice * (1 - prob_item_never_chosen)
+  
+  n_expected_dups <- (n_draw*(n_draw-1)/2)*(1/n_choice)
+  return(n_expected_dups)
+}
+
+calc_num_expected_duplicate(10^6, 2^52)
+
+```
+
+Formulas involving $1 + x$ for $|x| \ll 1$ ($x = - n^{-1}$ in the above case) occur commonly enough in statistics/scientific computing that R provides a function `log1p(x)` for computing $\log(1 + x)$ to deal with one such situation.
+In more general calculations involving $|x| \ll 1$ (e.g. for a "sinc" funciton $\operatorname{sinc}(x) = \sin(x) / x$), a Taylor expansion provides a general approach to control truncation errors.
+
+Remedy the `calc_num_expected_duplicate()` function by applying the second-order Taylor expansion to $(1 - x)^d$ and simplifying the formula $d - x^{-1} [1 - (1 - x)^d]$ to avoid truncation errors. 
+(Remark: i) in this specific case, you could use the binomial expansion and calculate it exactly; 
+ii) applying the second-order expansion to $(1 - x)^d$ corresponds to applying the first-order expansion to the overall expression $d - x^{-1} [1 - (1 - x)^d]$.)
+Use the more numerically accurate version of `calc_num_expected_duplicate()` to calculate the expected number of duplicates among $10^6$ Uniform(1, 2) random variables.
+
+## Part C
+
+The expected number from Part B, if you calculated it correctly, suggests that it is extremely rare to get duplicate values when generating $10^6$ uniform random variables in double-precision.
+This is reassuring because we routinely generate a far larger number of random numbers in modern applications.
+If we use R's `runif()` function, however, this is _not_ what we observe because [R's random numbers are generated using 32-bit integers](https://www.tandfonline.com/doi/full/10.1080/00031305.2020.1782261).
+Check the number of duplicates from `runif(10^6)` against the expected value for a floating-point number with 32-bits of precision. 
+Check also that, using your implementation of random uniform from Part A, duplicates are indeed rare in double-precision.
+
+```{r, eval=FALSE}
+n_draw <- 10^6
+base_r_unif <- runif(n_draw, min = 1, max = 2)
+unif_rv <- sapply(1:n_draw, function (i) double_prec_runif())
+
+# Check the number of duplicates against the expected value
+exp_dups_base_r = n_draw - 2^32*(1 - (1 - 2^(-32))^n_draw)
+
+I_base_r = duplicated(base_r_unif)
+dups_base_r = sum(I_base_r)
+
+print(c(dups_base_r, exp_dups_base_r))
+
+exp_dups_rv = calc_num_expected_duplicate(10^6, 2^52)
+
+I_rv = duplicated(unif_rv)
+dups_rv = sum(I_rv)
+
+print(c(dups_rv, exp_dups_rv))
+
+
+```
+
+
+## Things to commit/submit
+Answers to the tasks/questions above.
+
+
+# Exercise 3: Numerical differentiation
+
+## Part A: Potential caveats of numerical differentiation
+
+You have learned in the class that the centered difference $\frac{f(x + \Delta x) - f(x - \Delta x)}{2 \Delta x}$ approximates the derivative $f'(x)$ up to an $O(\Delta x^2)$ error.
+To numerically verify this, we design the following experiment using a log of logistic function (i.e. $f(x) = \log\{ \exp(x) / (1 + \exp(x)) \}$) as an example.
+We evaluate its derivative using an analytical formula and compare it to the centered difference approximations as $\Delta x$ varies from $2^{-1}$ to $2^{-52}$.
+Using the starter code provided below, plot the relative error of the numerical approximation in a log-log scale.
+What do you expect the slope of the plotted line to be?
+
+## Answer:
+
+The slope of the line should be -2, since the theoretical error is on the order of $\Delta x^2$, and the derivative of this error is $2 \Delta x$. Because the log2 finite difference is on the negative scale, the slope on the plot should be -2.
+
+```{r, eval=FALSE}
+#' Approximate derivative via centered-difference approximation
+approximate_deriv <- function(func, x, dx) {
+ (func(x + dx) - func(x - dx))/(2*dx)
+}
+
+log_logistic_func <- function(x) {
+    log(exp(x)/(1 + exp(x)))
+  }
+
+log_logistic_deriv <- function(x) {
+  1/(1+exp(x))
+}
+
+# Calculate and plot the relative errors of finite difference approximations
+set.seed(615)
+x <- rnorm(1)
+
+log2_dx <- - seq(1, 52)
+numerical_deriv <- sapply(
+  2^log2_dx, function(dx) approximate_deriv(log_logistic_func, x, dx)
+)
+analytical_deriv <- log_logistic_deriv(x)
+rel_err <- abs(
+  (analytical_deriv - numerical_deriv) / analytical_deriv
+)
+
+fontsize <- 1.2
+plot(
+  log2_dx, log2(rel_err),
+  frame = FALSE, # Remove the ugly box
+  col = "blue",
+  xlab = "log2 stepsize for finite difference",
+  ylab = "log2 rel errors",
+  xlim = rev(range(log2_dx)),
+  cex.lab = fontsize,
+  cex.axis = fontsize,
+  type = 'l'
+)
+
+```
+
+**Questions:**
+Does the relative error plot agree with what the mathematical theory predicts? Explain the observed phenomenon.
+
+Also, what is the slope in the "latter part" of your plotted line, roughly speaking? 
+Explain why we observe such a slope in the relative error. 
+(Hint: Consider a machine with 10 decimal digits of accuracy. What happens if we numerically differentiate $f(x) = x$ at $x = 1$ with $\Delta x = 0.1, 0.01, 0.001, \ldots$.)
+
+## Answers:
+
+The relative error plot is consistent with the mathematical theory until the finite difference reaches about $2^{-17}$. Around this value for finite difference, the relative errors start to increase with a slope of about 1. This is because at this point, the precision error due to extremely small values of $\Delta x$ starts to dominate the theoretical errors. The precision error is on the order of $(2^{-52}/2\Delta x) = (2^{-53}/\Delta x)$, so on the log2 scale, this equates to ${-53 - log_2\Delta x}$, which reflects the line in the plot.
+
+## Part B: Extention to multivariate functions
+
+As mentioned in the lecture, the finite difference method extends to a function with multivariate input $f: \mathbb{R}^d \to \mathbb{R}$ and can be used to approximate the gradient $\nabla f(\boldsymbol{x})$.
+The extension relies on the fact $f(\boldsymbol{x} + \Delta x \, \boldsymbol{e}_i) = f(\boldsymbol{x}) + \Delta x \, \partial_i f(\boldsymbol{x}) + \ldots$ for $i = 1, \ldots, d$.
+
+Using the starter code provided below, implement a function to approximate $\nabla f(\boldsymbol{x})$ via the centered difference method.
+To test this function, take as an example a quadratic function $f(\boldsymbol{x}) = - \boldsymbol{x}^\intercal \boldsymbol{\Phi} \boldsymbol{x} / 2$ with positive definite $\boldsymbol{\Phi}$, which can be thought of as a log-likelihood function for $\boldsymbol{x} \sim \mathscr{N}(\boldsymbol{0}, \boldsymbol{\Phi})$ up to an additive constant.
+First show that its gradient is given by $\nabla f(\boldsymbol{x}) = - \boldsymbol{\Phi} \boldsymbol{x}$; 
+more generally, the gradient of a quadratic function $g(\boldsymbol{x}) = \boldsymbol{x}^\intercal \boldsymbol{A} \boldsymbol{x}$ is given by $\nabla g(\boldsymbol{x} = (\boldsymbol{A} + \boldsymbol{A}^\intercal) \boldsymbol{x}$ for any square matrix $\boldsymbol{A}$.
+Then compare a numerically approximated gradient to one computed via an analytical formula.
+
+## Gradient Derivation
+Since the quadratic function is $f(\boldsymbol{x}) = - \boldsymbol{x}^\intercal \boldsymbol{\Phi} \boldsymbol{x} / 2$, the gradient can be calculated as $-1/2*(2\boldsymbol{\Phi} \boldsymbol{x}) = -\boldsymbol{\Phi} \boldsymbol{x}$.
+
+```{r, eval=T}
+are_all_close <- function(v, w, abs_tol = 1e-6, rel_tol = 1e-6) {
+  abs_diff <- abs(v - w)
+  are_all_within_atol <- all(abs_diff < abs_tol)
+  are_all_within_rtol <- all(abs_diff < rel_tol * pmax(abs(v), abs(w)))
+  return(are_all_within_atol && are_all_within_rtol)
+}
+
+approx_grad <- function(func, x, dx = .Machine$double.eps^(1/3)) {
+  numerical_grad <- rep(0, length(x))
+  
+  for(i in 1:length(x)){
+    e = rep(0, times = length(x))
+    e[i] = 1
+    numerical_grad[i] = (func(x + dx*e) - func(x - dx*e))/(2*dx)
+  }
+  return(numerical_grad)
+}
+
+set.seed(410)
+n_param <- 4
+X <- matrix(rnorm(2 * n_param^2), nrow = 2 * n_param, ncol = n_param)
+Sigma_inv <- t(X) %*% X
+  
+#' Calculate log-density of centered Gaussian up to an additive factor
+gaussian_logp <- function(x, Sigma_inv) {
+  logp <- - .5 * t(x) %*% Sigma_inv %*% x
+  return(logp)
+}
+
+gaussian_grad <- function(x, Sigma_inv) {
+  grad <- rep(0, length(x)) # Replace with an actual formula
+  grad <- -Sigma_inv %*% x
+  return(grad)
+}
+
+x <- c(3, 1, 4, 1)
+
+analytical_grad <- gaussian_grad(x, Sigma_inv)
+numerical_grad <- approx_grad(function(x) gaussian_logp(x, Sigma_inv), x)
+testthat::expect_true(are_all_close(
+  analytical_grad, numerical_grad, abs_tol = Inf, rel_tol = 1e-3
+))
+```
+
+
+## Things to commit/submit
+For Part A, completed code and answers to the questions.
+For Part B, derivation of the gradient and completed code that passes the test.
+
+
+# Exercise 4: Continuing development of `hiperglm` &mdash; finding MLE via `stats::optim()` and testing it
+
+We will continue the development of the `hiperglm` package. 
+
+As discussed, our plan is to first implement an MLE finder via a pre-packaged general-purpose BFGS optimizer, against which we can then use to benchmark our custom implementation of iteratively reweighted least squares. 
+The idea is that using the pre-packaged function is less error-prone, especially since the gradient function is easy to unit-test.
+
+To be extra safe, we are going to test the MLE finder via BFGS against an even simpler algorithm: the least square for a linear model via the analytical expression $\hat{\boldsymbol{\beta}}_\textrm{mle} = (\boldsymbol{X}^\intercal \boldsymbol{X})^{-1} \boldsymbol{X}^\intercal \boldsymbol{y}$.
+Complete the following steps toward this goal.
+Remember that you can use [`devtools::load_all()`](https://r-pkgs.org/code.html#sec-code-load-all) to help your [package development process](https://r-pkgs.org/code.html#constant-health-checks). 
+
+0. Make and check out (`git branch` and `git checkout`) a development branch (call it `develop`) where you will commit the work below.
+1. Set up the use of `testthat`.
+2. Copy the helper functions `are_all_close()` and `simulate_data()` from the instructor's repo.
+3. Test the `are_all_close()` function. 
+Write a test to cover at least three cases: the function 1) correctly returns `TRUE`, 2) correctly returns `FALSE` because the relative error is above `rel_tol`, and 3) correctly returns `FALSE` because the absolute error is above `abs_tol`. 
+Make sure that the logic of the test is clear and easy to understand &mdash; tests are there to clarify and validate the code's behavior; unreadable tests defeat the purpose.
+<br> _Remark:_ This is just an exercise, but in general there is nothing strange about testing a function you use to test another function. It is perfectly reasonable to consider testing any functions complicated enough to potentially contain insiduous bugs.
+4. Set up the (currently failing) test to compare the MLE estimated via pseudo-inverse and via BFGS. 
+5. Implement the MLE finder via peudo-inverse. 
+Please, pretty please, do not calculate an inverse of a matrix. 
+(Otherwise, it's fine to use `solve()` instead of `chol()`.)
+6. Implement the MLE finder via BFGS:
+    a. Implement functions to calculate the log-likelihood and gradient under a linear model. 
+    This function technically requires an estimate of the residual variance, but its value does not affect the MLE for the coefficients and hence is irrelevant for our purpose. 
+    You can just specify it as an optional parameter e.g. as `function(..., noise_var = 1)`.
+    b. Test your gradient calculation by comparing it against a numerical one.
+    For this purpose, use the function from Exercise 2, Part B to approximate the gradient of a given function via finite difference.
+    <br> _Remark:_ Technically, this test checks only for consistency between the log-likelihood and gradient function.
+    It is possible to have both functions wrong but consistent with each other so that the test passes.
+    This test nonetheless can catch many bugs and, since the gradient calculation tends to be more error prone, it's good to make sure there is no mistake there. 
+    c. Plug in the now tested-and-true log-likelihood and gradient functions to `stats::optim()` to find MLE.
+7. Run `devtools::test()` and check that the then-failing test from Step 2 now passes.
+8. Open a pull request from your development branch to the main/master one. 
+    
+## Things to commit/submit
+
+[Link to the pull request.](https://github.com/sfansler/hiperglm/pull/2)
