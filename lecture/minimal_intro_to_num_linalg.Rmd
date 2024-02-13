@@ -1006,16 +1006,18 @@ B <- matrix(rnorm(p * k), nrow = p, ncol = k)
 row_max <- function(A) { 
   sapply(1:nrow(A), function(i) max(A[i, ]))
 }
-
-rep_col_vec <- function(col_vec, ncol) {
-  outer(col_vec, rep(1, ncol))
+shift_rows <- function(A, shift) {
+  A - outer(shift, rep(1, ncol(A)))
+}
+scale_rows <- function(A, scalar) {
+  outer(scalar, rep(1, ncol(A))) * A
 }
 
 Z <- X %*% B # O(npk); everything else O(nk)
-Z <- Z - rep_col_vec(row_max(Z), ncol(Z))
+Z <- shift_rows(Z, row_max(Z))
 Pi <- exp(Z) 
 Pi_rowsum <- rowSums(Pi) 
-Pi <- rep_col(1 / Pi_rowsum, ncol(Pi)) * Pi 
+Pi <- scale_rows(Pi, 1 / Pi_rowsum)
 ```
 ]
 
@@ -1028,19 +1030,19 @@ Or, it could look like
 row_max <- function(A) { 
   sapply(1:nrow(A), function(i) max(A[i, ]))
 }
-
-rep_col_vec <- function(col_vec, ncol) {
-  outer(col_vec, rep(1, ncol))
+shift_rows <- function(A, shift) {
+  A - outer(shift, rep(1, ncol(A)))
+}
+scale_rows <- function(A, scalar) {
+  outer(scalar, rep(1, ncol(A))) * A
 }
 
 category_logp <- X %*% B
-n_cat <- ncol(category_logp)
 category_logp <- 
-  category_logp - rep_col_vec(row_max(category_logp), n_cat)
+  shift_rows(category_logp, row_max(category_logp))
 category_prob <- exp(category_logp)
-row_normalizer <- 1 / rowSums(category_prob)
-row_normalizer <- rep_col(row_normalizer, n_cat)
-category_prob <- row_normalizer * category_prob
+category_prob <- 
+  scale_rows(category_prob, 1 / rowSums(category_prob))
 ```
 ]
 
