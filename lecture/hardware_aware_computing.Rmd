@@ -256,12 +256,12 @@ To leave `y` untouched (which is safer), you can do
 ![:vspace -.5ex]
 
 ```{r}
-sourceCpp(file.path('src', 'axpy_c_wo_side_effect.cpp'))
+sourceCpp(file.path('src', 'axpy_c_alt.cpp'))
 ```
 <p style="margin-top: -.5ex;"> </p>
 
 ```{r, comment='', echo=FALSE, cache=FALSE}
-cat(readLines(file.path('src', 'axpy_c_wo_side_effect.cpp'))[-c(1, 2, 3, 4)], sep = '\n')
+cat(readLines(file.path('src', 'axpy_c_alt.cpp'))[-c(1, 2, 3, 4)], sep = '\n')
 ```
 
 <p style="margin-top: -1ex;"> </p>
