@@ -26,9 +26,18 @@ required_packages <- c('Rcpp', 'RcppEigen', 'RcppArmadillo', 'microbenchmark')
 install_and_load_packages(required_packages)
 ```
 
+```{r, cache=TRUE, include=FALSE}
+cpp_file_list <- c('axpy_c.cpp', 'axpy_c_alt.cpp', 'axpy_eigen.cpp', 'axpy_eigen_mapped.cpp', 'gemm_eigen.cpp', 'gemm_arma.cpp', 'sign.cpp', 'matvec.cpp')
+
+for (cpp_file in cpp_file_list) {
+  sourceCpp(file.path('src', cpp_file))
+}
+```
+
+
 ```{r, include=FALSE}
 # Cache Rcpp compilations
-knitr::opts_chunk$set(cache = TRUE)
+knitr::opts_chunk$set(cache = FALSE)
 
 # Temporarily suppress warnings because compilations generate a lot of them
 default_warn_opt <- getOption("warn") 
@@ -255,7 +264,7 @@ layout: true
 To leave `y` untouched (which is safer), you can do
 ![:vspace -.5ex]
 
-```{r}
+```{r, eval=FALSE}
 sourceCpp(file.path('src', 'axpy_c_alt.cpp'))
 ```
 <p style="margin-top: -.5ex;"> </p>
@@ -292,7 +301,7 @@ layout: true
 
 # Is a dedicated linear algebra library faster?
 
-```{r}
+```{r, eval=FALSE}
 sourceCpp(file.path('src', 'axpy_eigen.cpp'))
 ```
 
@@ -330,7 +339,7 @@ layout: true
 
 If you want to directly modify `y`:
 
-```{r}
+```{r, eval=FALSE}
 sourceCpp(file.path('src', 'axpy_eigen_mapped.cpp'))
 ```
 
@@ -372,7 +381,7 @@ Optimized libraries (e.g. Eigen, OpenBLAS, IntelMKL, &hellip;) make more differe
 
 <!-- Discuss "not general" matrices (symmetric, triangular, banded, etc) and what "d" is for. -->
 
-```{r}
+```{r, eval=FALSE}
 # 'gemm' = general matrix-multiplication
 sourceCpp(file.path('src', 'gemm_eigen.cpp'))
 ```
@@ -420,7 +429,7 @@ layout: false
 
 ![:vspace -1ex]
 
-```{r}
+```{r, eval=FALSE}
 sourceCpp(file.path('src', 'gemm_arma.cpp'))
 ```
 
@@ -597,7 +606,7 @@ https://en.wiktionary.org/wiki/tight_loop#:~:text=Noun,running%20in%20the%20oper
 ---
 
 Consider two implementations of a `sign` function:
-```{r, message=FALSE, cache=FALSE}
+```{r, eval=FALSE}
 sourceCpp(file.path('src', 'sign.cpp'))
 ```
 
@@ -857,7 +866,7 @@ stopifnot(are_all_close(Av_via_col, Av_via_row))
 
 Huh, maybe because it's not compiled code? Let's check.
 
-```{r, message=FALSE}
+```{r, eval=FALSE}
 sourceCpp(file.path('src', 'matvec.cpp'))
 ```
 
@@ -869,7 +878,7 @@ cat(readLines(file.path('src', 'matvec.cpp'))[6:21], sep = '\n')
 
 Huh, maybe because it's not compiled code? Let's check.
 
-```{r, message=FALSE}
+```{r, eval=FALSE}
 sourceCpp(file.path('src', 'matvec.cpp'))
 ```
 
