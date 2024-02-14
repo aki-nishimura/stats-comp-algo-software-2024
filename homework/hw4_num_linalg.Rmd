@@ -78,6 +78,7 @@ We can thus assess the accuracy of the three solvers by comparing the numericall
 ### Task &#x2F00;
 
 First compare the outputs of matrix-vector multiplication $\bx \to \bA \bx$ using `double` and `long double` using the provided Rcpp functions.
+We will discuss more about Rcpp in lecture (if we have not yet); you can for now just use the provided functions without worrying about how they work.
 
 **Questions:**
 What is the relative difference in $\ell^2$-norm? 
@@ -176,3 +177,43 @@ for (sim_index in 1:n_sim) {
 # TODO: visually compare errors
 
 ```
+
+
+<script type="text/x-mathjax-config">
+MathJax.Hub.Config({
+  TeX: {
+    Macros: {
+      X: "{\\boldsymbol{X}}",
+      y: "{\\boldsymbol{y}}",
+      bm: ["{\\boldsymbol #1}", 1]
+    }
+  }
+});
+</script>
+
+# Exercise 2: Continuing development of `hiperglm` &mdash; improving numerical stability of Newton's method via QR-based solver
+
+From the previous assignments, you should now have a `hiperglm` package that implement an MLE finder via Newton's method. 
+We have so far focused on getting the functionality correct, and not so much on numerical stability and computational speed.
+In this assignment, you improve the algorithm's numerical stability by turning Newton's method into the mathematically equivalent iteratively re-weighted least squares (IWLS) based on QR decomposition.
+(And, in next assignment, you will improve the computational speed by interfacing the package with RcppEigen.)
+
+Much of this and next assignments is about enhancing performance of the package's existing features, rather than adding new ones.
+This is one setting in which the formal automated testing really proves its value. 
+By running the existing tests after each change, you can be confident that you did not break anything by changing the internal implementations that do not affect the interface.
+And, if you did change functions' interfaces, the tests help you remember where you have to make corresponding changes to ensure correct overall functionality.
+
+Before you start this assignment, remember to first address all the feedback from the previous assignment and merge your previous work to the main branch. 
+Then create a new `irls` branch from there, check it out, and commit all your work for this assignment there.
+Finally, open a pull request into your main branch after completing the assignment and request a review from the TA.
+
+1. Change your code for fitting linear models to solve the least squares problem using QR decomposition instead of LU/Cholesky.
+Make sure to run the existing tests to make sure the change did not break anything.
+2. Turn, if you have not already done so, each iteration of Newton's method into an isolated function.
+In other words, write a function named something like `take_one_newton_step(...)` and use it within the for-loop.
+This in particular facilitate unit-testing one step of Newton's method.
+3. Viewing the vector $\boldsymbol{H}_f^{-1} \nabla f$ in the Newton update formula as the solution of a weighted least squares problem, implement the solver for it based on QR decomposition.
+To do so, observe that minimizing $\| \bm{W}^{1/2} (\X \bm{\beta} - \y) \|^2$ is equivalent to minimizing $\| \tilde{\X} \bm{\beta} - \tilde{\y} \|^2$ with the modified input $\tilde{\X}$ and $\tilde{\y}$. 
+Use base R linear algebra functions for now.
+Add an option to the function `take_one_newton_step(...)` (or however else you decided to call it) to switch between the QR- and LU/Cholesky-based solvers, with QR being default.
+Test that the two solvers yield the same result up to finite precision errors.
