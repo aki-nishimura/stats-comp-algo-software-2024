@@ -54,6 +54,23 @@ The content of `.gitconfig` showing a proper Git set-up (though you would normal
 
 ```{bash, eval=FALSE}
 # Paste the output of `cat .gitconfig` here
+[user]
+        email = wenxuanlu@hotmail.com
+        name = Wenxuan Lu
+[credential "helperselector"]
+        selected = manager-core
+[http]
+        sslVerify = false
+[https]
+        sslVerify = false
+[init]
+        defaultBranch = main
+[core]
+        editor = 'C:/Program Files/Notepad++/notepad++.exe' -multiInst -notabbar -nosession -noPlugin
+[diff]
+        tool = kdiff3
+[difftool]
+        prompt = false
 ```
 
 
@@ -128,7 +145,21 @@ Does the size of the folder look reasonable relative to the sizes of the individ
 If not, why would that be? 
 Also, how do you explain the difference in the disk space usages under the two cases above?
 
-**Your answer:** (To be filled.)
+**Your answer:**
+
+**No.** The size of the folder returned from `du -h -s .` is much larger than the sum of file sizes returned from `ls -l -h`. The reasons are as follows:
+
+  1. `du` detects the actual amount of disk space used, which is the sum of sizes of blocks that are allocated to the folder. As long as the block is allocated to the folder, the whole block size will be counted even if only a portion of it is filled. On the other hand, `ls` reports the actual file size and does not count the unfilled parts of the blocks.
+  2. `du` includes all the files when calculating the disk space usage. On the other hand, `ls -l -h` does not include the hidden files. `ls -la -h` will show that there is an additional hidden folder `.git`. Moreover, `ls` does not recursively calculate the folder or subfolder size. Using `du -h -s .git` shows that the `.git` folder takes the majority of space. It is because Git stores folder history and commits information, which takes a lot of space.
+  3. `du` includes the overhead, such as metadata and structures, of the folder, whereas `ls` only consider the file sizes.
+
+
+**Now compare the two cases.** After 10 commits, the sizes of individual (non-hidden) files are almost the same. However, the `.git` hidden folder is much larger in the first case when `foo.pdf` is committed. This is because:
+
+  1. In the first case, Git needs to keep track of more files, and tracking the additional file `foo.pdf` takes additional space.
+  
+  2. Git is not space-efficient for tracking binary files. Git uses zlib to do compression when saving loose objects. This is efficient for text files, such as `foo.tex`, but is not efficient for binary files. This is because many binary files, such as complied PDFs and images, have been compressed. Moreover, the delta compression used for garbage collection is not efficient for binary files. Delta compression stored a compressed version of the incremental changes for tracked files. This works well for `foo.tex` where we were adding one sentence at a time. On the other hand, small changes in `foo.tex` file may result in large changes in the compiled PDF `foo.pdf`. Moreover, Git usually treats binary files as a whole even if only a small portion is changed. Thus, delta compression does not work well for `foo.pdf`, which leads to decreased efficiency in garbage collection and a much larger `.git` folder.
+
 
 ## Part B
 
@@ -149,20 +180,43 @@ Plot the disk usage of the git repo with the number of commits on the $x$-axis.
 Explain what you observe --- you may consult with resources on the web, including ChatGPT.
 Based on this result and those from Part A, explain why [Github discourages you from commiting (large) binary files](https://docs.github.com/en/repositories/working-with-files/managing-large-files/about-large-files-on-github)?
 
-**Your answer:** (To be filled.)
+**Your answer:** 
 
-```{r, eval=FALSE}
+**Observation:** 
+
+As the commit number increases, the folder size increases linearly. After thousands of commits, there are drops in the folder size in a few consecutive commits. For the following commits, the folder size increases linearly again. This trend repeats as more commits are made, and the folder size is within a reasonable range at all time. 
+
+**Reasoning:**
+
+Linear increase: Each time when I commit, Git stores the current version of the file `foo.tex` and information about the commit as a loose object within `.git/objects`. Moreover, `zlib` compression is applied to these loose objects. Since the tex file is small and the changes are minimal, each commit results in a separate object of similar sizes. This causes the linear increase in the folder size.
+
+Size drop: When the folder size hits some threshold, Git will automatically perform garbage collection to optimize the disk space usage. In our case, it is primarily done by using the delta compression to store only the differences between commits. Moreover, multiple small objects are packed into a single packfile which further reduces space usage. Since we only made small changes to `foo.tex`, the garbage collection is particularly efficient, and the drop in folder size is dramatic. Note that this optimization is gradual over several commits in order to spread the loads, achieve better compression rate, and decrease the risk of data loss or corruption.
+
+Trend repetition: After the garbage collection, the following commits result in new loose objects. This causes a linear increase in disk size, and the trend repeats itself.
+
+**Explain why Github discourages you from commiting (large) binary files**
+
+The answer for Part A explains the low efficiency of Git in compressing binary files both for the loose objects and during the garbage collection. This causes the `.git` folder to be large when binary files are changed and committed frequently. Large repositories can be slow in operation and can cause burden on either local or remote hosts. 
+
+Some other reasons not to commit large binary files include hard to use diff tools to compare binary files and hard to merge when conflict occurs.
+
+
+```{r, eval=TRUE}
 source(file.path("..", "R", "colors.R"))
 
-repo_size <- scan("git_experiment/git_repo_size_history.txt")
+repo_size <- scan("git_experiment/git_repo_size_history.txt") # repo size in KB
+repo_size_MB = repo_size / 1000
 plot(
-  # To be filled
+  x = 1:length(repo_size_MB),
+  y = repo_size_MB,
+  type = "l",
   frame = FALSE, # Remove the ugly box
   col = jhu_color$heritageBlue,
   xlab = "Commit counts",
   ylab = "Repo size (MB)"
 )
 ```
+
 
 ## Things to commit and submit
 
@@ -185,7 +239,7 @@ For now, let these "placeholder" functions simply throw warnings that they are y
 
 ## Things to commit and submit
 
-- Hyperlink to the `hiperglm` repository on your Github account
+- Hyperlink to the `hiperglm` repository on your Github account: <https://github.com/Wenxuan-Lu/hiperglm>
 - Screenshot of the package's Git history visualized through a Git GUI of your choice
 
 <img src="figure/git_history_screenshot.png" alt="Place the screenshot here"/>
