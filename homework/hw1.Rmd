@@ -54,22 +54,6 @@ The content of `.gitconfig` showing a proper Git set-up (though you would normal
 
 ```{bash, eval=FALSE}
 # Paste the output of `cat .gitconfig` here
-[user]
-	name = Nora Liu
-	email = yanxiliu23@gmail.com
-[filter "lfs"]
-	clean = git-lfs clean -- %f
-	smudge = git-lfs smudge -- %f
-	process = git-lfs filter-process
-	required = true
-[init]
-	defaultBranch = main
-[core]
-	editor = subl
-[diff]
-	tool = kdiff3
-[difftool]
-	prompt = false
 ```
 
 
@@ -146,40 +130,6 @@ Also, how do you explain the difference in the disk space usages under the two c
 
 **Your answer:** (To be filled.)
 
-Case 1:
-output of `du -h -s .`: 
-```
-1.0M	.
-```
-
-output of `ls -l -h`:
-```
-total 75K
--rwxr-x--- 1 yliu9 users  419 Jan 29 14:55 edit_and_commit.sh
--rw-r----- 1 yliu9 users   32 Jan 29 14:53 foo.aux
--rw-r----- 1 yliu9 users 3.4K Jan 29 14:53 foo.log
--rw-r----- 1 yliu9 users  36K Jan 29 14:53 foo.pdf
--rw-r----- 1 yliu9 users  337 Jan 29 14:53 foo.tex
-```
-
-No the size of the folder does not look reasonable relative to the size of the individual files. The individual files total up to 75K while the disk usage is 1M. This is because git init save all the snapshots of the current status of the folder.
-
-Case 2:
-output of `du -h -s .`:
-```
-505K	.
-```
-
-output of `ls -l -h`:
-```
-total 19K
--rwxr-x--- 1 yliu9 users 352 Jan 29 15:04 edit_and_commit.sh
--rw-r----- 1 yliu9 users 337 Jan 29 15:04 foo.tex
-```
-
-The disk usage of case 2 is almost half of case 1. This is because case 1 involves pdf files, which is around 30K+ on itself. Each snapshot of case 1 folder takes more space than case 2.
-
-
 ## Part B
 
 You will now run the same experiment but on steroids, making a total of _10,000_ commits (plus the initial commit).
@@ -189,30 +139,6 @@ You can use `du -s -k . >> git_repo_size_history.txt` for the latter purpose;
 you may want to combine the `du` command with `awk '{print $1}'` to only record the size without extraneous information.
 Since this is a long job that will take a non-trivial amount of JHPCE resource, just run this experiment once without committing the PDF output.
 Also make sure to use `sbatch`, and _not_ `srun`, for such a long job.
-
-
-
-Notes:
-fresh folder:
-du -h -s .
-20K	.
-
-total 19K
--rw-r----- 1 yliu9 users 227 Jan 29 15:10 edit_and_commit.sh
--rw-r----- 1 yliu9 users 128 Jan 29 15:10 foo.tex
-
-
-after first commit
-du -h -s .
-248K	.
-
-ls -l -h
-total 19K
--rw-r----- 1 yliu9 users 227 Jan 29 15:10 edit_and_commit.sh
--rw-r----- 1 yliu9 users 128 Jan 29 15:10 foo.tex
-
-
-
 
 **Tips:**
 You can transfer the disk usage result from JHPCE to your local computer via 
@@ -225,25 +151,12 @@ Based on this result and those from Part A, explain why [Github discourages you 
 
 **Your answer:** (To be filled.)
 
-```{r}
+```{r, eval=FALSE}
 source(file.path("..", "R", "colors.R"))
 
-repo_size <- scan("git_experiment/git_repo_size_history.txt", what = "character")
-
-library(stringr)
-library(dplyr)
-
-repo_size_num <- repo_size[str_detect(repo_size, "K")] %>% 
-  str_replace_all("K", "")%>% 
-  as.numeric()
-repo_size_num <- repo_size_num / 1024
-repo_size_num <- c(repo_size_num, 
-                   repo_size[str_detect(repo_size, "M")] %>% 
-                     str_replace_all("M", "")%>% 
-                     as.numeric())
+repo_size <- scan("git_experiment/git_repo_size_history.txt")
 plot(
   # To be filled
-  repo_size_num,
   frame = FALSE, # Remove the ugly box
   col = jhu_color$heritageBlue,
   xlab = "Commit counts",
@@ -272,7 +185,7 @@ For now, let these "placeholder" functions simply throw warnings that they are y
 
 ## Things to commit and submit
 
-- Hyperlink to the `hiperglm` repository on your Github account: https://github.com/yanxiliu230/hiperglm
+- Hyperlink to the `hiperglm` repository on your Github account
 - Screenshot of the package's Git history visualized through a Git GUI of your choice
 
 <img src="figure/git_history_screenshot.png" alt="Place the screenshot here"/>
