@@ -8,18 +8,16 @@ output:
 
 # Exercise: Continuing development of `hiperglm` &mdash; supporting the logistic model
 
-From the previous assignments, you should now have a `hiperglm` package that  implement an MLE finder via `stats::optim(..., method="BFGS")`, whose output has been tested against the least-sq via pseudo-inverse formula under the linear model.
-In this assignment, we will extend the package to support the logistic model.
-We will work toward implementing Newton's method for finding MLE and test its output against BFGS's.
+From the previous assignments, you should now have a `hiperglm` package that implement an MLE finder via `stats::optim(..., method="BFGS")`, whose output has been tested against the least-sq via pseudo-inverse formula under the linear model.
+In this assignment, you will extend the package to support the logistic model assuming outcomes to be binary.
+(Further extension to more general binomial outcomes is straightforward, but you are asked to focus on the binary case for this course.)
+You will work toward implementing Newton's method for finding MLE and test its output against BFGS's.
 
 Before you start this assignment, remember to first address all the feedback from the previous assignment and merge your previous work to the main branch. 
 Then create a new `logit-model` branch from there, check out the `logit-model` branch, and commit all your work for this assignment there.
 Finally, open a pull request into your main branch after completing the assignment and request a review from the TA.
 
-1. Update the helper function `simulate_data()` to support binary outcomes: do this by copying the updated function from the master branch of the instructor's repo.
-Supporting a non-binary binomial outcome is optional; you are allowed to implement everything assuming that the `outcome` input for the logistic model is always binary.
-In case you decide to try supporting the more general case, _please still start with the binary case, only extend it after completing Step 7, and keep the extension work in separate commits_.
-This is not only a reasonable development approach, but will also help us keep this optional part separate when grading the assignment.
+1. Update the helper function `simulate_data()` to support binary outcomes: do this by copying the updated function from [the instructor's repo](https://github.com/aki-nishimura/hiperglm/tree/logit-dev-ready/).
 2. Copy from the instructor's repo the (currently failing) test of the Newton's method output against BFGS in `test-mle-finder.R`.  
 3. Implement an MLE finder via BFGS for the logistic model:
     a. Implement functions to calculate the log-likelihood and its gradient under the logistic model.
@@ -51,19 +49,15 @@ Declare convergence when the absolute and relative change in log-likelihood fall
 7. Incorporate, if you didn't in the previous step, a check for potential non-converging behavior in Newton's method.
 More precisely, specify a maximum number of iterations to be attempted before the code aborts the algorithm to prevent it from entering a (near-) infinite loop.
 Non-convergence can happen in logistic regression even when the design matrix is full rank and well-conditioned; e.g. in case of complete separation.
-8. (Optional) Extend the code to support general (non-binary) binomial outcomes under the logistic model.
-Design the code so that a user can either input a binary vector or a list with two elements (one for the number of trials and another for the number of successes).
-This makes for a more use-friendly interface &mdash; if a user has a binary outcome, he/she would likely just want to input just that binary vector to the `hiper_glm()` function.
-The code needs to check whether a user input a vector or a list, and adjust its behavior accordingly. 
 
 #### Convergence criteria for Newton's method under generalized linear models
 
 As discussed during the lecture on numerical optimization, there are a few alternative ways to assess convergence of optimization algorithms.
 The most common and intuitive in statistical application is the criteria $| f(\boldsymbol{x}_\textrm{curr}) - f(\boldsymbol{x}_\textrm{prev}) | \leq \epsilon_\textrm{tol}$, where $f$ can be taken to coincide, up to an additive constant, with a log-likelihood under likelihood-based inference.
 To pick an appropriate $\epsilon_\textrm{tol}$, you have to answer the following question: 
-"when is $\boldsymbol{x}_\textrm{curr}$ close enough to the optimum $\boldsymbol{x}_\textrm{optimum}$ in a statistically meaningful way?"
+"when is $\boldsymbol{x}_\textrm{curr}$ close enough to the optimum $\boldsymbol{x}_\textrm{optim}$ in a statistically meaningful way?"
 
-In order to reason about the above question, think of $| f(\boldsymbol{x}_\textrm{curr}) - f(\boldsymbol{x}_\textrm{prev}) |$ as a surrogate measure of $| f(\boldsymbol{x}_\textrm{optimum}) - f(\boldsymbol{x}_\textrm{curr}) |$ and of $\epsilon_\textrm{tol}$ as a threshold defining how much increase in the log-likelihood to be negligible.
+In order to reason about the above question, think of $| f(\boldsymbol{x}_\textrm{curr}) - f(\boldsymbol{x}_\textrm{prev}) |$ as a surrogate measure of $| f(\boldsymbol{x}_\textrm{optim}) - f(\boldsymbol{x}_\textrm{curr}) |$ and of $\epsilon_\textrm{tol}$ as a threshold defining how much increase in the log-likelihood to be negligible.
 Then recall the following result on the asymptotic distribution of the log-likelihood ratio under the null $H_0: \beta_j = 0 \text{ for } j = 1, \ldots, p$ :
 $$\newcommand{\eqDistribution}{\mathrel{\raisebox{-.2ex}{$\overset{\scalebox{.6}{$\, d$}}{=}$}}}
 2 \, \log \frac{
@@ -79,7 +73,7 @@ Let your answer to the previous question guide your choice of $\epsilon_\textrm{
 More stringent convergence criteria (i.e. smaller $\epsilon_\textrm{tol}$) means more computational costs from additional Newton's iterations.
 To prioritize statistical accuracy, therefore, it make sense to be conservative and err on the side of smaller-than-strictly-necessary $\epsilon_\textrm{tol}$.
 And the additional computational cost is relatively small for Newton's methods due to its quadratic convergence behavior.
-Another important reason to be conservative is the fact that $| f(\boldsymbol{x}_\textrm{curr}) - f(\boldsymbol{x}_\textrm{prev}) |$ is only a surrogate of $| f(\boldsymbol{x}_\textrm{optimum}) - f(\boldsymbol{x}_\textrm{curr}) |$.
+Another important reason to be conservative is the fact that $| f(\boldsymbol{x}_\textrm{curr}) - f(\boldsymbol{x}_\textrm{prev}) |$ is only a surrogate of $| f(\boldsymbol{x}_\textrm{optim}) - f(\boldsymbol{x}_\textrm{curr}) |$.
 (Note that, regardless of how conservative you want to be, choosing a relative tolerance $\leq \epsilon_\textrm{machine}$ is problematic.
 Also worth noting is that, for big-data applications, you could pay a massive computational price for statistical conservatism.
 So, in those big-data regimes, you really need to be mindful of the trade-off between computational and statistical efficiency.)
@@ -91,7 +85,7 @@ Welcome to real life.
 
 Our discussion behind the choice of $\epsilon_\textrm{tol}$ so far focused on the statistical accuracy of the point estimate $\hat{\boldsymbol{\beta}}_\textrm{mle}$.
 More generally, we need to be concerned about uncertainty quantification.
-Can the (idealized) convergence criteria $| f(\boldsymbol{x}_\textrm{optimum}) - f(\boldsymbol{x}_\textrm{curr}) | \leq \epsilon_\textrm{tol}$ guarantee the accuracy of the resulting confidence interval estimates, at least in the asymtotic regime?
+Can the (idealized) convergence criteria $| f(\boldsymbol{x}_\textrm{optim}) - f(\boldsymbol{x}_\textrm{curr}) | \leq \epsilon_\textrm{tol}$ guarantee the accuracy of the resulting confidence interval estimates, at least in the asymtotic regime?
 Why?
 
 ## Things to commit/submit

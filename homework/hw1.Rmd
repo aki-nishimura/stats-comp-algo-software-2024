@@ -40,7 +40,9 @@ All the above commands do is to simply modify the "global" `.gitconfig` file, ty
 
 While I've just told you to use the command-line to interact with Git, a Git GUI can be a valuable tool for visually examining the current and past states of a repo.
 So, my recommended workflow is to interact with Git via command-line (b/c it gives you more precise controls) but to use a GUI for visualizing the repo. 
-I personally have been a happy user of a cross-platform [GitKraken](https://www.gitkraken.com/), which is freely available via [GitHub Student Developer Pack](https://education.github.com/pack/). 
+I personally have been a happy user of a cross-platform [GitKraken](https://www.gitkraken.com/), the Pro version of which is freely available via [GitHub Student Developer Pack](https://education.github.com/pack/).
+(Actually, the Free version should suffice for the purpose of this course;
+but you need the Pro version for a Git repo with private remote.)
 But other freeware like [Sourcetree](https://www.sourcetreeapp.com/) should work fine for the intended use of simply visualizing the repo. 
 
 This part of the exercise used to be optional because it seems silly to micromanage peoples' workflows, but I have had many students not take my recommendation only to later tell me they wish they started using a Git GUI earlier.
@@ -265,9 +267,16 @@ Set up your own version of the `hiperglm` package as we discussed in the class a
 * Exported S3 methods `coef`, `vcov`, and `print`.
 * Clean and modular git history.
 
+The goal here is to outline a skeleton of the package, without actually implementing the functions.
+For now, let these "placeholder" functions simply throw warnings that they are yet to be implemented.
+
 ## Things to commit and submit
 
 - Hyperlink to the `hiperglm` repository on your Github account: https://github.com/yanxiliu230/hiperglm
 - Screenshot of the package's Git history visualized through a Git GUI of your choice
 
 <img src="figure/git_history_screenshot.png" alt="Place the screenshot here"/>
+
+**Note:** 
+In case you decided to go with GitKraken via GitHub Student Developer Pack, the student status verification process could take a few days.
+In the meantime, however, you should be able to start using the free version without any problem and to later enter your Pro account credential after the verification is complete.

@@ -1,0 +1,82 @@
+---
+title: "Project: Generalized linear models via object-oriented design & First step into collaborative software development"
+output:
+  html_document:
+    df_print: paged
+    highlight: textmate
+---
+
+
+From the past assignments, you should now have a `hiperglm` package that supports both linear and logistic models, with numerically stable implementation of Newton's method and with performance enhancement via RcppEigen. 
+
+In this assignment, you will extend the `hiperglm` package to support more general regression models.
+This is best achieved by recognizing shared structure among generalized linear models and unifying their implementations, re-using as much of the same code as possible and standardizing interfaces to model-specific calculations.
+Object-oriented programming is a paradigm well-suited for translating (a part of) this conceptual framework into actual code.
+(I say "a part of" because the proposed software design requires a lot more than just object-oriented programming.)
+The idea is to have "regression model objects" (e.g. `linear_model`, `logit_model`, etc) handle all the model-specific calculations and operations.
+
+Another aspect of this assignment is to give you practice in reading, modifying, and building on an existing codebase.
+Working with others' code is very different from writing code from scratch, as many of us are used to, and is hard work that requires patience and experience.
+You will likely spend a lot of time trying to figure out what the code does and wondering what the heck was in the authors' brains when they wrote the code.
+Even if the required modification turns out to be only a few lines of code, you might spend days identifying where the modification is needed.
+(Incidentally, this is a challenging experience even for professional software engineers starting their career; see this blog post "[Things they didn’t teach you about Software Engineering](https://vadimkravcenko.com/shorts/things-they-didnt-teach-you/#h-you-rarely-write-something-from-scratch).")
+
+However frustrating it may be to deal with others' code, especially when you are not used to, it is an essential skill if you want to work as a part of a team.
+And such collaborative development of software suites will allow you to achieve things you otherwise couldn't by yourself.
+To get you started in this path, you will be asked in this assignment to continue the development of `hiperglm` using the instructor's, and _not_ your, implementation of the package.  
+
+
+# Task 1: Refactor the instructor's `hiperglm` package to use S3 methods for log-likelihood and derivative calculation
+
+Start by forking the instructor's version of the `hiperglm` repo found [here](https://github.com/aki-nishimura/hiperglm).
+The repo as of [this commit](https://github.com/aki-nishimura/hiperglm/tree/logit-model-eigen-cleaned) should be roughly at the same stage of development as your version.
+The two subsequent commits set the stage for introducing a "regression model" S3 object and accompanying methods to handle the model-specific calculations required for fitting generalized linear models.
+
+The model-specific calculations are currently handled by functions named `calc_{linear,logit}_*()` for linear and logistic models.
+Replace the functions `calc_{linear,logit}_loglik()`, `calc_{linear,logit}_grad()`, and `calc_logit_loglink_deriv()` with S3 generics `calc_loglik()` and `calc_loglink_deriv()` and accompanying S3 methods.
+You additionally need a `calc_grad()` function, but this one should be just a regular function and _not_ an S3 generic.
+Use the feature `function(x, y, z, ...)` to support a variable number of arguments in `calc_loglik()`, `calc_grad()`, and  `calc_loglink_deriv()`, which allows you to account for the additional noise variance parameter required for linear model. 
+Refer to [the chapter on S3](https://adv-r.hadley.nz/s3.html) of Hadley's Advanced R if you need a refresher on the topic.
+
+While and after making the required change, remember to run `devtools::test()` to make sure the package still produces outputs as expected and, if not, to find out where things need fixing.
+One important benefit of having comprehensive automated tests is that it allows you to modify code without being afraid of accidentally changing the code's behaviors; the tests will catch them before you publish the change.
+
+
+# Task 2: Add a support for Poisson regression
+
+The code structure change completed in Task 1 makes it straightforward to support _any_ additional generalized linear model, which now amounts to simply adding functions to compute the corresponding log-likelihood and derivatives of the log-link function.
+(To be more precise, any model with log-concave likelihoods for which Newton's method remains effective.)
+To see this process in action, you will now add a support for count data via Poisson regression, which users can specify via input argument `model_name = "poisson"` to the `hiper_glm()` function.
+
+In completing this task, remember to apply as appropriate all the best software development practices you learned in this course: 
+test-driven development, testing code at different scales from smallest logical units to overall behaviors, expressive and consistent names in functions and variables, modular design/git commits, etc.
+
+
+# Grading
+
+You will be evaluated on the quality of final code as well as development strategy, the latter of which must be reflected on your git history.
+
+Given the collaborative development aspect of this assignment, you are also required to re-use as much of the existing code as possible and to ensure consistency of what you add with the existing code.
+This is to emulate a real-life setting of contributing to an existing open-source project, in which it is essential to respect the existing designs and styles the team has established.
+
+To provide one reference point to judge how much of the code should be re-used, a command `git diff --stat pre-task-one..post-task-1` tells me (the instructor) that my personal attempt at Task 1 required 67 lines added and 78 deleted, with most of the additions and deletions being partially modifying the lines (which git still counts as deleting a line and adding a new one).
+And the following commands tell me that the change amounts to 179 words added and 292 deleted, as well as to 2,029 characters added and 2,736 deleted.
+My deleting one long comment in the code accounts for 103 words and 609 characters, so fewer deletions are related to functionally meaningful changes.
+This is obviously just one reference points and less changes aren't necessarily better;
+however, if you find yourself making far more changes, it might indicate too much butchering of the existing code and/or too many unwarranted detours.
+
+```{bash, eval=FALSE}
+# Replace `pre-task-1` and `post-task-1` with appropriate git commit hashes
+git diff --word-diff=porcelain pre-task-1..post-task-1 >> word_diff_out.txt
+
+# Credit: https://stackoverflow.com/questions/2874318/quantifying-the-amount-of-change-in-a-git-diff
+cat word_diff_out.txt | grep -e "^+[^+]" | wc -w | xargs # Num words added
+cat word_diff_out.txt | grep -e "^-[^-]" | wc -w | xargs # Num words deleted
+cat word_diff_out.txt | grep -e "^+[^+]" | wc -m | xargs # Num chars added
+cat word_diff_out.txt | grep -e "^-[^-]" | wc -m | xargs # Num chars deleted
+```
+
+
+# Submission
+
+Submit the completed assignment as a pull request to the instructor's `hiperglm` repo.
