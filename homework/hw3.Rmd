@@ -1,7 +1,9 @@
 ---
-title: "Homework: Newton's method for generalized linear models"
+title: 'Homework: Newton''s method for generalized linear models'
 output:
-  html_notebook: 
+  html_document:
+    df_print: paged
+  html_notebook:
     code_folding: none
     highlight: textmate
 ---
