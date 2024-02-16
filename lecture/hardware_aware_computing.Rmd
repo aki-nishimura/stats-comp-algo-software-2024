@@ -20,7 +20,7 @@ output:
 exclude: true
 
 <!-- Using internal CSS for now since modifying `extra.css` would affect other existing Rmd files.  -->
-<!-- But it might make sense to integrate to it. -->
+<!-- But it might actually make sense to integrate to it. -->
 
 <style type="text/css">
 .remark-inline-code { font-size: 90%; }
@@ -87,8 +87,11 @@ class: center, middle, inverse
 ## (I mean, duh. But&hellip; umm, why?)
 
 ---
+layout: true
 
 # "Vectorize!" but what does it mean, really?
+
+---
 
 e.g. `axpy` from _Basic Linear Algebra Subprograms_ (BLAS):
 $$\bm{y} \gets a \bm{x} + \bm{y}$$
@@ -109,8 +112,6 @@ axpy_vec <- function(a, x, y) {
 ```
 
 ---
-
-# "Vectorize!" but what does it mean, really?
 
 ```{r}
 n <- 10^6
@@ -142,6 +143,141 @@ summarize_benchmark(
 ```
 
 ---
+
+At a high level, the difference in execution speed stems from that in the underlying meanings of "`*`" and "`+`":
+
+```{r, eval=FALSE}
+axpy <- function(a, x, y) {
+  for (i in 1:length(x)) {
+    y[i] <- a `*` x[i] `+` y[i] 
+  }
+  return(y)
+}
+
+axpy_vec <- function(a, x, y) {
+  y <- a `*` x `+` y
+  return(y)
+}
+```
+
+---
+
+Here we recognize "`*`" and "`+`" as arithmetic operations, but their meanings actually depend on the context:
+
+--
+
+![:vspace -1ex]
+
+```{r}
+sloop::s3_dispatch(a * x[1])
+sloop::s3_dispatch(x[1] + y[1])
+```
+
+---
+
+In fact, in high-level languages, you can "`+`" many things:
+
+![:vspace -.5ex]
+
+```{r}
+as.Date("2024-01-01") + 13 # "Old" New Year on Julian calendar
+```
+
+--
+
+```{r, eval=FALSE}
+`+.Date`
+```
+
+
+```{r, echo=FALSE}
+cat('function (e1, e2) {
+    coerceTimeUnit <- function(x) as.vector(round(switch(attr(x,
+        \"units\"), secs = x/86400, mins = x/1440, hours = x/24,
+        days = x, weeks = 7 * x)))
+    if (nargs() == 1L)
+        return(e1)
+    if (inherits(e1, \"Date\") && inherits(e2, \"Date\"))
+        stop("binary + is not defined for \\"Date\\" objects")
+    if (inherits(e1, "difftime"))
+        e1 <- coerceTimeUnit(e1)
+    if (inherits(e2, "difftime"))
+        e2 <- coerceTimeUnit(e2)
+    .Date(unclass(e1) + unclass(e2))
+}')
+```
+
+---
+
+Even conceptually similar operations like "`1 + 1`" and  <br> "`1L + 1L`" require completely different CPU instructions.
+
+--
+
+* "`1`" is 64-bits while "`1L`" is 32-bits.
+* Doubles have the 11-bits exponent representing magnitude; (even 64-bits) integers don't have such.
+
+---
+
+OK, so why is the "vectorized" version faster?
+
+```{r, eval=FALSE}
+axpy <- function(a, x, y) {
+  for (i in 1:length(x)) {
+    y[i] <- a `*` x[i] `+` y[i] 
+  }
+  return(y)
+}
+
+axpy_vec <- function(a, x, y) {
+  y <- a `*` x `+` y
+  return(y)
+}
+```
+
+---
+
+OK, so why is the "vectorized" version faster?
+
+```{r, eval=FALSE}
+axpy <- function(a, x, y) {
+  for (i in 1:length(x)) {
+    y[i] <- a `*` x[i] `+` y[i] 
+  }
+  return(y)
+}
+```
+
+Focusing on the "`+`" part, roughly here's what happens in the non-"vectorized" version: ![:vspace -1ex]
+
+--
+
+1. .normal-size[`R`] looks up the types of `a * x[i]` and `y[i]`;
+2. .normal-size[`R`] dispatches the function to add two doubles;
+3. Repeat with `i <- i + 1`.
+
+---
+
+OK, so why is the "vectorized" version faster?
+
+```{r, eval=FALSE}
+axpy_vec <- function(a, x, y) {
+  y <- a `*` x `+` y
+  return(y)
+}
+```
+
+And here's roughly what happens in the vectorized ver: ![:vspace -1ex]
+
+--
+
+1. .normal-size[`R`] looks up the types of `(a * x)` and `y`&hairsp;;
+2. .normal-size[`R`] dispatches compiled code that exploits _next_ `length(x)` _operations being of the identical type_.
+
+.normal-size[`(Rcpp)Eigen`] would also use _lazy evaluation_ techniques: <br>
+`a * x + y`&hairsp; is not necessarily&hairsp; "`a * x`&hairsp;, then `(a * x) + y`&hairsp;."
+
+---
+layout: false
 layout: true
 
 # "Compiled code is faster" but why?
