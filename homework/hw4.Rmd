@@ -18,7 +18,6 @@ MathJax.Hub.Config({
 });
 </script>
 
-
 ```{r setup, include=FALSE}
 source(file.path("..", "R", "util.R"))
 
@@ -208,13 +207,28 @@ Then create a new `irls` branch from there, check it out, and commit all your wo
 Finally, open a pull request into your main branch after completing the assignment and request a review from the TA.
 
 1. Change your code for fitting linear models to solve the least squares problem using QR decomposition instead of LU/Cholesky via the pseudo-inverse formula.
-Make sure _not_ to compute the "Q" matrix explicitly as it is unnecesssary and actually quite computationally expensive to do so.
+Make sure _not_ to compute the "Q" matrix explicitly as it is unnecesssary and computationally expensive to do so.
 Remember to run the existing tests to make sure the change did not break anything.
-2. Turn, if you have not already done so, each iteration of Newton's method into an isolated function.
+2. Implement the `vcov()` S3 method for linear model by inverting the estimated Fisher info $\hat{\sigma}^2 \X^\intercal \X$ for $\hat{\sigma}^2 = \frac{n}{n - p} \| \y - \X \bm{\beta} \|^2$ where $n$ denotes the sample size and $p$ the number of predictors.
+(As discussed in class, this is an extremely rare situation in which it actually makes sense to explicitly calculate the inverse of a matrix.)
+Calculate the inverse from the "R" factor of $\X$ and `chol2inv()`; see the tip below for extracting the "R" factor from the `qr()` output.
+3. Turn, if you have not already done so, each iteration of Newton's method into an isolated function.
 In other words, write a function named something like `take_one_newton_step(...)` and use it within the for-loop.
 This in particular facilitate unit-testing one step of Newton's method.
-3. Viewing the vector $\boldsymbol{H}_f^{-1} \nabla f$ in the Newton update formula as the solution of a weighted least squares problem, implement the solver for it based on QR decomposition.
+4. Viewing the vector $\boldsymbol{H}_f^{-1} \nabla f$ in the Newton update formula as the solution of a weighted least squares problem, implement the solver for it based on QR decomposition.
 To do so, observe that minimizing $\| \bm{W}^{1/2} (\X \bm{\beta} - \y) \|^2$ is equivalent to minimizing $\| \tilde{\X} \bm{\beta} - \tilde{\y} \|^2$ with the modified input $\tilde{\X}$ and $\tilde{\y}$. 
 Use base R linear algebra functions for now.
 Add an option to the function `take_one_newton_step(...)` (or however else you decided to call it) to switch between the QR- and pseudo-inverse-based solvers, with QR being default.
 Test that the two solvers yield the same result up to finite precision errors.
+5. Implement the `vcov()` method for logistic model by inverting the observed Fisher information at the MLE.
+As before, calculate the inverse from the "R" factor of the QR decomposition.
+
+**Tip:**
+Use the following code snippet to extract the "R" factor from the output of the `qr()` function.
+The row re-ordering is required because the function applies the QR algorithm with _column pivoting_, permutation of the input matrix columns to improve numerical stability.
+```{r, eval=FALSE}
+qr_decomp <- qr(X)
+R <- qr.R(qr_decomp)
+R <- R[ , order(qr_decomp$pivot)]
+are_all_close(X, qr.Q(qr_decomp) %*% R) # Returns `TRUE`
+```
