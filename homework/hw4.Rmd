@@ -222,8 +222,24 @@ Add an option to the function `take_one_newton_step(...)` (or however else you d
 Test that the two solvers yield the same result up to finite precision errors.
 5. Implement the `vcov()` method for logistic model by inverting the observed Fisher information at the MLE.
 As before, calculate the inverse from the "R" factor of the QR decomposition.
+6. Test that the package produces the coefficient and uncertainty estimates with right statistical properties.
+Specifically, repeatedly apply `hiper_glm()` to randomly generated data, construct confidence intervals from `coef()` and `vcov()`, and compare the intervals' coverage rate with nominal one.
+Use a "simultaneous" confidence interval of the form $\big\{ \bm{\beta} : \big\| \hat{\bm{\Sigma}}^{-1/2} \big( \bm{\beta} - \hat{\bm{\beta}} \big) \big\|^2 < q \big\}$ with $\hat{\bm{\beta}}$ and $\hat{\bm{\Sigma}}$ being the outputs of `coef()` and `vcov()`;
+as for the multiplication by $\hat{\bm{\Sigma}}^{-1/2}$, use a Cholesky-based method to achieve the same effect.
+Choose $q$ according to the target nominal coverage of your choice.
+Make sure to test the estimates under both linear and logistic models.
+    * When testing statistical properties, what constitutes "pass" and "fail" is not as clear-cut as when testing deterministic behaviors.
+You should, however, still strive to choose a criteria as rigorously justifiable as possible; 
+see the note below for a suggestion.
+Make the logic behind your pass-fail criteria as self-explanatory as possible in code (e.g. through expressive variable/helper function names) and, where further explanation is warranted, add it as inline comments.
+7. Incorporate the above test of the package's statistical behavior as a formal test under the `tests/testthat` folder but, since the test takes a while to run and its result is not completely clear-cut, make it optional using the `testthat::skip_if_not()` function.
+For example, you can check the condition `Sys.getenv("MANUAL_TEST") == ""`;
+the test then is run only when you set the environmental variable `MANUAL_TEST` to a non-empty string, e.g. via `Sys.setenv(MANUAL_TEST = TRUE)`.
+    * Keeping it as an optional test not only allow you to re-run it as warranted (e.g. when switching to different methods for quantifying uncertainty) but also serve as a record of you having tested the package behavior, which otherwise would not be visible to others reading your code.
+(On the other hand, when a test --- or any piece of code for that matter --- becomes obsolete, just get rid of it.
+Even in the unlikely case you ever need it back, you can always find it in the git history.)
 
-**Tip:**
+**Tip on Step 2 and 5:**
 Use the following code snippet to extract the "R" factor from the output of the `qr()` function.
 The row re-ordering is required because the function applies the QR algorithm with _column pivoting_, permutation of the input matrix columns to improve numerical stability.
 ```{r, eval=FALSE}
@@ -232,3 +248,17 @@ R <- qr.R(qr_decomp)
 R <- R[ , order(qr_decomp$pivot)]
 are_all_close(X, qr.Q(qr_decomp) %*% R) # Returns `TRUE`
 ```
+
+**Note on Step 6:** 
+When using Monte Carlo simulation to evaluate statistical performance, the output necessarily deviates from the exact expected value due to random errors.
+To a great extent, however, it is possible to quantify magnitude of these random errors and correctly account for it.
+For instance, let's assume that we have confidence intervals with exact nominal coverage $r \in (0, 1)$.
+Under $m$ replications, the empirical coverage rate lies within $r \pm 1.96 * \hat{\sigma}$ for $\hat{\sigma}^2 = r (1 - r) / m$ with approximately 95% probability.
+Using this fact, we can construct a test that succeeds 95% of the time in correctly declaring the empirical coverage to be consistent with the nominal coverage.
+In practice, you would probably like to allow for a larger deviation from the nominal coverage when checking code's correctness since the implemented statistical method itself isn't perfect, with the `hiper_glm`'s `vcov()` in particular relying on asymptotic approximation.
+Accounting for this additional source of error may require some guesstimation and manual tweaking.
+Nonetheless, reasoning as above helps you quantify how much deviation from the nominal coverage is reasonably explained by Monte Carlo errors and when the deviation points to an issue in implementation.
+
+## Things to commit/submit
+
+* Link to the pull request.
