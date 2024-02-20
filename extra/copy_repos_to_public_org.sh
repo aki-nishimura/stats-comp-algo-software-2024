@@ -1,5 +1,6 @@
 #!/usr/bin/env bash
 
+input_flag=$1
 gh_orgname="stats-comp-algo-software-2024"
 reponame="hiperglm"
 
@@ -10,13 +11,17 @@ input_file="${SCRIPT_DIR}/github_usernames.txt"
 while read line
 do
 	gh_usrname="$line"
+	if [[ $input_flag == "update" ]]; then
+		cd $gh_usrname
+		git fetch --all --update-head-ok
+		git push --all "https://github.com/${gh_orgname}/${gh_usrname}"
+	else
+		git clone --mirror "https://github.com/${gh_usrname}/${reponame}" ${gh_usrname}/.git
+		cd $gh_usrname
+		git config --bool core.bare false
 
-	git clone --mirror "https://github.com/${gh_usrname}/${reponame}" ${gh_usrname}/.git
-	cd $gh_usrname
-	git config --bool core.bare false
-
-	gh repo create --public "https://github.com/${gh_orgname}/${gh_usrname}"
-	git push --all "https://github.com/${gh_orgname}/${gh_usrname}"
+		gh repo create --public "https://github.com/${gh_orgname}/${gh_usrname}"
+		git push --all "https://github.com/${gh_orgname}/${gh_usrname}"
+	fi
 	cd ..
-	
 done < "$input_file"
