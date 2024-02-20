@@ -19,14 +19,6 @@ output:
 
 exclude: true
 
-<!-- Using internal CSS for now since modifying `extra.css` would affect other existing Rmd files.  -->
-<!-- But it might actually make sense to integrate to it. -->
-
-<style type="text/css">
-.remark-inline-code { font-size: 90%; }
-.normal-size .remark-inline-code{ font-size: 100% }
-</style>
-
 ```{r setup, include = FALSE}
 source(file.path("..", "R", "util.R"))
 
@@ -85,6 +77,14 @@ class: center, middle, inverse
 # Same functionality, varying performance
 
 ## (I mean, duh. But&hellip; umm, why?)
+
+<!-- Using internal CSS for now since modifying `extra.css` would affect other existing Rmd files.  -->
+<!-- But it might actually make sense to integrate to it. -->
+
+<style type="text/css">
+.remark-inline-code { font-size: 90%; }
+.normal-size .remark-inline-code{ font-size: 100% }
+</style>
 
 ---
 layout: true
