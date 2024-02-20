@@ -353,9 +353,9 @@ summarize_benchmark(
 
 ---
 
-<p style="margin-top: -.5ex;"> </p>
+<p style="margin-top: -1ex;"> </p>
 
-**Note:** This function directly modifies `y`.
+**Note:** This function directly modifies `y` as the variable is passed _by reference_ via "`&`."
 <p style="margin-top: -1ex;"> </p>
 ```{r}
 y <- rep(0.00159, n)
@@ -534,7 +534,7 @@ Optimized libraries (e.g. Eigen, Open/Intel/Apple BLAS, &hellip;) make more diff
 
 ---
 
-<!-- Discuss "not general" matrices (symmetric, triangular, banded, etc) and what "d" is for. -->
+<!-- Discuss "not general" matrices (symmetric, triangular, banded, etc) and what "X" and "d" is for. -->
 
 ```{r}
 # 'gemm' = general matrix-multiplication
@@ -664,6 +664,8 @@ class: center, middle, inverse
 # Quick peek into CPU
 <img src="figure/computing_at_low_level/cpu_diagram.jpeg" alt="" class="center" style="width: 85%;"/>
 
+<!-- Mention CPU also include floating point unit separately from ALU. -->
+
 ---
 
 # Registers: most accessible data storage
@@ -693,6 +695,14 @@ To foster mutual understanding between us and machine, let's look at simple _ass
   <img src="figure/computing_at_low_level/right_logical_shift.png" class="center" style="width: 100%;"/>
 ]
 
+--
+
+Easy enough to see why dividing an unsigned integer by two amounts to a logical shift.
+
+--
+
+Division by two for a signed integer is a bit more involved.
+
 ---
 
 # Division via bit-shift
@@ -704,6 +714,16 @@ To foster mutual understanding between us and machine, let's look at simple _ass
   
   <img src="figure/computing_at_low_level/right_arithmetic_shift.png" class="center" style="width: 100%;"/>
 ]
+
+--
+
+The "sar" operation makes sense for keeping the sign.
+But what's up with the preceding 31-bit logical shift?
+
+--
+
+The "shr" followed by "add" amounts to "+1 if positive."
+
 <!-- Right shift by 31-bits ensures that division of negative integers get rounded towards 0. 
 The operation achieves this by isolating the sign bit (which is 1 for negative integers) and adding it to the original integer value:
 https://stackoverflow.com/questions/40638335/why-does-the-compiler-generate-a-right-shift-by-31-bits-when-dividing-by-2 -->
@@ -713,8 +733,12 @@ https://stackoverflow.com/questions/40638335/why-does-the-compiler-generate-a-ri
 # Division via bit-shift
 .pull-left[
   <img src="figure/computing_at_low_level/divide_int_by_two_assembly_only.png" class="left" style="width: 100%;"/> 
+  
+  This ensures consistent rounding towards 0; e.g. <br>
+  "&plusmn; 3 / 2" returns "&plusmn; 1."
 ]
 .pull-right[
+  <p style="margin-top: -1.5ex;"> </p>
   <img src="figure/computing_at_low_level/twos_complement_representation_of_integer.png" class="center" style="width: 100%;"/>
 ]
 
@@ -850,6 +874,8 @@ layout: false
 
 <img src="figure/computing_at_low_level/fetch_decode_execute_store_cycle_more_details.jpeg" class="center" style="width: 100%;"/> 
 
+<!-- Use "a * x[i] + y[i]" as an example. -->
+
 ---
 
 # "Instruction pipelining" to avoid idle time
@@ -865,6 +891,8 @@ layout: true
 ---
 
 You can't pipeline if the next action depends on curr one!
+
+<!-- Use "x[i + 1] <- x[i]" as an example. -->
 
 ---
 
