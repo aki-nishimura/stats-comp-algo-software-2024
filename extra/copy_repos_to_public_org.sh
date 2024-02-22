@@ -1,5 +1,11 @@
 #!/usr/bin/env bash
 
+# After running this script, remember also to 1) invite students to the organization
+# so that they can open pull requests and 2) change the base member priviledge to "write."
+# Ref:
+# - https://docs.github.com/en/pull-requests/collaborating-with-pull-requests/proposing-changes-to-your-work-with-pull-requests/requesting-a-pull-request-review
+# - https://docs.github.com/en/organizations/managing-user-access-to-your-organizations-repositories/managing-repository-roles/setting-base-permissions-for-an-organization
+
 input_flag=$1
 gh_orgname="stats-comp-algo-software-2024"
 reponame="hiperglm"
