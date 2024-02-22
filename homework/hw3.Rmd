@@ -90,5 +90,5 @@ Why?
 
 ## Things to commit/submit
 
-* Link to the pull request.
-* (Optional) Answer to the bonus question.
+* Link to the pull request: <https://github.com/acolum/hiperglm/pull/3>
+* (Optional) Answer to the bonus question: No, this convergence criteria can't guarantee the accuracy of the resulting confidence interval estimates due to the estimation process. In the process of fitting a GLM, we estimate a variance-covariance matrix (from which the confidence intervals are derived). This matrix estimate is calculated using the inversion of a product of matrices, namely $X^TW(\beta)X$, where $X$ is the covariance matrix and $W(\beta)$ is the weight matrix. (Note that the weight matrix depends on the parameter $\beta$ and the specific GLM chosen.) Even if the estimated parameter $\hat{\beta}$ is close to the MLE (leading to a better estimate of $W(\beta)$), the product $X^TW(\hat{\beta})X$ could have a large condition number and be ill-conditioned due to the specific draw of covariates $X$. This means that the inversion process could potentially introduce large errors, simply due to the limits of numerical precision. Because of this potential for error in the inversion process, we can't guarantee the accuracy of the confidence intervals computed using this method. 
