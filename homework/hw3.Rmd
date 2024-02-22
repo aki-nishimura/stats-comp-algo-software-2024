@@ -1,7 +1,9 @@
 ---
-title: "Homework: Newton's method for generalized linear models"
+title: 'Homework: Newton''s method for generalized linear models'
 output:
-  html_notebook: 
+  html_document:
+    df_print: paged
+  html_notebook:
     code_folding: none
     highlight: textmate
 ---
@@ -81,6 +83,8 @@ So, in those big-data regimes, you really need to be mindful of the trade-off be
 The above discussion, albeit well-founded on mathematical/statistical principles, provides only a guidance and not a precise answer.
 Welcome to real life.
 
+**Answer:** The absolute and relative threshold I chose to check convergence is half of the 0.05 quantile of a Chi-squared statistics with df = 1. Near $\hat{\boldsymbol{\beta}}_\textrm{mle}$, an additional Newton's iteration does not move the estimator much. To be specific, it is reasonable to assume that the change in log likelihood due to an additional iteration does not exceed the change due to an additional parameter with no material information. Under the null hypothesis that an additional parameter has no material information, the change in log likelihood follows $\chi^2_1/2$. To be conservative in checking convergence, I chose the 0.05 quantile of it. Overall, the stopping criteria is a smaller-than-$qchisq(0.05, df = 1)/2$ change in the log likelihood between adjacent iterations.
+
 **Bonus question:**
 
 Our discussion behind the choice of $\epsilon_\textrm{tol}$ so far focused on the statistical accuracy of the point estimate $\hat{\boldsymbol{\beta}}_\textrm{mle}$.
@@ -88,7 +92,9 @@ More generally, we need to be concerned about uncertainty quantification.
 Can the (idealized) convergence criteria $| f(\boldsymbol{x}_\textrm{optim}) - f(\boldsymbol{x}_\textrm{curr}) | \leq \epsilon_\textrm{tol}$ guarantee the accuracy of the resulting confidence interval estimates, at least in the asymtotic regime?
 Why?
 
+**Answer to the bonus question:** I think the idealized convergence criteria does not guarantee the accuracy of the CI estimates. Both a point estimation and a variance-covariance estimation of $\hat{\boldsymbol{\beta}}_\textrm{mle}$ are needed to construct its CI. Though our stopping criteria quantifies the uncertainty in point estimation in the idealized case, it does not quantify how $\epsilon_\textrm{tol}$ influences the variance-covariance estimation. 
+
 ## Things to commit/submit
 
-* Link to the pull request.
+* Link to the pull request. <https://github.com/Wenxuan-Lu/hiperglm/pull/3>
 * (Optional) Answer to the bonus question.
