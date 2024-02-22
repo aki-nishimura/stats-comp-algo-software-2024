@@ -7,6 +7,7 @@ Then complete and submit the first assignment as follows:
 1) make a `hw1` branch from the `main` branch,
 2) commit a completed assignment in the `hw1` branch, and
 3) create a [pull request](https://docs.github.com/en/pull-requests/collaborating-with-pull-requests/proposing-changes-to-your-work-with-pull-requests/creating-a-pull-request). 
+We will grade the HTML rendered version of your homework submission, so make sure all your work is shown there.
 
 For a subsequent assignment, [sync up your forked copy](https://docs.github.com/en/pull-requests/collaborating-with-pull-requests/working-with-forks/syncing-a-fork) before you start the assignment. 
 Name the new branch to match the assignment number (e.g. `hw2` for the 2nd assignment).
