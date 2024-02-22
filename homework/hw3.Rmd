@@ -1,7 +1,9 @@
 ---
-title: "Homework: Newton's method for generalized linear models"
+title: 'Homework: Newton''s method for generalized linear models'
 output:
-  html_notebook: 
+  html_document:
+    df_print: paged
+  html_notebook:
     code_folding: none
     highlight: textmate
 ---
@@ -85,10 +87,17 @@ Welcome to real life.
 
 Our discussion behind the choice of $\epsilon_\textrm{tol}$ so far focused on the statistical accuracy of the point estimate $\hat{\boldsymbol{\beta}}_\textrm{mle}$.
 More generally, we need to be concerned about uncertainty quantification.
-Can the (idealized) convergence criteria $| f(\boldsymbol{x}_\textrm{optim}) - f(\boldsymbol{x}_\textrm{curr}) | \leq \epsilon_\textrm{tol}$ guarantee the accuracy of the resulting confidence interval estimates, at least in the asymtotic regime?
+Can the (idealized) convergence criteria $| f(\boldsymbol{x}_\textrm{optim}) - f(\boldsymbol{x}_\textrm{curr}) | \leq \epsilon_\textrm{tol}$ guarantee the accuracy of the resulting confidence interval estimates, at least in the asymptotic regime?
 Why?
 
 ## Things to commit/submit
 
 * Link to the pull request.
+
+[https://github.com/thepianistalex/hiperglm/pull/8]
+
 * (Optional) Answer to the bonus question.
+
+
+**Answer to the bonus question:**
+The convergence criteria $| f(\boldsymbol{x}_\textrm{optim}) - f(\boldsymbol{x}_\textrm{curr}) | \leq \epsilon_\textrm{tol}$ does not guarantee the accuracy of the resulting confidence interval estimates, even just in the asymptotic regime. From the way we calculated the criteria, we can tell we only guarantees the convergence (i.e what kind of change in log likelihood is statistically small) but never said anything about the location of the optimum. We are using $| f(\boldsymbol{x}_\textrm{curr}) - f(\boldsymbol{x}_\textrm{prev}) |$ as a surrogate measure of $| f(\boldsymbol{x}_\textrm{optim}) - f(\boldsymbol{x}_\textrm{curr})$, which implicitly assumes that the current point is close enough to the optimum, but for confidence interval calculation, we cannot use that assumption since our goal turns to find the location of the optimum. Therefore, the convergence criteria does not guarantee the accuracy of the resulting confidence interval estimates, even just in the asymptotic regime.
