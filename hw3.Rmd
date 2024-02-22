@@ -1,0 +1,103 @@
+---
+title: 'Homework: Newton''s method for generalized linear models'
+output:
+  html_document:
+    df_print: paged
+  html_notebook:
+    code_folding: none
+    highlight: textmate
+---
+
+# Exercise: Continuing development of `hiperglm` &mdash; supporting the logistic model
+
+From the previous assignments, you should now have a `hiperglm` package that implement an MLE finder via `stats::optim(..., method="BFGS")`, whose output has been tested against the least-sq via pseudo-inverse formula under the linear model.
+In this assignment, you will extend the package to support the logistic model assuming outcomes to be binary.
+(Further extension to more general binomial outcomes is straightforward, but you are asked to focus on the binary case for this course.)
+You will work toward implementing Newton's method for finding MLE and test its output against BFGS's.
+
+Before you start this assignment, remember to first address all the feedback from the previous assignment and merge your previous work to the main branch. 
+Then create a new `logit-model` branch from there, check out the `logit-model` branch, and commit all your work for this assignment there.
+Finally, open a pull request into your main branch after completing the assignment and request a review from the TA.
+
+1. Update the helper function `simulate_data()` to support binary outcomes: do this by copying the updated function from [the instructor's repo](https://github.com/aki-nishimura/hiperglm/tree/logit-dev-ready/).
+2. Copy from the instructor's repo the (currently failing) test of the Newton's method output against BFGS in `test-mle-finder.R`.  
+3. Implement an MLE finder via BFGS for the logistic model:
+    a. Implement functions to calculate the log-likelihood and its gradient under the logistic model.
+    b. As done in the previous assignment, test your gradient calculation by comparing it against a numerical one.
+    c. Integrate the log-likelihood and gradient functions into the `hiper_glm()` function (and child functions it calls) to allow for finding MLE via BFGS under the logistic model.
+4. Implement an MLE finder via Newton's method for the logistic model.
+We first focus on implementing each iteration of the algorithm correctly without concerning ourselves about a convergence criteria:
+    a. Implement a function to calculate the Hessian of the log-likelihood.
+    b. (Optional) Test your Hessian calculation. 
+    This can be done using the same technique as the one you have used to test your gradient calculation.
+    To see this, note that a directional derivative of $\nabla f(\boldsymbol{x})$ in the direction of $\boldsymbol{v}$ is given by $\left. \frac{\textrm{d}}{\textrm{d} t} \nabla f(\boldsymbol{x} + t \boldsymbol{v}) \right|_{t = 0} = \boldsymbol{H}_f(\boldsymbol{x}) \boldsymbol{v}$.
+    You can therefore use the finite difference method to numerically approximate a multiplication of a vector by the Hessian $\boldsymbol{H}_f(\boldsymbol{x})$.
+    Since a matrix can be completely characterized by its action on a vector, comparisons against numerically calculated matrix-vector products can provide confidence in your Hessian calculation. 
+    c. Implement Newton's method for the logistic model.
+    You can pick any reasonable coefficient value as a starting point of the optimization, including a vector of zeros.
+    In order to test the algorithm's implementation independently of a convergence criteria, pick a fixed number of iterations large enough that you can reasonably assume the algorithm to have converged.
+    (It might be hard to come up with such a number without any prior experiences in optimization and, admittedly, this warrants some trial-and-error more generally. 
+    One helpful thing to remember is that Newton's convergence rate is quadratic; i.e. once the algorithm gets close enough to the optimum value, the subsequent iterates approach the optimum very quickly.
+    Generally speaking, therefore, Newton's method converges in a small number of iterations provided that the objective function is "nice enough;" strong convexity usually suffices, though it doesn't provide a universal guarantee.)
+5. Run the previously failing test and check that it now passes. 
+(Nothing to commit for this step unless you find a bug and have to fix it.
+In fact, you should in general consider running tests before committing changes, except for the tests that are meant to be failing at the moment.
+This helps you catch bugs sooner rather than later and save time in the long run.)
+6. Incorporate a convergence check into the MLE finder via Newton's.
+In other words, check for the algorithm's convergence after each iteration and stop the iterative process when a termination criteria is met.
+In determining convergence, use the change in log-likelihood between the current and previous iterations.
+Declare convergence when the absolute and relative change in log-likelihood falls below pre-specified thresholds.
+(See the "convergence criteria" sub-section below for further tips on how to choose this thresholds.)
+7. Incorporate, if you didn't in the previous step, a check for potential non-converging behavior in Newton's method.
+More precisely, specify a maximum number of iterations to be attempted before the code aborts the algorithm to prevent it from entering a (near-) infinite loop.
+Non-convergence can happen in logistic regression even when the design matrix is full rank and well-conditioned; e.g. in case of complete separation.
+
+#### Convergence criteria for Newton's method under generalized linear models
+
+As discussed during the lecture on numerical optimization, there are a few alternative ways to assess convergence of optimization algorithms.
+The most common and intuitive in statistical application is the criteria $| f(\boldsymbol{x}_\textrm{curr}) - f(\boldsymbol{x}_\textrm{prev}) | \leq \epsilon_\textrm{tol}$, where $f$ can be taken to coincide, up to an additive constant, with a log-likelihood under likelihood-based inference.
+To pick an appropriate $\epsilon_\textrm{tol}$, you have to answer the following question: 
+"when is $\boldsymbol{x}_\textrm{curr}$ close enough to the optimum $\boldsymbol{x}_\textrm{optim}$ in a statistically meaningful way?"
+
+In order to reason about the above question, think of $| f(\boldsymbol{x}_\textrm{curr}) - f(\boldsymbol{x}_\textrm{prev}) |$ as a surrogate measure of $| f(\boldsymbol{x}_\textrm{optim}) - f(\boldsymbol{x}_\textrm{curr}) |$ and of $\epsilon_\textrm{tol}$ as a threshold defining how much increase in the log-likelihood to be negligible.
+Then recall the following result on the asymptotic distribution of the log-likelihood ratio under the null $H_0: \beta_j = 0 \text{ for } j = 1, \ldots, p$ :
+$$\newcommand{\eqDistribution}{\mathrel{\raisebox{-.2ex}{$\overset{\scalebox{.6}{$\, d$}}{=}$}}}
+2 \, \log \frac{
+  L \big( \boldsymbol{y} \, | \, \boldsymbol{X}, \boldsymbol{\beta} = \hat{\boldsymbol{\beta}}_\textrm{mle} \big)
+}{
+  L \big( \boldsymbol{y} \, | \, \boldsymbol{X}, \boldsymbol{\beta} = \boldsymbol{0} \big)
+} \sim \chi^2_p,$$
+where $\chi^2_p$ denotes the chi-squared distribution with degree of freedom $p$ and can equivalently be expressed in terms of i.i.d. standard Gaussian $Z_j$'s as $\chi^2_p = Z_1^2 + \ldots + Z_p^2$.
+In other words, we expect the likelihood to increase by $Z_j^2 / \, 2$, purely by chance, for every additional parameter with no material information.
+From this perspective, how much increase in the log-likelihood is arguably negligible?
+
+## Answer
+
+Since a non-informative parameter increases the likelihood by an order of $Z_j^2$, the log-likelihood increases by an order of $Z_j$ from a non-informative parameter. Therefore, a substantial change in log-likelihood can be defined as one that is much higher than would be expected in a standard normal distribution. A reasonable stopping criterion with this reasoning would be if the change in log-likelihood is within 1 standard deviation of the mean of a standard normal distribution (i.e. < 1)
+
+Since Newton's method is not terribly computationally expensive, we can be more strict in our convergence criteria, i.e. only stop when we are sure that the increase in likelihood is negligible. Therefore, I set the algorithm to stop when the increase in log-likelihood is within (p * 0.001) standard deviations of the mean of $Z_j$, which is 0. So when the absolute and relative change in log-likelihood is less than p * 0.001, I will say the algorithm has converged. This allows the convergence criteria to be more lenient when introducing a larger number of parameters, which may help the increased computation cost.
+
+
+Let your answer to the previous question guide your choice of $\epsilon_\textrm{tol}$.
+More stringent convergence criteria (i.e. smaller $\epsilon_\textrm{tol}$) means more computational costs from additional Newton's iterations.
+To prioritize statistical accuracy, therefore, it make sense to be conservative and err on the side of smaller-than-strictly-necessary $\epsilon_\textrm{tol}$.
+And the additional computational cost is relatively small for Newton's methods due to its quadratic convergence behavior.
+Another important reason to be conservative is the fact that $| f(\boldsymbol{x}_\textrm{curr}) - f(\boldsymbol{x}_\textrm{prev}) |$ is only a surrogate of $| f(\boldsymbol{x}_\textrm{optim}) - f(\boldsymbol{x}_\textrm{curr}) |$.
+(Note that, regardless of how conservative you want to be, choosing a relative tolerance $\leq \epsilon_\textrm{machine}$ is problematic.
+Also worth noting is that, for big-data applications, you could pay a massive computational price for statistical conservatism.
+So, in those big-data regimes, you really need to be mindful of the trade-off between computational and statistical efficiency.)
+
+The above discussion, albeit well-founded on mathematical/statistical principles, provides only a guidance and not a precise answer.
+Welcome to real life.
+
+**Bonus question:**
+
+Our discussion behind the choice of $\epsilon_\textrm{tol}$ so far focused on the statistical accuracy of the point estimate $\hat{\boldsymbol{\beta}}_\textrm{mle}$.
+More generally, we need to be concerned about uncertainty quantification.
+Can the (idealized) convergence criteria $| f(\boldsymbol{x}_\textrm{optim}) - f(\boldsymbol{x}_\textrm{curr}) | \leq \epsilon_\textrm{tol}$ guarantee the accuracy of the resulting confidence interval estimates, at least in the asymtotic regime?
+Why?
+
+## Things to commit/submit
+
+* [Link to the pull request.](https://github.com/sfansler/hiperglm/pull/3)
+* (Optional) Answer to the bonus question.
