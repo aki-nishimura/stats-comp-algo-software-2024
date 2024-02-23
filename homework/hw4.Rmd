@@ -1,6 +1,8 @@
 ---
 title: 'Homework: Numerical linear algebra'
 output:
+  html_document:
+    df_print: paged
   html_notebook:
     code_folding: none
     highlight: textmate
@@ -25,7 +27,6 @@ required_packages <- c("microbenchmark")
 install_and_load_packages(required_packages)
 ```
 
-
 # Exercise 1: Comparing different numerical linear algebra algorithms for solving linear systems
 
 In this exercise, we consider the problem of solving a linear system $\bA \bx = \bb$ for $\bx$.
@@ -42,7 +43,14 @@ What are relative speeds among the algorithms?
 Do relative speeds agree with what you expect from the complexity analyses?
 If not (quite), why might that be?
 
-```{r, eval=FALSE}
+**Answer**: 
+
+*Observation*: Cholesky is the fastest in computing the linear system, followed by LU the second fastest, then solving by QR decomposition at last. 
+
+*Explanation*: The speed agrees with complexity analysis. In complexity analysis solving linear system $Ax = b$, LU requires $\approx \frac{2}{3}p^3$ for square matrix, Cholesky requires $\approx \frac{1}{3}p^3$ for square matrix, and QR decomposition requires $\approx 2np^2$, which is $2p^3$ for square matrix $A$ here. Therefore, the cost of solving $Ax=b$ are approximately $\frac{2}{3}p^3$, $\frac{1}{3}p^3$, and $2p^3$ via LU, Cholesky, and QR respectively. So in theory, Cholesky decomposition is the fastest, followed by LU, and QR, which is exactly the order we see in this section.
+
+
+```{r}
 # Import the `rand_positive_def_matrix` function
 source(file.path("R", "random_matrix.R"))
 
@@ -52,7 +60,16 @@ b <- rnorm(mat_size)
 
 solve_via_cholesky <- function(A, b) {
   # Fill in
+  L <- chol(A)
+  Lx <- forwardsolve(L, b, transpose = T, upper.tri = TRUE)
+  backsolve(L, Lx)
 }
+
+solve_via_qr <- function(A, b, tol = .Machine$double.eps) {
+  QR <- qr(A, tol = tol)
+  qr.solve(QR, b)
+}
+
 
 bench::mark(
   solve(A, b)
@@ -62,6 +79,8 @@ bench::mark(
 )
 bench::mark(
   # Solve via QR decomposition
+  solve_via_qr(A, b)
+  
 )
 ```
 
@@ -84,7 +103,19 @@ What is the relative difference in $\ell^2$-norm?
 How about the coordinate-wise relative differences?
 Are the observed magnitudes of the differences what you'd expect?
 
-```{r, eval=FALSE}
+**Answer**: Relative difference in $\ell^2$-norm is 5.756881e-16. Coordinate wise difference has the following distribution. Both types of differences are small which is what I would expect, since high-precision matrix-vector multiplications are stable
+
+```{r}
+l2norm <- function(v, w) {
+  sqrt(sum((v - w)^2) / sum(v^2))
+}
+rel_diff_coord <- function(truth, estimated) {
+  abs((estimated - truth) / truth)
+}
+```
+
+
+```{r}
 Rcpp::sourceCpp(file.path("src", "matvec_double.cpp"))
 Rcpp::sourceCpp(file.path("src", "matvec_ldouble.cpp"))
 
@@ -95,8 +126,17 @@ A <- rand_positive_def_matrix(mat_size, cond_num = 1e3)
 x <- rnorm(mat_size)
 
 # Fill in
+source(file.path("..", "R", "colors.R"))
+l2norm(matvec_ldouble(A, x), matvec_double(A, x))
 
+rel_diff_coord_ldl <- rel_diff_coord(matvec_ldouble(A, x), matvec_double(A, x))
+
+hist(log10(rel_diff_coord_ldl), 
+     main = "Coordinate-wise Relative Difference between ldouble and double",
+     xlab = "log 10 of relative difference", col = "#bdcedb", border = "#859bad")
 ```
+
+
 
 ### Task &#x2F06;
 
@@ -107,7 +147,13 @@ Then solve a positive-definite system $\bA \bx = \bb$ for $\bx$ using the three 
 Which algorithm appears to be more accurate than the others? 
 Visually demonstrate your answer.
 
-```{r, eval=FALSE}
+**Answer:** 
+
+- In terms of $\ell^2$-norm, LU is the most accurate with the least error, Cholesky the next, and the biggest error is produced by qr decomposition 
+- Coordinate wise relative difference agrees with the results above that the relative error by LU is distributed more to the left (smaller error) than Cholesky and QR. Distributions of Choleksy and QR are are close to each other.
+
+
+```{r}
 set.seed(1918)
 cond_num <- 1e6
 
@@ -118,8 +164,30 @@ A <- rand_positive_def_matrix(mat_size, cond_num)
 x <- rnorm(mat_size)
 
 # Fill in
+x.fit.lu <- solve(A, matvec_double(A, x))
+x.fit.chol <- solve_via_cholesky(A, matvec_double(A, x))
+x.fit.qr <- solve_via_qr(A, matvec_double(A, x))
 
+plot(log10(c(solve=l2norm(x, x.fit.lu),
+             chol=l2norm(x, x.fit.chol),
+             qr=l2norm(x, x.fit.qr))),
+     type = "o", lty = 1,
+     xlab = "Algorithm", ylab = "log10 of l2 norm of rel error", xaxt = "n", 
+     main = "Difference between solution to \n Ax=b and ground truth")
+axis(1, at=1:3, labels=c("lu", "chol", "qr"))
+
+par(mfrow=c(2,2))
+hist(log10(rel_diff_coord(x, x.fit.lu)), 
+     main = "Coord-wise rel diff by LU",
+     xlab = "log 10 of relative difference", col = "#bdcedb", border = "#859bad")
+hist(log10(rel_diff_coord(x, x.fit.chol)), 
+     main = "Coord-wise rel diff by Cholesky",
+     xlab = "log 10 of relative difference", col = "#bdcedb", border = "#859bad")
+hist(log10(rel_diff_coord(x, x.fit.qr)), 
+     main = "Coord-wise rel diff by QR",
+     xlab = "log 10 of relative difference", col = "#bdcedb", border = "#859bad")
 ```
+
 
 ### Task &#x4E09;
 
@@ -139,45 +207,112 @@ We also vary the condition number of $\bA$ and assess whether the results would 
 The QR solver will throw an error when the system is ill-condition enough that the numerical solution might not be very accurate. 
 To force it to return the solution in any case, set `tol = .Machine$double.eps`.
 
-```{r, eval=FALSE}
+
+**Answer**:
+
+*Observations*:
+
+- Performing 32 simulations for each decomposition method and each condition, we observe that Cholesky is the most stable, followed by LU. QR is the least stable. Similar pattern is observed using almost all metrics and all condition number
+  - Under condition number 1e6 and 1e12, Choleksy is the most stable for all metrics, with the density of error distributed to the left most, followed by LU's density in the middle, and QR more to the right
+  - Under condition number 1e9, the above pattern is seen in norm, median, and 5 percentile, but in 95 percentile and l1norm, distribution of Cholesky and LU almost overlaps, while QR is still on the right most. But even though LU and Choleksy's 95 percentile and l1norm error distribution overlaps more than in the other metrics and other condition number, Cholesky's 95 percentile and l1norm error have less variance than LU's, based on the plot; The mode of Cholesky's 95 percentile and l1norm error also has higher density than LU's. Therefore, it is still safe to say that Cholesky is the most table.
+- Under all metrics (norm, medium, 5 percentile, 95 percentile, l1norm), and for all three algorithms, the higher the condition number, the higher the errors
+
+*Explanation*: The observation pattern agrees with the theory. 
+
+- Under the same condition number
+  - In Cholesky: $L_{mach}L_{mach}^T = A + \Delta A$. For $L = UD V^T$ using SVD decomposition, $D=Diag(d_i)$ where $d_i$ are decreasing eigenvalues of $L$, $A=LL^T = UD V^T VD U^T = UD^2U^T$, so eigenvalues of $A$ are squares of eigenvalues of $L$, therefore $||A|| = ||L||^2 = ||L||\, ||L^T||$, $\frac{||\Delta A||}{||A||} =\frac{||\Delta A||}{||L||\,||L^T||}= O(\epsilon_{mach})$. Cholesky satisfies that $(A+\Delta A)x_{mach} = b$ for $\frac{||\Delta A||}{||A||} = O(\epsilon_{mach})$, thus $||x_{mach} - A^{-1}b|| = O(k(A)\epsilon_{mach})$
+  - In LU, $L_{mach}U_{mach} = A + \Delta A$, $\frac{||\Delta A||}{||L||\,||U||} = O(\epsilon_{mach})$, but $||L||\,||U|| > ||A||$, resulting in big $\Delta A$. Therefore, the numeric solution $x_{mach}$ of $Ax=b$ via LU does not satisfy $(A+\Delta A)x_{mach} = b$ for $\frac{||\Delta A||}{||A||} = O(\epsilon_{mach})$. LU is thus less stable than Cholesky.
+  - In QR, $Ax = QRx= b$, $x = R^{-1}Q^{-1}b = R^{-1}Q^{T}b$ since $Q$ is orthogonal. Thus the error $||x_{mach} - A^{-1}b|| = O\left(\left[k(A) + \frac{||Ax_{mach} - b||}{||Ax_{mach}||}k^2(A) \right]\epsilon_{mach}\right)$, where $k^2(A)$ term is small when $||Ax_{mach} - b||$ is small. Solving via QR is thus less stable than Cholesky, which agrees with the plots below
+- And since the error are all roughly $O(k(A)\epsilon_{mach})$, it makes sense that the higher the condition number, the larger error we get, regardless of algorithms
+
+
+```{r}
 # Utility functions for bookkeeping simulation results.
 source(file.path("R", "num_linalg_sim_study_helper.R"))
 
 n_sim <- 32L
 mat_size <- 512L
 cond_num <- 1e6
-metrics <- c("norm", "median", "five_percentile", "ninety_five_percentile")
+metrics <- c("norm", "median", "five_percentile", "ninety_five_percentile", "l1norm")
   # TODO: add another metric and modify the helper script accordingly
 
-rel_error_list <- lapply(
-  c("lu", "chol", "qr"), 
-  function(method) pre_allocate_error_list(n_sim, metrics)
-)
-
-for (sim_index in 1:n_sim) {
-  A <- rand_positive_def_matrix(mat_size, cond_num)
-  x <- rnorm(mat_size) 
-  b <- matvec_ldouble(A, x)
-  x_approx <- list( 
-    # Fill in
-  )
-  for (method in c("lu", "chol", "qr")) {
-    rel_error <- lapply(
-      metrics, 
-      function (metric) calc_rel_error(x, x_approx[[method]], metric)
+simulate <- function(cond_num, n_sim, mat_size, metrics) {
+  rel_error_list <- lapply(
+    c("lu", "chol", "qr"), function(method) pre_allocate_error_list(n_sim, metrics))
+  
+  for (sim_index in 1:n_sim) {
+    A <- rand_positive_def_matrix(mat_size, cond_num)
+    x <- rnorm(mat_size) 
+    b <- matvec_ldouble(A, x)
+    x_approx <- list( 
+      # Fill in
+      lu=solve(A, matvec_double(A, x)),
+      chol=solve_via_cholesky(A, matvec_double(A, x)),
+      qr=solve_via_qr(A, matvec_double(A, x), tol = .Machine$double.eps)
     )
-    names(rel_error) <- metrics
-    for (metric in names(rel_error)) {
-      rel_error_list[[method]][[metric]][sim_index] <- rel_error[[metric]]
+    for (method in c("lu", "chol", "qr")) {
+      rel_error <- lapply(
+        metrics, 
+        function (metric) calc_rel_error(x, x_approx[[method]], metric)
+      )
+      names(rel_error) <- metrics
+      for (metric in names(rel_error)) {
+        rel_error_list[[method]][[metric]][sim_index] <- rel_error[[metric]]
+      }
     }
   }
+  rel_error_list
 }
 
-# TODO: visually compare errors
 
+# TODO: visually compare errors
+cond_num <- 1e6
+rel_error_list_6 <- simulate(cond_num, n_sim, mat_size, metrics)
+cond_num <- 1e9
+rel_error_list_9 <- simulate(cond_num, n_sim, mat_size, metrics)
+cond_num <- 1e12
+rel_error_list_12 <- simulate(cond_num, n_sim, mat_size, metrics)
 ```
 
 
+
+```{r, message=FALSE, warning=FALSE}
+library(ggplot2)
+library(dplyr)
+library(ggpubr)
+
+make_error_plot <- function(data, metric, cond_num) {
+  data.frame(method = rep(c("LU", "Chol", "QR"), rep(32, 3)),
+                    rel_err = c(data[["lu"]][[metric]], 
+                                data[["chol"]][[metric]], 
+                                data[["qr"]][[metric]])) %>% 
+    ggplot( aes(x=log10(rel_err), fill=method)) +
+  geom_density( color="#e9ecef", alpha=0.6, position = 'identity') +
+  labs(fill="") + xlab("log10 of relative error")+ggtitle(gsub("_", " ", metric), subtitle = paste("k=", cond_num)) + theme(plot.title = element_text(size=12), plot.subtitle = element_text(size = 10), axis.title = element_text(size = 10))
+}
+
+
+ggarrange(make_error_plot(rel_error_list_6, "norm", 1e6), 
+          make_error_plot(rel_error_list_6, "median", 1e6), 
+          make_error_plot(rel_error_list_6, "five_percentile", 1e6), 
+          make_error_plot(rel_error_list_6, "ninety_five_percentile", 1e6),
+          make_error_plot(rel_error_list_6, "l1norm", 1e6),
+          ncol = 3, nrow = 2, common.legend = TRUE, legend="bottom")
+
+ggarrange(make_error_plot(rel_error_list_9, "norm", 1e9), 
+          make_error_plot(rel_error_list_9, "median", 1e9), 
+          make_error_plot(rel_error_list_9, "five_percentile", 1e9), 
+          make_error_plot(rel_error_list_9, "ninety_five_percentile", 1e9),
+          make_error_plot(rel_error_list_9, "l1norm", 1e9),
+          ncol = 3, nrow = 2, common.legend = TRUE, legend="bottom")
+
+ggarrange(make_error_plot(rel_error_list_12, "norm", 1e12), 
+          make_error_plot(rel_error_list_12, "median", 1e12), 
+          make_error_plot(rel_error_list_12, "five_percentile", 1e12), 
+          make_error_plot(rel_error_list_12, "ninety_five_percentile", 1e12),
+          make_error_plot(rel_error_list_12, "l1norm", 1e12),
+          ncol = 3, nrow = 2, common.legend = TRUE, legend="bottom")
+```
 <script type="text/x-mathjax-config">
 MathJax.Hub.Config({
   TeX: {
@@ -261,4 +396,4 @@ Nonetheless, reasoning as above helps you quantify how much deviation from the n
 
 ## Things to commit/submit
 
-* Link to the pull request.
+* Link to the pull request: https://github.com/yanxiliu230/hiperglm/pull/6

@@ -9,6 +9,8 @@ pre_allocate_error_list <- function(array_len, metrics) {
 calc_rel_error <- function(v, v_approx, metric) {
   if (metric == "norm") {
     rel_error <- sqrt(sum((v - v_approx)^2) / sum(v^2))
+  } else if (metric == "l1norm") {
+    rel_error <- sum(abs(v - v_approx)/abs(v))
   } else {
     coordwise_err <- abs((v - v_approx) / v)
     rel_error <- switch(metric,
