@@ -57,13 +57,13 @@ b <- rnorm(mat_size)
 
 solve_via_cholesky <- function(A, b) {
   L <- chol(A)
-  Lx <- forwardsolve(L, b, transpose = TRUE)
+  Lx <- forwardsolve(L, b, transpose = TRUE, upper.tri = TRUE)
   x <- backsolve(L, Lx)
   return(x)
 }
 
 solve_via_qr <- function(A, b) {
-  QR <- qr(A)
+  QR <- qr(A, tol = .Machine$double.eps)
   x <- qr.solve(QR, b)
   return(x)
 }
@@ -191,9 +191,8 @@ ggplot(data= df, aes(x=x_true, y=value, color=variable)) +
   theme_minimal()
 ```
 
-Both the l2-norm relative difference and the coordinate-wise relative difference show that method via LU decomposition is more accurate than the method via QR decomposition. The method via Cholesky decomposition is the least accurate.
+Both the l2-norm relative difference and the coordinate-wise relative difference show that the method from most to least accurate are : **Cholesky, LU, QR**. The trend is consistent over all x values.
 
-This makes sense because $||x - x_0|| = O(\kappa(A)\epsilon_{machine})$ for solution via LU and QR decomposition, but is $\left[\kappa(A) + \frac{||A(x-x_0)||}{||Ax||}\kappa^2(A)\right]\epsilon_{machine}$ for the method via Cholesky decomposition.
 
 ### Task &#x4E09;
 
@@ -213,44 +212,105 @@ We also vary the condition number of $\bA$ and assess whether the results would 
 The QR solver will throw an error when the system is ill-condition enough that the numerical solution might not be very accurate. 
 To force it to return the solution in any case, set `tol = .Machine$double.eps`.
 
-```{r, eval=FALSE}
+```{r, eval=TRUE}
 # Utility functions for bookkeeping simulation results.
 source(file.path("R", "num_linalg_sim_study_helper.R"))
 
-n_sim <- 32L
-mat_size <- 512L
-cond_num <- 1e6
-metrics <- c("norm", "median", "five_percentile", "ninety_five_percentile")
-  # TODO: add another metric and modify the helper script accordingly
-
-rel_error_list <- lapply(
-  c("lu", "chol", "qr"), 
-  function(method) pre_allocate_error_list(n_sim, metrics)
-)
-
-for (sim_index in 1:n_sim) {
-  A <- rand_positive_def_matrix(mat_size, cond_num)
-  x <- rnorm(mat_size) 
-  b <- matvec_ldouble(A, x)
-  x_approx <- list( 
-    # Fill in
+get_rel_error_list<-function(n_sim=32L, mat_size=512L, cond_num=1e6, 
+                             metrics=c("norm", "median", "five_percentile", 
+                                       "ninety_five_percentile", "maximum")) {
+  rel_error_list <- lapply(
+    c("lu", "chol", "qr"), 
+    function(method) pre_allocate_error_list(n_sim, metrics)
   )
-  for (method in c("lu", "chol", "qr")) {
-    rel_error <- lapply(
-      metrics, 
-      function (metric) calc_rel_error(x, x_approx[[method]], metric)
+  
+  for (sim_index in 1:n_sim) {
+    A <- rand_positive_def_matrix(mat_size, cond_num)
+    x <- rnorm(mat_size) 
+    b <- matvec_ldouble(A, x)
+    x_approx <- list( 
+      lu = solve(A, b),
+      chol = solve_via_cholesky(A, b),
+      qr = solve_via_qr(A, b)
     )
-    names(rel_error) <- metrics
-    for (metric in names(rel_error)) {
-      rel_error_list[[method]][[metric]][sim_index] <- rel_error[[metric]]
+    for (method in c("lu", "chol", "qr")) {
+      rel_error <- lapply(
+        metrics, 
+        function (metric) calc_rel_error(x, x_approx[[method]], metric)
+      )
+      names(rel_error) <- metrics
+      for (metric in names(rel_error)) {
+        rel_error_list[[method]][[metric]][sim_index] <- rel_error[[metric]]
+      }
     }
   }
+  return(rel_error_list)
 }
-
-# TODO: visually compare errors
-
 ```
 
+```{r}
+visualize_rel_diff<-function(rel_error_list, cond_num){
+  metrics = c("norm", "median", "five_percentile", "ninety_five_percentile", "maximum")
+  metric_names = c("l2-norm", "Median of Coordinate-wise", "Five Percentile of Coordinate-wise",
+                   "Ninety five Percentile of Median of Coordinate-wise", "Maximum of Coordinate-wise")
+  i = 1
+  metric = metrics[i]
+  metric_name = metric_names[i]
+  df = data.frame(Cholesky=rel_error_list[["chol"]][[metric]], 
+                  LU=rel_error_list[["lu"]][[metric]], 
+                  QR =rel_error_list[["qr"]][[metric]]
+  )
+  df$metric = metric
+  for (i in 2:length(metrics)) {
+    metric = metrics[i]
+    metric_name = metric_names[i]
+    new_df = data.frame(Cholesky=rel_error_list[["chol"]][[metric]], 
+                        LU=rel_error_list[["lu"]][[metric]], 
+                        QR =rel_error_list[["qr"]][[metric]]
+    )
+    new_df$metric = metric
+    df = rbind(df, new_df)
+  }
+  df = reshape2::melt(df, id.vars="metric")
+  
+  ggplot(data= df, aes(fill= variable, group=variable, x=log(value))) +
+    geom_density(alpha = 0.5) +
+    facet_wrap(~metric) +
+    labs(title = paste("Condition Number:", cond_num)) +
+    theme_minimal()
+}
+```
+
+
+```{r}
+set.seed(1)
+cond_num = 1e6
+rel_error_list = get_rel_error_list(cond_num = cond_num)
+visualize_rel_diff(rel_error_list, cond_num)
+```
+
+```{r}
+set.seed(1)
+cond_num = 1e9
+rel_error_list = get_rel_error_list(cond_num = cond_num)
+visualize_rel_diff(rel_error_list, cond_num)
+```
+
+```{r}
+set.seed(1)
+cond_num = 1e12
+rel_error_list = get_rel_error_list(cond_num = cond_num)
+visualize_rel_diff(rel_error_list, cond_num)
+```
+**Answer**
+
+The general pattern for accuracy is consistent across different condition numbers and different metrics.
+
+  - The accuracy from the highest to the lowest are QR, LU, and Cholesky.  
+
+  - As the condition number increases, the error increases. This is as expected because the error is proportional to the condition number.
+  
+  - Compared with other metrics, the maximum coordinate-wise relative difference has a larger variance.
 
 <script type="text/x-mathjax-config">
 MathJax.Hub.Config({
