@@ -118,9 +118,24 @@ mat_size <- 1024L
 A <- rand_positive_def_matrix(mat_size, cond_num = 1e3)
 x <- rnorm(mat_size)
 
-# Fill in
+Ax_double <- matvec_double(A, x)
+Ax_ldouble <- matvec_ldouble(A, x)
 
+rel_diff <- norm(Ax_double - Ax_ldouble, "2") / norm(Ax_ldouble, "2")
+coor_rel_diff <- abs(Ax_double - Ax_ldouble) / abs(Ax_ldouble)
+
+cat("The relative difference in l2-norm is", rel_diff, "\n")
+cat("The mean coordinate-wise relative difference is", mean(coor_rel_diff), "\n")
+cat("The minimum non-zero coordinate-wise relative difference is",
+    min(coor_rel_diff[coor_rel_diff!=0]), "\n")
 ```
+
+The double-precision floating point format has a 53-bit significant precision, including 1 implicit leading bit. This is about $ceil(log_{10}(2^{-52})) = 16$ decimal digits of precision for values around 1. 
+
+On the other hand, the long double format has a 64-bit significant precision, including 1 implicit leading bit. This is about $ceil(log_{10}(2^{-63})) = 19$ decimal digits of precision for values around 1. 
+
+The relative difference is approximately around the precision limit of double format when the value to be compared is scaled to 1. Thus, it is approximately on the order of $10^{-16}$, which is consistent with the results shown above.
+
 
 ### Task &#x2F06;
 
