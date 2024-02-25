@@ -27,6 +27,7 @@ required_packages <- c("microbenchmark")
 install_and_load_packages(required_packages)
 
 library(bench)
+library(ggplot2)
 ```
 
 
@@ -108,7 +109,7 @@ What is the relative difference in $\ell^2$-norm?
 How about the coordinate-wise relative differences?
 Are the observed magnitudes of the differences what you'd expect?
 
-```{r, eval=FALSE}
+```{r, eval=TRUE}
 Rcpp::sourceCpp(file.path("src", "matvec_double.cpp"))
 Rcpp::sourceCpp(file.path("src", "matvec_ldouble.cpp"))
 
@@ -126,6 +127,7 @@ coor_rel_diff <- abs(Ax_double - Ax_ldouble) / abs(Ax_ldouble)
 
 cat("The relative difference in l2-norm is", rel_diff, "\n")
 cat("The mean coordinate-wise relative difference is", mean(coor_rel_diff), "\n")
+cat("The median coordinate-wise relative difference is", median(coor_rel_diff), "\n")
 cat("The minimum non-zero coordinate-wise relative difference is",
     min(coor_rel_diff[coor_rel_diff!=0]), "\n")
 ```
@@ -146,7 +148,7 @@ Then solve a positive-definite system $\bA \bx = \bb$ for $\bx$ using the three 
 Which algorithm appears to be more accurate than the others? 
 Visually demonstrate your answer.
 
-```{r, eval=FALSE}
+```{r, eval=TRUE}
 set.seed(1918)
 cond_num <- 1e6
 
@@ -155,10 +157,43 @@ mat_size <- 1024L
 
 A <- rand_positive_def_matrix(mat_size, cond_num)
 x <- rnorm(mat_size)
+b <- matvec_ldouble(A, x)
 
-# Fill in
+x_cholesky = solve_via_cholesky(A, b)
+x_LU = solve(A, b)
+x_qr = solve_via_qr(A, b)
 
+rel_diff_cholesky <- norm(x_cholesky - x, type = "2") / norm(x, type = "2")
+rel_diff_LU <- norm(x_LU - x, type = "2") / norm(x, type = "2")
+rel_diff_qr <- norm(x_qr - x, type = "2") / norm(x, type = "2")
+
+coor_rel_diff_cholesky <- abs(x_cholesky - x) / abs(x)
+coor_rel_diff_LU <- abs(x_LU - x) / abs(x)
+coor_rel_diff_qr <- abs(x_qr - x) / abs(x)
+
+cat("Relative l2-norm difference (Cholesky):", rel_diff_cholesky, "\n")
+cat("Relative l2-norm difference (LU):", rel_diff_LU, "\n")
+cat("Relative l2-norm difference (QR):", rel_diff_qr, "\n")
+
+df = data.frame(x_true=x,
+                Cholesky=coor_rel_diff_cholesky, 
+                LU=coor_rel_diff_LU, 
+                QR = coor_rel_diff_qr
+)
+df = reshape2::melt(df, id.vars="x_true")
+ggplot(data= df, aes(x=x_true, y=value, color=variable)) +
+  geom_point(alpha = 0.5) +
+  scale_color_manual(values = c("Cholesky" = "blue", "LU" = "red", "QR" = "green")) +
+  scale_y_log10() +
+  labs(y = "Coordinate-wise Relative Difference on log10 scale", 
+       x = "True x",
+       title = "Coordinate-wise Relative Differences for Cholesky, LU, and QR") +
+  theme_minimal()
 ```
+
+Both the l2-norm relative difference and the coordinate-wise relative difference show that method via LU decomposition is more accurate than the method via QR decomposition. The method via Cholesky decomposition is the least accurate.
+
+This makes sense because $||x - x_0|| = O(\kappa(A)\epsilon_{machine})$ for solution via LU and QR decomposition, but is $\left[\kappa(A) + \frac{||A(x-x_0)||}{||Ax||}\kappa^2(A)\right]\epsilon_{machine}$ for the method via Cholesky decomposition.
 
 ### Task &#x4E09;
 
