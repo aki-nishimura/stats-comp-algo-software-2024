@@ -188,25 +188,32 @@ I am far from an expert on compiler flags, so the rest of discussion is accurate
 Rcpp by default applies the level 2 optimization via flag `-O2` when compiling your Rcpp code.
 This flag is a shorthand for turning on a collection of more specific flags and generally leads to efficient machine code without any major drawbacks.
 I've been told that the more aggressive level 3 optimization via `-O3` can sometimes hurt performance or even break things.
-Which specific flags `-O2` activates to some extent depends on which (version of) compiler you are using;
-you can for example see a list of optimizations turned on through the `-O2` flag by the latest GCC version 
-[here](https://gcc.gnu.org/onlinedocs/gcc/Optimize-Options.html).
-Generally speaking, the level 2 optimization misses some of the important optimization opportunities for scientific computation, such as fused multiply-add (FMA) and AVX's 256-bit vectorized operation discussed in class.
-SSE's 128-bit vectorization seems to be activated by `-O2` with Clang 12.0.0, but I am not sure how to confirm it and [their documentation is not particularly helpful](https://clang.llvm.org/docs/CommandGuide/clang.html#cmdoption-o0).
+Which specific flags `-O2` activates to some extent depends on which (version of) compiler you are using.
+Generally speaking, however, the level 2 optimization misses some of the important optimization opportunities for scientific computation, such as fused multiply-add (FMA) and AVX's 256-bit vectorized operation discussed in class.
+SSE's 128-bit vectorization seems to be activated by `-O2` with Clang (the default compiler for macOS) as of version 12.0.0, but I am not sure how to confirm it and [their documentation is not particularly helpful](https://clang.llvm.org/docs/CommandGuide/clang.html#cmdoption-o0).
+If you are on Linux and using GCC (GNU Compiler Collection), then you can run `gcc -O2 -Q --help=target` to find out which exact options are enabled by the `-O2` option.
 
 In compiling Rcpp code, you can turn on and off these additional options by modifying the R version of a [Makefile](https://en.wikipedia.org/wiki/Make_(software)#Makefiles) called `Makevars` and `Makevars.win` for Unix and Windows respectively. 
 To specify the compiler options for a specific R package, you can place such an Makevars file under the `src/` directory.
 To specify the global options that affect all Rcpp code compilations on your computer, you can edit the Makevars file at the location given by `tools::makevars_user()`, which is typically `~/.R/Makevars` in Unix.
-For example, to turn on AVX and FMA, you would add a line `CXXFLAGS += -mavx -mfma` in the Makevars file; 
+For example, to turn on AVX(2) and FMA, you would add a line `CXXFLAGS += -mavx2 -mfma` in the Makevars file; 
 to turn off SSE, you woud add `CXXFLAGS += -mno-sse`.
 You can read more about the role of Makevars files [here](https://stackoverflow.com/questions/43597632/understanding-the-contents-of-the-makevars-file-in-r-macros-variables-r-ma).
 
 **To-do's:**
 Using the `dgemm_eigen()` function from lecture, compare the performances of Eigen's and your custom matrix-matrix multiplication compiled under different optimization options.
-Selectively turn on and off SSE, AVX, and FMA to see how each option affects the performances. 
+Selectively turn on and off SSE, AVX2, and FMA to see how each option affects the performances. 
 (SSE should be turned on by `-O2` unless explicitly turned off, but if `-mno-sse` makes no performance difference, then try `-msse` or `-msse4`.)
-Finally, turn on both AVX and FMA and check the resulting performances.
+Finally, turn on both AVX2 and FMA and check the resulting performances.
 Report what you find.
+
+Run the above experiment both on your own computer and on a JHPCE node.
+In case you have a Mac computer with Apple silicon, then the experiment won't work on your computer, so just use JHPCE.
+In addition to the results, report the CPU model on the JHPCE node you ran the experiment on;
+you can check this via the `lscpu` command. 
+The few really old nodes on JHPCE do not support AVX and FMA, so switch to another node in case you get assigned to those nodes.
+You can check supports for AVX and FMA from the output of `lscpu`; try `lscpu | grep avx` and `lscpu | grep fma`.
+
 
 ```{r, warning=FALSE, eval=FALSE}
 # Import `dgemm_eigen()` from lecture
