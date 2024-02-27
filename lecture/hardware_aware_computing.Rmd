@@ -1182,6 +1182,59 @@ Make sure you choose the right order for double for-loops!
 
 ---
 
+# Consequences of data motion bottleneck
+
+Here are some consequences of data motion being computational bottleneck.
+
+--
+
+If multiplying a bunch of vectors by the same matrix, first stacking them into a matrix makes the calculation faster:
+
+```{python, eval=FALSE}
+import numpy as np
+n, p, k = 4096, 1024, 16
+X = np.random.randn(n, p)
+b_list = [np.random.randn(p, 1) for _ in range(k)]
+
+# Multiply one vector at a time
+for l in range(len(b_list)): X @ b_list[l]
+
+# Multiply them all at once
+B = np.hstack(b_list)
+X @ B 
+```
+
+<!-- B_col_major = np.array(np.random.randn(p, k), order = 'F') -->
+<!-- for l in range(len(b_list)): X @ B_col_major[:, l] -->
+
+<!-- n <- 4096; p <- 1024; k <- 16 -->
+<!-- A <- matrix(rnorm(n * p), nrow = n, ncol = p) -->
+<!-- B <- matrix(rnorm(p * k), nrow = p, ncol = k) -->
+<!-- bench::mark(A %*% B) -->
+<!-- bench::mark( -->
+<!--   for (j in 1:ncol(B)) { -->
+<!--     A %*% B[, j] -->
+<!--   } -->
+<!-- ) -->
+
+---
+
+# Consequences of data motion bottleneck
+
+Multiplying matrix with its own transpose can be faster than multiplying two different matrices:
+
+```{python, eval=FALSE}
+import numpy as np
+n, p = 4096, 1024
+X = np.random.randn(n, p)
+Z = np.random.randn(n, p)
+
+X.T @ Z
+X.T @ X
+```
+
+---
+
 # Things get even more complicated when trying to parallelize over multiple CPUs
 
 <p style="margin-top: 3ex;"> </p>
