@@ -768,6 +768,27 @@ Btw: "1071644672" (decimal) $=$ "3FE00000" (hexadecimal) $=$ "111111111000000000
 <!-- and the other "0" is for the trailing 32-bits. -->
 
 ---
+
+# Why should we care about assembly code?
+
+It's used in real life;&thinsp; e.g. openBLAS implementation of `gemv` in the [x86_64](https://github.com/OpenMathLib/OpenBLAS/blob/develop/kernel/x86_64/dgemv_n.S) and [ARM](https://github.com/OpenMathLib/OpenBLAS/blob/master/kernel/arm64/gemv_n.S) instructions sets.
+
+---
+
+# Why should we care about assembly code?
+
+Knowing a bit could help you identify big opportunities:
+
+![:vspace -1ex]
+![](figure/computing_at_low_level/eigen_faq_header.png)
+![:vspace -2.5ex]
+$$\vdots$$
+![:vspace -1.5ex]
+![](figure/computing_at_low_level/eigen_faq_checking_vectorization.png)
+
+<!-- https://eigen.tuxfamily.org/index.php?title=FAQ#How_can_I_check_that_vectorization_is_actually_being_used.3F -->
+
+---
 layout: false
 class: center, middle, inverse
 
