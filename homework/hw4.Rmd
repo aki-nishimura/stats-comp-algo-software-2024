@@ -42,6 +42,7 @@ What are relative speeds among the algorithms?
 Do relative speeds agree with what you expect from the complexity analyses?
 If not (quite), why might that be?
 
+**My Answers:**
 ```{r, eval=TRUE}
 # Import the `rand_positive_def_matrix` function
 source(file.path("R", "random_matrix.R"))
@@ -66,14 +67,13 @@ bench::mark(
 )
 ```
 
-**My Answers:**
 Cholesky decomposition is fastest (median time: 172 ms), followed by LU decomposition (median time: 175 ms), and then QR decomposition (median time: 518 ms).
 
 These relative speeds somewhat agree with what I expected. The complexity analyses presented in the lecture slides showed that Cholesky decomposition has complexity $\sim \frac{1}{3}p^3$, LU decomposition has complexity $\sim \frac{2}{3}p^3$, and QR decomposition has complexity $\sim 2np^2 - \frac{2}{3}p^3 = \frac{4}{3}p^3$ (in this scenario where $n=p$ for $p$ parameters and $n$ data points). This implies that the Cholesky decomposition should take about half of the time of the LU decomposition, which should then take about half of the time of the QR decomposition. 
 
 However, this is not exactly what we see here. According to the benchmark tests above, the Cholesky decomposition method is only slightly (not two times) faster than LU decomposition. Also, LU decomposition is more than two times faster than QR decomposition, as LU decomposition takes less than half of the time that QR decomposition takes to run. 
 
-The discrepancies between our theoretical expectations and the actual results above are probably due to the unique optimization algorithms used for each method. These optimizations might prevent the full decompositions from being calculated, thereby reducing the computational time used. This shows that the actual performance of these algorithms can vary depending on the specific implementation and the nature of the data they are applied to. Hence, it’s always a good idea to benchmark the performance of different algorithms in the specific contexts in which they're used.
+The discrepancies between our theoretical expectations and the actual results above are probably due to the unique optimization algorithms used for each method. These optimizations might prevent the full decompositions from being calculated, thereby reducing the computational time used. This shows that the actual performance of these methods can vary depending on the specific implementation and the nature of the data they are applied to. Hence, it’s always a good idea to benchmark the performance of different methods in the specific contexts in which they're used.
 
 ## Part B: Competition in terms of numerical accuracy/stability
 
@@ -94,7 +94,8 @@ What is the relative difference in $\ell^2$-norm?
 How about the coordinate-wise relative differences?
 Are the observed magnitudes of the differences what you'd expect?
 
-```{r, eval=FALSE}
+**My Answers:**
+```{r, eval=TRUE}
 Rcpp::sourceCpp(file.path("src", "matvec_double.cpp"))
 Rcpp::sourceCpp(file.path("src", "matvec_ldouble.cpp"))
 
@@ -104,9 +105,23 @@ mat_size <- 1024L
 A <- rand_positive_def_matrix(mat_size, cond_num = 1e3)
 x <- rnorm(mat_size)
 
-# Fill in
+std_result <- matvec_double(A, x)
+prec_result <- matvec_ldouble(A, x)
 
+std_l2 <- sqrt(sum((std_result)^2))
+prec_l2 <- sqrt(sum((prec_result)^2))
+
+relative_l2 <- (prec_l2 - std_l2)/prec_l2
+
+relative_coord <- (prec_result - std_result)/prec_result
+quantile(relative_coord, p = c(0, 0.25, 0.5, 0.75, 1))
 ```
+
+The relative difference in $\ell^2$-norm is -3.958355e-16.
+
+The coordinate-wise relative differences have mean -2.877685e-16, variance 4.761493e-28, and quantiles outlined in the table above.
+
+As expected, the observed magnitudes of these differences are very small. The long double type provides additional precision compared to the double type, so the results obtained using long double are expected to be more accurate. However, due to the finite precision of any numerical representation, some small differences between the results are inevitable. These differences are generally expected to be on the order of machine epsilon ($\sim$ 2.220446e-16 for double type), which is consistent with the magnitudes of the differences observed here.
 
 ### Task &#x2F06;
 
@@ -117,7 +132,8 @@ Then solve a positive-definite system $\bA \bx = \bb$ for $\bx$ using the three 
 Which algorithm appears to be more accurate than the others? 
 Visually demonstrate your answer.
 
-```{r, eval=FALSE}
+**My Answers:**
+```{r, eval=TRUE}
 set.seed(1918)
 cond_num <- 1e6
 
@@ -126,10 +142,69 @@ mat_size <- 1024L
 
 A <- rand_positive_def_matrix(mat_size, cond_num)
 x <- rnorm(mat_size)
+x_l2 <- sqrt(sum(x^2))
+b <- matvec_ldouble(A, x)
 
-# Fill in
+# LU Decomposition
+LU_soln <- solve(A, b)
+LU_soln_l2 <- sqrt(sum((LU_soln)^2))
+print((LU_soln_l2 - x_l2)/x_l2)
 
+# Cholesky Decomposition
+R <- chol(A)
+Chol_soln <- backsolve(R, forwardsolve(t(R), b))
+Chol_soln_l2 <- sqrt(sum((Chol_soln)^2))
+print((Chol_soln_l2 - x_l2)/x_l2)
+
+# QR Decomposition
+QR_soln <- qr.solve(A, b)
+QR_soln_l2 <- sqrt(sum((QR_soln)^2))
+print((QR_soln_l2 - x_l2)/x_l2)
 ```
+
+```{r}
+library(tidyverse)
+data.frame(Method = c("LU", "LU", "Cholesky", "Cholesky", "QR", "QR"),
+                     Difference = c((LU_soln_l2 - x_l2)/x_l2, sqrt(sum((LU_soln - x)^2)),
+                                     (Chol_soln_l2 - x_l2)/x_l2, sqrt(sum((Chol_soln - x)^2)),
+                                     (QR_soln_l2 - x_l2)/x_l2, sqrt(sum((QR_soln - x)^2))),
+                     Metric = c("Relative L2", "Euclidean", 
+                                "Relative L2", "Euclidean", 
+                                "Relative L2", "Euclidean")) %>%
+  ggplot(aes(fill = Method, y = Difference, x = Method)) + 
+  geom_bar(position="dodge", stat="identity") + 
+  facet_wrap(~Metric, ncol = 1, scales = "free_y") +
+  theme_minimal()
+```
+
+```{r}
+plot_df <- data.frame(X = x, LU = LU_soln, 
+                      Cholesky = Chol_soln, QR = QR_soln) %>%
+  as.matrix() %>%
+  t()
+
+cmdscale(dist(plot_df), k = 2) %>%
+  data.frame() %>%
+  rownames_to_column(var = "label") %>%
+  mutate(dist = sqrt((X1 - first(X1))^2 + (X2 - first(X2))^2)) %>%
+  mutate(dist = formatC(dist, format = "e", digits = 2)) %>%
+  mutate(dist = case_when(dist == "0.00e+00" ~ "",
+                          TRUE ~ dist)) %>%
+  mutate(Y1 = first(X1), Y2 = first(X2)) %>% 
+  ggplot(aes(x = X1, y = X2, label = label)) + 
+  geom_point() + 
+  geom_text(nudge_y = 0, nudge_x = -2.5e-11) + 
+  geom_text(aes(label = dist), nudge_y = 0, nudge_x = 3e-11) + 
+  geom_segment(aes(x = X1, y = X2, xend = Y1, yend = Y2)) + 
+  xlim(-3e-10, 2e-10) + 
+  theme_minimal()
+```
+
+Initially, I used bar charts to visualize the errors, which were summarized using both the Euclidean distance and the Relative L2-norm difference. The two bar charts together offer a clear depiction of the relative sizes of the errors, but they don't provide a spatial context for the results. For that, we need to refer to the subsequent plot.
+
+The second plot is a multi-dimensional scaling of the $x$ vectors obtained from each solving method. This plot reduces the $x$ points from a 1,024-dimensional space to a 2-dimensional space while maintaining the distances between the points.
+
+Based on these two plots, LU decomposition appears to be the most accurate, being the closest to the "ground truth" $x$ vector. LU decomposition's accuracy is followed by Cholesky decomposition's accuracy, and finally, QR decomposition's accuracy. The solutions from each of these methods seem to be distributed around the ground truth without a clear bias towards a specific direction of error. However, this observation is based on a very small sample and may not hold true for larger samples.
 
 ### Task &#x4E09;
 
