@@ -12,6 +12,22 @@ required_packages <- c("Rcpp", "RcppEigen")
 install_and_load_packages(required_packages)
 ```
 
+
+# Exercise 0:
+
+Watch the following videos from  Part "The Central Processing Unit (CPU): Crash Course Computer Science" from PBS to better understand how CPU works and what affects its computational performance:
+
+* [The Central Processing Unit (CPU)](https://youtu.be/FZGugFqdr60?si=Cth8Sw_Z_p7Jwqvg)
+* [Instructions & Programs](https://youtu.be/zltgXvg6r3k?si=1jRqi8x6rfiQ4Gri)
+* [Advanced CPU Designs](https://youtu.be/rtAlC5J1U40?si=VCicsBN-GGMVX4ty)
+
+**Question:** 
+In class, we have observed that execution speed of the `sign_via_if()` Rcpp function can depend on the value of an input vector.
+What feature(s) of a modern CPU is (are) responsible for this?
+And where in the above videos is this explained?
+Provide a rough starting time point in (e.g. "19:18") of the discussion.
+
+
 # Exercise 1: Coding on the edge &mdash; being responsible for your own safety in the C++ world
 
 ## Part A: Buggy inner product
