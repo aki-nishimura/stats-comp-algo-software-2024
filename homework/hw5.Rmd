@@ -223,6 +223,11 @@ Selectively turn on and off SSE, AVX2, and FMA to see how each option affects th
 Finally, turn on both AVX2 and FMA and check the resulting performances.
 Report what you find.
 
+Next, implement an RcppEigen function `dgemv_eigen()` that computes the matrix-vector product $A v$ given the input matrix $A$ and vector $v$ of compatible sizes.
+Then, using the same matrix $A$ as an input to `dgemv_eigen()`, repeat the above experiment of turning on and off the optimization flags.
+Contrast the results on the matrix-vector operation with those on the matrix-matrix operation using RcppEigen.
+Explain why these hardware optimization options may have the different degrees of impacts on performance.
+
 Run the above experiment both on your own computer and on a JHPCE node.
 In case you have a Mac computer with Apple silicon, then the experiment won't work on your computer, so just use JHPCE.
 In addition to the results, report the CPU model on the JHPCE node you ran the experiment on;
