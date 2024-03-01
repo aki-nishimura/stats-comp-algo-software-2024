@@ -4,8 +4,12 @@ output:
   html_notebook:
     code_folding: none
     highlight: textmate
+editor_options: 
+  markdown: 
+    wrap: sentence
 ---
 
+```{=html}
 <script type="text/x-mathjax-config">
 MathJax.Hub.Config({
   TeX: {
@@ -17,7 +21,7 @@ MathJax.Hub.Config({
   }
 });
 </script>
-
+```
 ```{r setup, include=FALSE}
 source(file.path("..", "R", "util.R"))
 
@@ -25,20 +29,18 @@ required_packages <- c("microbenchmark")
 install_and_load_packages(required_packages)
 ```
 
-
 # Exercise 1: Comparing different numerical linear algebra algorithms for solving linear systems
 
 In this exercise, we consider the problem of solving a linear system $\bA \bx = \bb$ for $\bx$.
 We compare the three methods we learned in the class: LU, Cholesky, and QR decompositions.
 (Of course, LU applies to more general systems and QR can be used to solve least squares, but here we focus on positive definite systems.)
 
-## Part A: Racing for solution &mdash; speed comparison 
+## Part A: Racing for solution — speed comparison
 
-We first compare their computational speed. 
+We first compare their computational speed.
 Fill in the code below and `bench::mark()` the three algorithms.
 
-**Questions:**
-What are relative speeds among the algorithms?
+**Questions:** What are relative speeds among the algorithms?
 Do relative speeds agree with what you expect from the complexity analyses?
 If not (quite), why might that be?
 
@@ -51,7 +53,8 @@ A <- rand_positive_def_matrix(mat_size, cond_num = 1e3)
 b <- rnorm(mat_size)
 
 solve_via_cholesky <- function(A, b) {
-  # Fill in
+  L <- t(chol(A))
+  backsolve(t(L), forwardsolve(L, b))
 }
 
 bench::mark(
@@ -62,25 +65,27 @@ bench::mark(
 )
 bench::mark(
   # Solve via QR decomposition
+  solve(qr(A),b)
 )
 ```
+
+QR is \~ 3 times slower than LU and \~1.6 slower times than than Chol.
 
 ## Part B: Competition in terms of numerical accuracy/stability
 
 We now compare the three methods in terms of numerical accuracy/stability.
-To this end, we set up the following simulation study. 
+To this end, we set up the following simulation study.
 We first generate a "ground truth" solution vector $\bx_0$.
 We then compute an "numerical-error-free" $\bb = \bA \bx_0$ by carrying out the matrix-vector multiplication using the `long double` type, which (on most hardware and compilers) provides [additional 12 bits of precision](https://en.wikipedia.org/wiki/Extended_precision#x86_extended_precision_format).
 Of course, the vector $\bb$ computed as such still suffers from numerical errors, but the idea is that the numerical errors from this high-precision matrix-vector multiplication is much smaller than the errors caused by numerically solving $\bA \bx = \bb$ for $\bx$.
 We can thus assess the accuracy of the three solvers by comparing the numerically computed $\bx$ to the ground truth $\bx_0$.
 
-### Task &#x2F00;
+### Task ⼀
 
 First compare the outputs of matrix-vector multiplication $\bx \to \bA \bx$ using `double` and `long double` using the provided Rcpp functions.
 We will discuss more about Rcpp in lecture (if we have not yet); you can for now just use the provided functions without worrying about how they work.
 
-**Questions:**
-What is the relative difference in $\ell^2$-norm? 
+**Questions:** What is the relative difference in $\ell^2$-norm?
 How about the coordinate-wise relative differences?
 Are the observed magnitudes of the differences what you'd expect?
 
@@ -94,17 +99,29 @@ mat_size <- 1024L
 A <- rand_positive_def_matrix(mat_size, cond_num = 1e3)
 x <- rnorm(mat_size)
 
-# Fill in
+double_res <- matvec_double(A,x)
+ldouble_res <- matvec_ldouble(A,x)
+
+relative_diff <- sqrt(sum(double_res**2)) - sqrt(sum(ldouble_res**2))
+
+coord_diff <- double_res - ldouble_res
+  
+
+
 
 ```
 
-### Task &#x2F06;
+***Both relative and coord diffs are really small. Coord diffs are at the order of 10-^13^***
+
+and relative diff at the order of 10\^-11.
+These are really small values, and what I expect.
+
+### Task ⼆
 
 Now randomly generate $\bA$ so that its condition number is $10^6$.
 Then solve a positive-definite system $\bA \bx = \bb$ for $\bx$ using the three algorithms and compare their outputs to the ground truth $\bx_0$.
 
-**Questions:**
-Which algorithm appears to be more accurate than the others? 
+**Questions:** Which algorithm appears to be more accurate than the others?
 Visually demonstrate your answer.
 
 ```{r, eval=FALSE}
@@ -117,26 +134,48 @@ mat_size <- 1024L
 A <- rand_positive_def_matrix(mat_size, cond_num)
 x <- rnorm(mat_size)
 
-# Fill in
+b <- A%*%x
+
+x_lu <-  solve(A,b)
+x_qr <- solve(qr(A),b )
+x_chol <- solve_via_cholesky(A,b)
+
+diff_with_lu <- sqrt(sum(x**2)) - sqrt(sum(x_lu**2))
+diff_with_qr <- sqrt(sum(x**2)) - sqrt(sum(x_qr**2))
+diff_with_chol <- sqrt(sum(x**2)) - sqrt(sum(x_chol**2))
+
+# > diff_with_lu
+#             x
+#  7.362111e-10
+# > diff_with_qr
+#             x
+#  2.168379e-10
+# > diff_with_chol
+#             x
+#  3.565069e-10
+  
 
 ```
 
-### Task &#x4E09;
+All differences are at the order of 10\^-10.
+But LU seems to be least precise.
+LU is \~2 times slower than chol and \~4 times slower than qr.
 
-In Task &#x2F06;, we compared the three algorithms in one randomly generated example.
+### Task 三
+
+In Task ⼆, we compared the three algorithms in one randomly generated example.
 Now we consider a more systematic (though hardly comprehensive) comparison via repeated simulations.
 We also vary the condition number of $\bA$ and assess whether the results would hold across varying degrees of ill-conditioning.
 
 **Questions/To-do's:**
 
-* Using the starter code provided, calculate various summary measures of the numerical errors.
-* Integrate into the provided code one another (or more, if you like) meaningful metric(s) of your choice to summarize the numerical error.
-* Visually explore how the three algorithms compare with each other in their accuracy. See if different error metrics tell different stories; they might or might not.
-* Vary the condition number in the range $10^6 \sim 10^{12}$, e.g. by trying $10^6$, $10^9$, and $10^{12}$.
-* Do you see any patterns in the numerical errors across the three algorithms, metrics, and/or condition numbers? Show some plots to support your conclusion.
+-   Using the starter code provided, calculate various summary measures of the numerical errors.
+-   Integrate into the provided code one another (or more, if you like) meaningful metric(s) of your choice to summarize the numerical error.
+-   Visually explore how the three algorithms compare with each other in their accuracy. See if different error metrics tell different stories; they might or might not.
+-   Vary the condition number in the range $10^6 \sim 10^{12}$, e.g. by trying $10^6$, $10^9$, and $10^{12}$.
+-   Do you see any patterns in the numerical errors across the three algorithms, metrics, and/or condition numbers? Show some plots to support your conclusion.
 
-**Note:** 
-The QR solver will throw an error when the system is ill-condition enough that the numerical solution might not be very accurate. 
+**Note:** The QR solver will throw an error when the system is ill-condition enough that the numerical solution might not be very accurate.
 To force it to return the solution in any case, set `tol = .Machine$double.eps`.
 
 ```{r, eval=FALSE}
@@ -145,9 +184,10 @@ source(file.path("R", "num_linalg_sim_study_helper.R"))
 
 n_sim <- 32L
 mat_size <- 512L
-cond_num <- 1e6
-metrics <- c("norm", "median", "five_percentile", "ninety_five_percentile")
-  # TODO: add another metric and modify the helper script accordingly
+
+run_metrics <- function(cond_num){ 
+  metrics <- c("norm", "median", "five_percentile", "ninety_five_percentile", "mean")
+
 
 rel_error_list <- lapply(
   c("lu", "chol", "qr"), 
@@ -159,7 +199,9 @@ for (sim_index in 1:n_sim) {
   x <- rnorm(mat_size) 
   b <- matvec_ldouble(A, x)
   x_approx <- list( 
-    # Fill in
+    lu = solve(A,b), 
+    qr = qr.solve(A,b), 
+    chol = solve_via_cholesky(A,b)
   )
   for (method in c("lu", "chol", "qr")) {
     rel_error <- lapply(
@@ -173,11 +215,66 @@ for (sim_index in 1:n_sim) {
   }
 }
 
+return(rel_error_list)
+}
+
+
+error_list_6 <- run_metrics(1e6)
+
+lu_error <- error_list_6$lu
+qr_error <- error_list_6$qr
+chol_error <- error_list_6$chol
+
+norms <- as.data.frame(do.call(cbind, lapply(list("lu"=lu_error, "qr"=qr_error, "chol"=chol_error), function(x){
+  return(x$norm)
+})))
+norms$metric <- "norm"
+norms$iter <- 1:n_sim
+
+meds <- as.data.frame(do.call(cbind, lapply(list("lu"=lu_error, "qr"=qr_error, "chol"=chol_error), function(x){
+  return(x$median)
+})))
+meds$metric <- "median"
+meds$iter <- 1:n_sim
+
+five_percentiles <- as.data.frame(do.call(cbind, lapply(list("lu"=lu_error, "qr"=qr_error, "chol"=chol_error), function(x){
+  return(x$five_percentile)
+})))
+five_percentiles$metric <- "five_percentile"
+five_percentiles$iter <- 1:n_sim
+
+ninety_five_percentiles <- as.data.frame(do.call(cbind, lapply(list("lu"=lu_error, "qr"=qr_error, "chol"=chol_error), function(x){
+  return(x$ninety_five_percentile)
+})))
+ninety_five_percentiles$metric <- "ninety_five_percentile"
+ninety_five_percentiles$iter <- 1:n_sim
+
+means <- as.data.frame(do.call(cbind, lapply(list("lu"=lu_error, "qr"=qr_error, "chol"=chol_error), function(x){
+  return(x$mean)
+})))
+means$metric <- "mean"
+means$iter <- 1:n_sim
+
+metrics <- do.call(rbind, list(norms, meds, five_percentiles, ninety_five_percentiles, means))
+
+library(dplyr)
+metrics <- metrics %>%
+  tidyr::pivot_longer(cols=!c("metric", "iter"), names_to="method")
+
+
 # TODO: visually compare errors
+library(ggplot2)
+ggplot(metrics, aes(x=iter, y=value))+
+  geom_line(aes(colour=method))+
+  facet_wrap(~metric, scales="free")
+
+
+
+
 
 ```
 
-
+```{=html}
 <script type="text/x-mathjax-config">
 MathJax.Hub.Config({
   TeX: {
@@ -189,59 +286,36 @@ MathJax.Hub.Config({
   }
 });
 </script>
+```
+# Exercise 2: Continuing development of `hiperglm` — improving numerical stability of Newton's method via QR-based solver
 
-# Exercise 2: Continuing development of `hiperglm` &mdash; improving numerical stability of Newton's method via QR-based solver
-
-From the previous assignments, you should now have a `hiperglm` package that implement an MLE finder via Newton's method. 
+From the previous assignments, you should now have a `hiperglm` package that implement an MLE finder via Newton's method.
 We have so far focused on getting the functionality correct, and not so much on numerical stability and computational speed.
 In this assignment, you improve the algorithm's numerical stability by turning Newton's method into the mathematically equivalent iteratively re-weighted least squares (IWLS) based on QR decomposition.
 (And, in next assignment, you will improve the computational speed by interfacing the package with RcppEigen.)
 
 Much of this and next assignments is about enhancing performance of the package's existing features, rather than adding new ones.
-This is one setting in which the formal automated testing really proves its value. 
+This is one setting in which the formal automated testing really proves its value.
 By running the existing tests after each change, you can be confident that you did not break anything by changing the internal implementations that do not affect the interface.
 And, if you did change functions' interfaces, the tests help you remember where you have to make corresponding changes to ensure correct overall functionality.
 
-Before you start this assignment, remember to first address all the feedback from the previous assignment and merge your previous work to the main branch. 
+Before you start this assignment, remember to first address all the feedback from the previous assignment and merge your previous work to the main branch.
 Then create a new `irls` branch from there, check it out, and commit all your work for this assignment there.
 Finally, open a pull request into your main branch after completing the assignment and request a review from the TA.
 
-1. Change your code for fitting linear models to solve the least squares problem using QR decomposition instead of LU/Cholesky via the pseudo-inverse formula.
-Make sure _not_ to compute the "Q" matrix explicitly as it is unnecesssary and computationally expensive to do so.
-Remember to run the existing tests to make sure the change did not break anything.
-2. Implement the `vcov()` S3 method for linear model by inverting the estimated Fisher info $\hat{\sigma}^2 \X^\intercal \X$ for $\hat{\sigma}^2 = \frac{n}{n - p} \| \y - \X \bm{\beta} \|^2$ where $n$ denotes the sample size and $p$ the number of predictors.
-(As discussed in class, this is an extremely rare situation in which it actually makes sense to explicitly calculate the inverse of a matrix.)
-Calculate the inverse from the "R" factor of $\X$ and `chol2inv()`; see the tip below for extracting the "R" factor from the `qr()` output.
-3. Turn, if you have not already done so, each iteration of Newton's method into an isolated function.
-In other words, write a function named something like `take_one_newton_step(...)` and use it within the for-loop.
-This in particular facilitate unit-testing one step of Newton's method.
-4. Viewing the vector $\boldsymbol{H}_f^{-1} \nabla f$ in the Newton update formula as the solution of a weighted least squares problem, implement the solver for it based on QR decomposition.
-To do so, observe that minimizing $\| \bm{W}^{1/2} (\X \bm{\beta} - \y) \|^2$ is equivalent to minimizing $\| \tilde{\X} \bm{\beta} - \tilde{\y} \|^2$ with the modified input $\tilde{\X}$ and $\tilde{\y}$. 
-Use base R linear algebra functions for now.
-Add an option to the function `take_one_newton_step(...)` (or however else you decided to call it) to switch between the QR- and pseudo-inverse-based solvers, with QR being default.
-Test that the two solvers yield the same result up to finite precision errors.
-5. Implement the `vcov()` method for logistic model by inverting the observed Fisher information at the MLE.
-As before, calculate the inverse from the "R" factor of the QR decomposition.
-6. Test that the package produces the coefficient and uncertainty estimates with right statistical properties.
-Specifically, repeatedly apply `hiper_glm()` to randomly generated data, construct confidence intervals from `coef()` and `vcov()`, and compare the intervals' coverage rate with nominal one.
-Use a "simultaneous" confidence interval of the form $\big\{ \bm{\beta} : \big\| \hat{\bm{\Sigma}}^{-1/2} \big( \bm{\beta} - \hat{\bm{\beta}} \big) \big\|^2 < q \big\}$ with $\hat{\bm{\beta}}$ and $\hat{\bm{\Sigma}}$ being the outputs of `coef()` and `vcov()`;
-as for the multiplication by $\hat{\bm{\Sigma}}^{-1/2}$, use a Cholesky-based method to achieve the same effect.
-Choose $q$ according to the target nominal coverage of your choice.
-Make sure to test the estimates under both linear and logistic models.
-    * When testing statistical properties, what constitutes "pass" and "fail" is not as clear-cut as when testing deterministic behaviors.
-You should, however, still strive to choose a criteria as rigorously justifiable as possible; 
-see the note below for a suggestion.
-Make the logic behind your pass-fail criteria as self-explanatory as possible in code (e.g. through expressive variable/helper function names) and, where further explanation is warranted, add it as inline comments.
-7. Incorporate the above test of the package's statistical behavior as a formal test under the `tests/testthat` folder but, since the test takes a while to run and its result is not completely clear-cut, make it optional using the `testthat::skip_if_not()` function.
-For example, you can check the condition `Sys.getenv("MANUAL_TEST") == ""`;
-the test then is run only when you set the environmental variable `MANUAL_TEST` to a non-empty string, e.g. via `Sys.setenv(MANUAL_TEST = TRUE)`.
-    * Keeping it as an optional test not only allow you to re-run it as warranted (e.g. when switching to different methods for quantifying uncertainty) but also serve as a record of you having tested the package behavior, which otherwise would not be visible to others reading your code.
-(On the other hand, when a test --- or any piece of code for that matter --- becomes obsolete, just get rid of it.
-Even in the unlikely case you ever need it back, you can always find it in the git history.)
+1.  Change your code for fitting linear models to solve the least squares problem using QR decomposition instead of LU/Cholesky via the pseudo-inverse formula. Make sure *not* to compute the "Q" matrix explicitly as it is unnecesssary and computationally expensive to do so. Remember to run the existing tests to make sure the change did not break anything.
+2.  Implement the `vcov()` S3 method for linear model by inverting the estimated Fisher info $\hat{\sigma}^2 \X^\intercal \X$ for $\hat{\sigma}^2 = \frac{n}{n - p} \| \y - \X \bm{\beta} \|^2$ where $n$ denotes the sample size and $p$ the number of predictors. (As discussed in class, this is an extremely rare situation in which it actually makes sense to explicitly calculate the inverse of a matrix.) Calculate the inverse from the "R" factor of $\X$ and `chol2inv()`; see the tip below for extracting the "R" factor from the `qr()` output.
+3.  Turn, if you have not already done so, each iteration of Newton's method into an isolated function. In other words, write a function named something like `take_one_newton_step(...)` and use it within the for-loop. This in particular facilitate unit-testing one step of Newton's method.
+4.  Viewing the vector $\boldsymbol{H}_f^{-1} \nabla f$ in the Newton update formula as the solution of a weighted least squares problem, implement the solver for it based on QR decomposition. To do so, observe that minimizing $\| \bm{W}^{1/2} (\X \bm{\beta} - \y) \|^2$ is equivalent to minimizing $\| \tilde{\X} \bm{\beta} - \tilde{\y} \|^2$ with the modified input $\tilde{\X}$ and $\tilde{\y}$. Use base R linear algebra functions for now. Add an option to the function `take_one_newton_step(...)` (or however else you decided to call it) to switch between the QR- and pseudo-inverse-based solvers, with QR being default. Test that the two solvers yield the same result up to finite precision errors.
+5.  Implement the `vcov()` method for logistic model by inverting the observed Fisher information at the MLE. As before, calculate the inverse from the "R" factor of the QR decomposition.
+6.  Test that the package produces the coefficient and uncertainty estimates with right statistical properties. Specifically, repeatedly apply `hiper_glm()` to randomly generated data, construct confidence intervals from `coef()` and `vcov()`, and compare the intervals' coverage rate with nominal one. Use a "simultaneous" confidence interval of the form $\big\{ \bm{\beta} : \big\| \hat{\bm{\Sigma}}^{-1/2} \big( \bm{\beta} - \hat{\bm{\beta}} \big) \big\|^2 < q \big\}$ with $\hat{\bm{\beta}}$ and $\hat{\bm{\Sigma}}$ being the outputs of `coef()` and `vcov()`; as for the multiplication by $\hat{\bm{\Sigma}}^{-1/2}$, use a Cholesky-based method to achieve the same effect. Choose $q$ according to the target nominal coverage of your choice. Make sure to test the estimates under both linear and logistic models.
+    -   When testing statistical properties, what constitutes "pass" and "fail" is not as clear-cut as when testing deterministic behaviors. You should, however, still strive to choose a criteria as rigorously justifiable as possible; see the note below for a suggestion. Make the logic behind your pass-fail criteria as self-explanatory as possible in code (e.g. through expressive variable/helper function names) and, where further explanation is warranted, add it as inline comments.
+7.  Incorporate the above test of the package's statistical behavior as a formal test under the `tests/testthat` folder but, since the test takes a while to run and its result is not completely clear-cut, make it optional using the `testthat::skip_if_not()` function. For example, you can check the condition `Sys.getenv("MANUAL_TEST") == ""`; the test then is run only when you set the environmental variable `MANUAL_TEST` to a non-empty string, e.g. via `Sys.setenv(MANUAL_TEST = TRUE)`.
+    -   Keeping it as an optional test not only allow you to re-run it as warranted (e.g. when switching to different methods for quantifying uncertainty) but also serve as a record of you having tested the package behavior, which otherwise would not be visible to others reading your code. (On the other hand, when a test --- or any piece of code for that matter --- becomes obsolete, just get rid of it. Even in the unlikely case you ever need it back, you can always find it in the git history.)
 
-**Tip on Step 2 and 5:**
-Use the following code snippet to extract the "R" factor from the output of the `qr()` function.
-The row re-ordering is required because the function applies the QR algorithm with _column pivoting_, permutation of the input matrix columns to improve numerical stability.
+**Tip on Step 2 and 5:** Use the following code snippet to extract the "R" factor from the output of the `qr()` function.
+The row re-ordering is required because the function applies the QR algorithm with *column pivoting*, permutation of the input matrix columns to improve numerical stability.
+
 ```{r, eval=FALSE}
 qr_decomp <- qr(X)
 R <- qr.R(qr_decomp)
@@ -249,8 +323,7 @@ R <- R[ , order(qr_decomp$pivot)]
 are_all_close(X, qr.Q(qr_decomp) %*% R) # Returns `TRUE`
 ```
 
-**Note on Step 6:** 
-When using Monte Carlo simulation to evaluate statistical performance, the output necessarily deviates from the exact expected value due to random errors.
+**Note on Step 6:** When using Monte Carlo simulation to evaluate statistical performance, the output necessarily deviates from the exact expected value due to random errors.
 To a great extent, however, it is possible to quantify magnitude of these random errors and correctly account for it.
 For instance, let's assume that we have confidence intervals with exact nominal coverage $r \in (0, 1)$.
 Under $m$ replications, the empirical coverage rate lies within $r \pm 1.96 * \hat{\sigma}$ for $\hat{\sigma}^2 = r (1 - r) / m$ with approximately 95% probability.
@@ -261,4 +334,4 @@ Nonetheless, reasoning as above helps you quantify how much deviation from the n
 
 ## Things to commit/submit
 
-* Link to the pull request.
+-   [Link to the pull request.](https://github.com/sparthib/hiperglm/pull/4)
