@@ -19,14 +19,6 @@ output:
 
 exclude: true
 
-<!-- Using internal CSS for now since modifying `extra.css` would affect other existing Rmd files.  -->
-<!-- But it might actually make sense to integrate to it. -->
-
-<style type="text/css">
-.remark-inline-code { font-size: 90%; }
-.normal-size .remark-inline-code{ font-size: 100% }
-</style>
-
 ```{r setup, include = FALSE}
 source(file.path("..", "R", "util.R"))
 
@@ -85,6 +77,14 @@ class: center, middle, inverse
 # Same functionality, varying performance
 
 ## (I mean, duh. But&hellip; umm, why?)
+
+<!-- Using internal CSS for now since modifying `extra.css` would affect other existing Rmd files.  -->
+<!-- But it might actually make sense to integrate to it. -->
+
+<style type="text/css">
+.remark-inline-code { font-size: 90%; }
+.normal-size .remark-inline-code{ font-size: 100% }
+</style>
 
 ---
 layout: true
@@ -353,9 +353,9 @@ summarize_benchmark(
 
 ---
 
-<p style="margin-top: -.5ex;"> </p>
+<p style="margin-top: -1ex;"> </p>
 
-**Note:** This function directly modifies `y`.
+**Note:** This function directly modifies `y` as the variable is passed _by reference_ via "`&`."
 <p style="margin-top: -1ex;"> </p>
 ```{r}
 y <- rep(0.00159, n)
@@ -534,7 +534,7 @@ Optimized libraries (e.g. Eigen, Open/Intel/Apple BLAS, &hellip;) make more diff
 
 ---
 
-<!-- Discuss "not general" matrices (symmetric, triangular, banded, etc) and what "d" is for. -->
+<!-- Discuss "not general" matrices (symmetric, triangular, banded, etc) and what "X" and "d" is for. -->
 
 ```{r}
 # 'gemm' = general matrix-multiplication
@@ -664,6 +664,8 @@ class: center, middle, inverse
 # Quick peek into CPU
 <img src="figure/computing_at_low_level/cpu_diagram.jpeg" alt="" class="center" style="width: 85%;"/>
 
+<!-- Mention CPU also include floating point unit separately from ALU. -->
+
 ---
 
 # Registers: most accessible data storage
@@ -693,6 +695,14 @@ To foster mutual understanding between us and machine, let's look at simple _ass
   <img src="figure/computing_at_low_level/right_logical_shift.png" class="center" style="width: 100%;"/>
 ]
 
+--
+
+Easy enough to see why dividing an unsigned integer by two amounts to a logical shift.
+
+--
+
+Division by two for a signed integer is a bit more involved.
+
 ---
 
 # Division via bit-shift
@@ -704,6 +714,16 @@ To foster mutual understanding between us and machine, let's look at simple _ass
   
   <img src="figure/computing_at_low_level/right_arithmetic_shift.png" class="center" style="width: 100%;"/>
 ]
+
+--
+
+The "sar" operation makes sense for keeping the sign.
+But what's up with the preceding 31-bit logical shift?
+
+--
+
+The "shr" followed by "add" amounts to "+1 if positive."
+
 <!-- Right shift by 31-bits ensures that division of negative integers get rounded towards 0. 
 The operation achieves this by isolating the sign bit (which is 1 for negative integers) and adding it to the original integer value:
 https://stackoverflow.com/questions/40638335/why-does-the-compiler-generate-a-right-shift-by-31-bits-when-dividing-by-2 -->
@@ -713,8 +733,12 @@ https://stackoverflow.com/questions/40638335/why-does-the-compiler-generate-a-ri
 # Division via bit-shift
 .pull-left[
   <img src="figure/computing_at_low_level/divide_int_by_two_assembly_only.png" class="left" style="width: 100%;"/> 
+  
+  This ensures consistent rounding towards 0; e.g. <br>
+  "&plusmn; 3 / 2" returns "&plusmn; 1."
 ]
 .pull-right[
+  <p style="margin-top: -1.5ex;"> </p>
   <img src="figure/computing_at_low_level/twos_complement_representation_of_integer.png" class="center" style="width: 100%;"/>
 ]
 
@@ -742,6 +766,27 @@ Floating point arithmetic uses completely different logic:
 Btw: "1071644672" (decimal) $=$ "3FE00000" (hexadecimal) $=$ "111111111000000000000000000000" (binary) $=$ " $\!0.5$"
 
 <!-- and the other "0" is for the trailing 32-bits. -->
+
+---
+
+# Why should we care about assembly code?
+
+It's used in real life;&thinsp; e.g. openBLAS implementation of `gemv` in the [x86_64](https://github.com/OpenMathLib/OpenBLAS/blob/develop/kernel/x86_64/dgemv_n.S) and [ARM](https://github.com/OpenMathLib/OpenBLAS/blob/master/kernel/arm64/gemv_n.S) instructions sets.
+
+---
+
+# Why should we care about assembly code?
+
+Knowing a bit could help you identify big opportunities:
+
+![:vspace -1ex]
+![](figure/computing_at_low_level/eigen_faq_header.png)
+![:vspace -2.5ex]
+$$\vdots$$
+![:vspace -1.5ex]
+![](figure/computing_at_low_level/eigen_faq_checking_vectorization.png)
+
+<!-- https://eigen.tuxfamily.org/index.php?title=FAQ#How_can_I_check_that_vectorization_is_actually_being_used.3F -->
 
 ---
 layout: false
@@ -850,6 +895,8 @@ layout: false
 
 <img src="figure/computing_at_low_level/fetch_decode_execute_store_cycle_more_details.jpeg" class="center" style="width: 100%;"/> 
 
+<!-- Use "a * x[i] + y[i]" as an example. -->
+
 ---
 
 # "Instruction pipelining" to avoid idle time
@@ -865,6 +912,8 @@ layout: true
 ---
 
 You can't pipeline if the next action depends on curr one!
+
+<!-- Use "x[i + 1] <- x[i]" as an example. -->
 
 ---
 
@@ -1130,6 +1179,59 @@ In C and Python, arrays are stored in _row major_ order:
 
 Make sure you choose the right order for double for-loops!
 (Stan uses C arrays, for example.)
+
+---
+
+# Consequences of data motion bottleneck
+
+Here are some consequences of data motion being computational bottleneck.
+
+--
+
+If multiplying a bunch of vectors by the same matrix, first stacking them into a matrix makes the calculation faster:
+
+```{python, eval=FALSE}
+import numpy as np
+n, p, k = 4096, 1024, 16
+X = np.random.randn(n, p)
+b_list = [np.random.randn(p, 1) for _ in range(k)]
+
+# Multiply one vector at a time
+for l in range(len(b_list)): X @ b_list[l]
+
+# Multiply them all at once
+B = np.hstack(b_list)
+X @ B 
+```
+
+<!-- B_col_major = np.array(np.random.randn(p, k), order = 'F') -->
+<!-- for l in range(len(b_list)): X @ B_col_major[:, l] -->
+
+<!-- n <- 4096; p <- 1024; k <- 16 -->
+<!-- A <- matrix(rnorm(n * p), nrow = n, ncol = p) -->
+<!-- B <- matrix(rnorm(p * k), nrow = p, ncol = k) -->
+<!-- bench::mark(A %*% B) -->
+<!-- bench::mark( -->
+<!--   for (j in 1:ncol(B)) { -->
+<!--     A %*% B[, j] -->
+<!--   } -->
+<!-- ) -->
+
+---
+
+# Consequences of data motion bottleneck
+
+Multiplying matrix with its own transpose can be faster than multiplying two different matrices:
+
+```{python, eval=FALSE}
+import numpy as np
+n, p = 4096, 1024
+X = np.random.randn(n, p)
+Z = np.random.randn(n, p)
+
+X.T @ Z
+X.T @ X
+```
 
 ---
 

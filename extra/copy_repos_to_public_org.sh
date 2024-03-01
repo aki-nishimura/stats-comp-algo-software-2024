@@ -1,5 +1,12 @@
 #!/usr/bin/env bash
 
+# After running this script, remember also to 1) invite students to the organization
+# so that they can open pull requests and 2) change the base member priviledge to "write."
+# Ref:
+# - https://docs.github.com/en/pull-requests/collaborating-with-pull-requests/proposing-changes-to-your-work-with-pull-requests/requesting-a-pull-request-review
+# - https://docs.github.com/en/organizations/managing-user-access-to-your-organizations-repositories/managing-repository-roles/setting-base-permissions-for-an-organization
+
+input_flag=$1
 gh_orgname="stats-comp-algo-software-2024"
 reponame="hiperglm"
 
@@ -10,13 +17,17 @@ input_file="${SCRIPT_DIR}/github_usernames.txt"
 while read line
 do
 	gh_usrname="$line"
+	if [[ $input_flag == "update" ]]; then
+		cd $gh_usrname
+		git fetch --all --update-head-ok
+		git push --all "https://github.com/${gh_orgname}/${gh_usrname}"
+	else
+		git clone --mirror "https://github.com/${gh_usrname}/${reponame}" ${gh_usrname}/.git
+		cd $gh_usrname
+		git config --bool core.bare false
 
-	git clone --mirror "https://github.com/${gh_usrname}/${reponame}" ${gh_usrname}/.git
-	cd $gh_usrname
-	git config --bool core.bare false
-
-	gh repo create --public "https://github.com/${gh_orgname}/${gh_usrname}"
-	git push --all "https://github.com/${gh_orgname}/${gh_usrname}"
+		gh repo create --public "https://github.com/${gh_orgname}/${gh_usrname}"
+		git push --all "https://github.com/${gh_orgname}/${gh_usrname}"
+	fi
 	cd ..
-	
 done < "$input_file"
