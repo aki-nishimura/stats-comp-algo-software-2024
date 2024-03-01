@@ -1207,15 +1207,26 @@ X @ B
 <!-- B_col_major = np.array(np.random.randn(p, k), order = 'F') -->
 <!-- for l in range(len(b_list)): X @ B_col_major[:, l] -->
 
-<!-- n <- 4096; p <- 1024; k <- 16 -->
-<!-- A <- matrix(rnorm(n * p), nrow = n, ncol = p) -->
-<!-- B <- matrix(rnorm(p * k), nrow = p, ncol = k) -->
-<!-- bench::mark(A %*% B) -->
-<!-- bench::mark( -->
-<!--   for (j in 1:ncol(B)) { -->
-<!--     A %*% B[, j] -->
-<!--   } -->
-<!-- ) -->
+---
+
+# Consequences of data motion bottleneck
+
+You can also observe the same effect in R if you have an installation with good linear algebra library:
+
+```{r, eval=FALSE}
+n <- 4096; p <- 1024; k <- 16
+X <- matrix(rnorm(n * p), nrow = n, ncol = p)
+b_list <- lapply(1:k, function(dummy) rnorm(p))
+
+bench::mark(
+  for (l in 1:k) {
+    X %*% b_list[[l]]
+  }
+)
+
+B <- do.call(cbind, b_list) # Or use \`dplyr::bind_cols()` 
+bench::mark(X %*% B)
+```
 
 ---
 
