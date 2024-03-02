@@ -1,6 +1,8 @@
 ---
 title: 'Homework: Numerical linear algebra'
 output:
+  html_document:
+    df_print: paged
   html_notebook:
     code_folding: none
     highlight: textmate
@@ -18,11 +20,14 @@ MathJax.Hub.Config({
 });
 </script>
 
-```{r setup, include=FALSE}
+```{r setup, include=FALSE, message=FALSE}
 source(file.path("..", "R", "util.R"))
 
 required_packages <- c("microbenchmark")
 install_and_load_packages(required_packages)
+
+library(bench)
+library(ggplot2)
 ```
 
 
@@ -42,7 +47,7 @@ What are relative speeds among the algorithms?
 Do relative speeds agree with what you expect from the complexity analyses?
 If not (quite), why might that be?
 
-```{r, eval=FALSE}
+```{r, eval=TRUE, warning=FALSE}
 # Import the `rand_positive_def_matrix` function
 source(file.path("R", "random_matrix.R"))
 
@@ -51,7 +56,16 @@ A <- rand_positive_def_matrix(mat_size, cond_num = 1e3)
 b <- rnorm(mat_size)
 
 solve_via_cholesky <- function(A, b) {
-  # Fill in
+  L <- chol(A)
+  Lx <- forwardsolve(L, b, transpose = TRUE, upper.tri = TRUE)
+  x <- backsolve(L, Lx)
+  return(x)
+}
+
+solve_via_qr <- function(A, b) {
+  QR <- qr(A, tol = .Machine$double.eps)
+  x <- qr.solve(QR, b)
+  return(x)
 }
 
 bench::mark(
@@ -61,9 +75,20 @@ bench::mark(
   solve_via_cholesky(A, b)
 )
 bench::mark(
-  # Solve via QR decomposition
+  solve_via_qr(A, b)
 )
 ```
+
+There are some variations from one run to the other. Overall, the relative speed from the fastest to the slowest are **Cholesky, LU, QR**, among which QR decomposition takes significantly longer than the other two. These speeds **agree with my expectation**.
+
+From the lecture, for a positive definite matrix $A$ of size $n\times n$, Cholesky decomposition takes approximately $\frac{1}{3}n^3$ time, and the forward and backward substitution each takes about $n^2$. Thus, the solution obtained through Cholesky decomposition takes a total of approximately $\frac{1}{3}n^3 + 2n^2 \approx O(\frac{1}{3}n^3)$ time.
+
+The LU flop counts is approximately $\frac{2}{3}n^3$. With the additional backward and forward substitution, the solution through LU decomposition takes approximately $\frac{2}{3}n^3 + 2n^2 \approx O(\frac{2}{3}n^3)$ time.
+
+With QR decomposition, matrix multiplication, and backward substitution, the solution obtained through QR decomposition takes approximately $O(\frac{4}{3}n^3 + 2n^2 + n^2) \approx O(\frac{4}{3}n^3)$ time.
+
+Though all these methods have a running time on the order of $n^3$, the coefficient associated with $n^3$ differs. This indicates that when solving a linear system involving a positive definite matrix, the method via Cholesky decomposition is faster than the method via LU decomposition, and the method via QR decomposition is the slowest.
+
 
 ## Part B: Competition in terms of numerical accuracy/stability
 
@@ -84,7 +109,7 @@ What is the relative difference in $\ell^2$-norm?
 How about the coordinate-wise relative differences?
 Are the observed magnitudes of the differences what you'd expect?
 
-```{r, eval=FALSE}
+```{r, eval=TRUE}
 Rcpp::sourceCpp(file.path("src", "matvec_double.cpp"))
 Rcpp::sourceCpp(file.path("src", "matvec_ldouble.cpp"))
 
@@ -94,9 +119,25 @@ mat_size <- 1024L
 A <- rand_positive_def_matrix(mat_size, cond_num = 1e3)
 x <- rnorm(mat_size)
 
-# Fill in
+Ax_double <- matvec_double(A, x)
+Ax_ldouble <- matvec_ldouble(A, x)
 
+rel_diff <- norm(Ax_double - Ax_ldouble, "2") / norm(Ax_ldouble, "2")
+coor_rel_diff <- abs(Ax_double - Ax_ldouble) / abs(Ax_ldouble)
+
+cat("The relative difference in l2-norm is", rel_diff, "\n")
+cat("The mean coordinate-wise relative difference is", mean(coor_rel_diff), "\n")
+cat("The median coordinate-wise relative difference is", median(coor_rel_diff), "\n")
+cat("The minimum non-zero coordinate-wise relative difference is",
+    min(coor_rel_diff[coor_rel_diff!=0]), "\n")
 ```
+
+The double-precision floating point format has a 53-bit significant precision, including 1 implicit leading bit. This is about $ceil(log_{10}(2^{-52})) = 16$ decimal digits of precision for values around 1. 
+
+On the other hand, the long double format has a 64-bit significant precision, including 1 implicit leading bit. This is about $ceil(log_{10}(2^{-63})) = 19$ decimal digits of precision for values around 1. 
+
+The relative difference is approximately around the precision limit of double format when the value to be compared is scaled to 1. Thus, it is approximately on the order of $10^{-16}$, which is consistent with the results shown above.
+
 
 ### Task &#x2F06;
 
@@ -107,7 +148,7 @@ Then solve a positive-definite system $\bA \bx = \bb$ for $\bx$ using the three 
 Which algorithm appears to be more accurate than the others? 
 Visually demonstrate your answer.
 
-```{r, eval=FALSE}
+```{r, eval=TRUE}
 set.seed(1918)
 cond_num <- 1e6
 
@@ -116,10 +157,42 @@ mat_size <- 1024L
 
 A <- rand_positive_def_matrix(mat_size, cond_num)
 x <- rnorm(mat_size)
+b <- matvec_ldouble(A, x)
 
-# Fill in
+x_cholesky = solve_via_cholesky(A, b)
+x_LU = solve(A, b)
+x_qr = solve_via_qr(A, b)
 
+rel_diff_cholesky <- norm(x_cholesky - x, type = "2") / norm(x, type = "2")
+rel_diff_LU <- norm(x_LU - x, type = "2") / norm(x, type = "2")
+rel_diff_qr <- norm(x_qr - x, type = "2") / norm(x, type = "2")
+
+coor_rel_diff_cholesky <- abs(x_cholesky - x) / abs(x)
+coor_rel_diff_LU <- abs(x_LU - x) / abs(x)
+coor_rel_diff_qr <- abs(x_qr - x) / abs(x)
+
+cat("Relative l2-norm difference (Cholesky):", rel_diff_cholesky, "\n")
+cat("Relative l2-norm difference (LU):", rel_diff_LU, "\n")
+cat("Relative l2-norm difference (QR):", rel_diff_qr, "\n")
+
+df = data.frame(x_true=x,
+                Cholesky=coor_rel_diff_cholesky, 
+                LU=coor_rel_diff_LU, 
+                QR = coor_rel_diff_qr
+)
+df = reshape2::melt(df, id.vars="x_true")
+ggplot(data= df, aes(x=x_true, y=value, color=variable)) +
+  geom_point(alpha = 0.5) +
+  scale_color_manual(values = c("Cholesky" = "blue", "LU" = "red", "QR" = "green")) +
+  scale_y_log10() +
+  labs(y = "Coordinate-wise Relative Difference on log10 scale", 
+       x = "True x",
+       title = "Coordinate-wise Relative Differences for Cholesky, LU, and QR") +
+  theme_minimal()
 ```
+
+Both the l2-norm relative difference and the coordinate-wise relative difference show that the method from most to least accurate are : **Cholesky, LU, QR**.
+
 
 ### Task &#x4E09;
 
@@ -139,44 +212,105 @@ We also vary the condition number of $\bA$ and assess whether the results would 
 The QR solver will throw an error when the system is ill-condition enough that the numerical solution might not be very accurate. 
 To force it to return the solution in any case, set `tol = .Machine$double.eps`.
 
-```{r, eval=FALSE}
+```{r, eval=TRUE}
 # Utility functions for bookkeeping simulation results.
 source(file.path("R", "num_linalg_sim_study_helper.R"))
 
-n_sim <- 32L
-mat_size <- 512L
-cond_num <- 1e6
-metrics <- c("norm", "median", "five_percentile", "ninety_five_percentile")
-  # TODO: add another metric and modify the helper script accordingly
-
-rel_error_list <- lapply(
-  c("lu", "chol", "qr"), 
-  function(method) pre_allocate_error_list(n_sim, metrics)
-)
-
-for (sim_index in 1:n_sim) {
-  A <- rand_positive_def_matrix(mat_size, cond_num)
-  x <- rnorm(mat_size) 
-  b <- matvec_ldouble(A, x)
-  x_approx <- list( 
-    # Fill in
+get_rel_error_list<-function(n_sim=32L, mat_size=512L, cond_num=1e6, 
+                             metrics=c("norm", "median", "five_percentile", 
+                                       "ninety_five_percentile", "maximum")) {
+  rel_error_list <- lapply(
+    c("lu", "chol", "qr"), 
+    function(method) pre_allocate_error_list(n_sim, metrics)
   )
-  for (method in c("lu", "chol", "qr")) {
-    rel_error <- lapply(
-      metrics, 
-      function (metric) calc_rel_error(x, x_approx[[method]], metric)
+  
+  for (sim_index in 1:n_sim) {
+    A <- rand_positive_def_matrix(mat_size, cond_num)
+    x <- rnorm(mat_size) 
+    b <- matvec_ldouble(A, x)
+    x_approx <- list( 
+      lu = solve(A, b),
+      chol = solve_via_cholesky(A, b),
+      qr = solve_via_qr(A, b)
     )
-    names(rel_error) <- metrics
-    for (metric in names(rel_error)) {
-      rel_error_list[[method]][[metric]][sim_index] <- rel_error[[metric]]
+    for (method in c("lu", "chol", "qr")) {
+      rel_error <- lapply(
+        metrics, 
+        function (metric) calc_rel_error(x, x_approx[[method]], metric)
+      )
+      names(rel_error) <- metrics
+      for (metric in names(rel_error)) {
+        rel_error_list[[method]][[metric]][sim_index] <- rel_error[[metric]]
+      }
     }
   }
+  return(rel_error_list)
 }
-
-# TODO: visually compare errors
-
 ```
 
+```{r}
+visualize_rel_diff<-function(rel_error_list, cond_num){
+  metrics = c("norm", "median", "five_percentile", "ninety_five_percentile", "maximum")
+  metric_names = c("l2-norm", "Median of Coordinate-wise", "Five Percentile of Coordinate-wise",
+                   "Ninety five Percentile of Median of Coordinate-wise", "Maximum of Coordinate-wise")
+  i = 1
+  metric = metrics[i]
+  metric_name = metric_names[i]
+  df = data.frame(Cholesky=rel_error_list[["chol"]][[metric]], 
+                  LU=rel_error_list[["lu"]][[metric]], 
+                  QR =rel_error_list[["qr"]][[metric]]
+  )
+  df$metric = metric
+  for (i in 2:length(metrics)) {
+    metric = metrics[i]
+    metric_name = metric_names[i]
+    new_df = data.frame(Cholesky=rel_error_list[["chol"]][[metric]], 
+                        LU=rel_error_list[["lu"]][[metric]], 
+                        QR =rel_error_list[["qr"]][[metric]]
+    )
+    new_df$metric = metric
+    df = rbind(df, new_df)
+  }
+  df = reshape2::melt(df, id.vars="metric")
+  
+  ggplot(data= df, aes(fill= variable, group=variable, x=log(value))) +
+    geom_density(alpha = 0.5) +
+    facet_wrap(~metric) +
+    labs(title = paste("Condition Number:", cond_num)) +
+    theme_minimal()
+}
+```
+
+
+```{r}
+set.seed(1)
+cond_num = 1e6
+rel_error_list = get_rel_error_list(cond_num = cond_num)
+visualize_rel_diff(rel_error_list, cond_num)
+```
+
+```{r}
+set.seed(1)
+cond_num = 1e9
+rel_error_list = get_rel_error_list(cond_num = cond_num)
+visualize_rel_diff(rel_error_list, cond_num)
+```
+
+```{r}
+set.seed(1)
+cond_num = 1e12
+rel_error_list = get_rel_error_list(cond_num = cond_num)
+visualize_rel_diff(rel_error_list, cond_num)
+```
+**Answer**
+
+The general pattern for accuracy is consistent across different condition numbers and different metrics.
+
+  - The accuracy from the highest to the lowest are QR, LU, and Cholesky.  
+
+  - As the condition number increases, the error increases. This is as expected because the error is proportional to the condition number.
+  
+  - Compared with other metrics, the maximum coordinate-wise relative difference has a larger variance.
 
 <script type="text/x-mathjax-config">
 MathJax.Hub.Config({
@@ -261,4 +395,4 @@ Nonetheless, reasoning as above helps you quantify how much deviation from the n
 
 ## Things to commit/submit
 
-* Link to the pull request.
+* Link to the pull request. [https://github.com/Wenxuan-Lu/hiperglm/pull/4]
