@@ -1,9 +1,11 @@
 ---
 title: 'Homework: Numerical linear algebra'
 output:
-  html_notebook:
-    code_folding: none
-    highlight: textmate
+  html_document:
+    df_print: paged
+  # html_notebook:
+  #   code_folding: none
+  #   highlight: textmate
 ---
 
 <script type="text/x-mathjax-config">
@@ -42,7 +44,13 @@ What are relative speeds among the algorithms?
 Do relative speeds agree with what you expect from the complexity analyses?
 If not (quite), why might that be?
 
-```{r, eval=FALSE}
+**Answers:** solve() and solving by Cholesky decomposition were similar in speed and both faster (almost by a factor of 3) than solving by QR decomposition. Indeed, our complexity analysis in class found that Cholesky solving takes about p^3/3 operations while QR solving takes on the order of 2np^2 operations; in this case, n=p=1,024. But I'm not sure exactly that solve() is doing; its documentation says that it uses the LAPACK "routines", which [this website](https://developer.apple.com/documentation/accelerate/solving_systems_of_linear_equations_with_lapack) seems to imply contain something faster than Cholesky decomposition for symmetric positive semidefinite matrices.
+
+I also wonder how much memory usage and data motion efficiency affect the speed here. I see that memory allocation doubles from solve() to Cholesky solve to QR solve, and garbage collection (GC) increases as well. What is garbage collection? Does it have to do with running out of memory?
+
+<!-- **Note:** Also, I don't understand the warning message about GCs (what is garbage collection?) from the QR decomposition. -->
+
+```{r}
 # Import the `rand_positive_def_matrix` function
 source(file.path("R", "random_matrix.R"))
 
@@ -51,17 +59,21 @@ A <- rand_positive_def_matrix(mat_size, cond_num = 1e3)
 b <- rnorm(mat_size)
 
 solve_via_cholesky <- function(A, b) {
-  # Fill in
+  R <- chol(A)
+  return(backsolve(R, forwardsolve(t(R), b)))
 }
 
 bench::mark(
-  solve(A, b)
+  solve(A, b),
+  iterations = 5
 )
 bench::mark(
-  solve_via_cholesky(A, b)
+  solve_via_cholesky(A, b),
+  iterations = 5
 )
 bench::mark(
-  # Solve via QR decomposition
+  qr.solve(qr(A), b), # qr(A) is a qr object, so solve() is qr.solve()
+  iterations = 5
 )
 ```
 
@@ -84,7 +96,9 @@ What is the relative difference in $\ell^2$-norm?
 How about the coordinate-wise relative differences?
 Are the observed magnitudes of the differences what you'd expect?
 
-```{r, eval=FALSE}
+**Answers:** $Ax$ and $Ax_0$ have the same L2 norm (i.e., the difference and relative difference in their L2 norms is 0 as found by R), though the L2 norm of their difference is 1.05e-11, which is 5.76e-16 times the L2 norm of $Ax_0$. Coordinate-wise, the relative difference between $Ax$ and $Ax_0$ ranges from -1.07e-12 to 8.89e-14, with 463 negative relative differences, 452 positive relative differences, and 109 coordinates exactly equal as found by R.
+
+```{r}
 Rcpp::sourceCpp(file.path("src", "matvec_double.cpp"))
 Rcpp::sourceCpp(file.path("src", "matvec_ldouble.cpp"))
 
@@ -94,8 +108,26 @@ mat_size <- 1024L
 A <- rand_positive_def_matrix(mat_size, cond_num = 1e3)
 x <- rnorm(mat_size)
 
-# Fill in
+b_double <- matvec_double(A, x)
+b_ldouble <- matvec_ldouble(A, x)
 
+l2_norm <- function(v){
+  return(sqrt(sum(v^2)))
+}
+
+norm_of_b_double <- l2_norm(b_double)
+norm_of_b_ldouble <- l2_norm(b_ldouble)
+norm_of_diff <- l2_norm(b_double - b_ldouble)
+coordinate_wise_rel_diff <- (b_double - b_ldouble) / b_ldouble
+
+cat("Difference in L2 norms:", norm_of_b_double - norm_of_b_ldouble)
+cat("Difference in L2 norms relative to L2 norm of b_ldouble:", (norm_of_b_double - norm_of_b_ldouble) / norm_of_b_ldouble)
+cat("L2 norm of difference:", norm_of_diff)
+cat("L2 norm of difference relative to norm of b_ldouble:", norm_of_diff / norm_of_b_ldouble)
+cat("Coordinate-wise relative differences:")
+summary(coordinate_wise_rel_diff)
+table(sign(coordinate_wise_rel_diff))
+hist(coordinate_wise_rel_diff)
 ```
 
 ### Task &#x2F06;
@@ -107,7 +139,12 @@ Then solve a positive-definite system $\bA \bx = \bb$ for $\bx$ using the three 
 Which algorithm appears to be more accurate than the others? 
 Visually demonstrate your answer.
 
-```{r, eval=FALSE}
+**Answers:** Looks like solve() is the most accurate.
+
+```{r}
+library(data.table)
+library(ggplot2)
+
 set.seed(1918)
 cond_num <- 1e6
 
@@ -116,9 +153,31 @@ mat_size <- 1024L
 
 A <- rand_positive_def_matrix(mat_size, cond_num)
 x <- rnorm(mat_size)
+b <- matvec_ldouble(A, x)
 
-# Fill in
+x_solve <- solve(A, b)
+x_chol <- solve_via_cholesky(A, b)
+x_qr <- qr.solve(qr(A), b)
 
+dt <- data.table(x_version = c("x_solve", "x_chol", "x_qr"),
+                 l2norm = c(l2_norm(x_solve), l2_norm(x_chol), l2_norm(x_qr)),
+                 l2_norm_of_diff = c(l2_norm(x_solve - x), l2_norm(x_chol - x), l2_norm(x_qr - x)))
+dt[, `:=`(rel_l2_norm_of_diff = l2_norm_of_diff / l2_norm(x))]
+dt
+
+coordinate_diffs <- data.table(x_version = rep(c("x_solve", "x_chol", "x_qr"), each = length(x)),
+                               diff = c(x_solve - x, x_chol - x, x_qr - x),
+                               rel_diff = c((x_solve - x) / x, (x_chol - x) / x, (x_qr - x) / x))
+
+ggplot(coordinate_diffs) +
+  geom_boxplot(aes(group = x_version, x = x_version, y = diff)) +
+  theme_bw() +
+  ggtitle("Coordinate-wise difference in x")
+
+ggplot(coordinate_diffs) +
+  geom_boxplot(aes(group = x_version, x = x_version, y = rel_diff)) +
+  theme_bw() +
+  ggtitle("Coordinate-wise relative difference in x")
 ```
 
 ### Task &#x4E09;
@@ -136,7 +195,7 @@ We also vary the condition number of $\bA$ and assess whether the results would 
 * Do you see any patterns in the numerical errors across the three algorithms, metrics, and/or condition numbers? Show some plots to support your conclusion.
 
 **Note:** 
-The QR solver will throw an error when the system is ill-condition enough that the numerical solution might not be very accurate. 
+The QR solver will throw an error when the system is ill-conditioned enough that the numerical solution might not be very accurate. 
 To force it to return the solution in any case, set `tol = .Machine$double.eps`.
 
 ```{r, eval=FALSE}
@@ -209,7 +268,7 @@ Finally, open a pull request into your main branch after completing the assignme
 1. Change your code for fitting linear models to solve the least squares problem using QR decomposition instead of LU/Cholesky via the pseudo-inverse formula.
 Make sure _not_ to compute the "Q" matrix explicitly as it is unnecesssary and computationally expensive to do so.
 Remember to run the existing tests to make sure the change did not break anything.
-2. Implement the `vcov()` S3 method for linear model by inverting the estimated Fisher info $\hat{\sigma}^2 \X^\intercal \X$ for $\hat{\sigma}^2 = \frac{n}{n - p} \| \y - \X \bm{\beta} \|^2$ where $n$ denotes the sample size and $p$ the number of predictors.
+2. Implement the `vcov()` S3 method for linear model by inverting the estimated Fisher info: $\hat{\sigma}^2 (\X^\intercal \X)^{-1}$ for $\hat{\sigma}^2 = \frac{1}{n - p} \| \y - \X \bm{\beta} \|^2$ where $n$ denotes the sample size and $p$ the number of predictors.
 (As discussed in class, this is an extremely rare situation in which it actually makes sense to explicitly calculate the inverse of a matrix.)
 Calculate the inverse from the "R" factor of $\X$ and `chol2inv()`; see the tip below for extracting the "R" factor from the `qr()` output.
 3. Turn, if you have not already done so, each iteration of Newton's method into an isolated function.
