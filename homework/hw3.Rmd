@@ -1,7 +1,9 @@
 ---
-title: "Homework: Newton's method for generalized linear models"
+title: 'Homework: Newton''s method for generalized linear models'
 output:
-  html_notebook: 
+  html_document:
+    df_print: paged
+  html_notebook:
     code_folding: none
     highlight: textmate
 ---
@@ -90,5 +92,7 @@ Why?
 
 ## Things to commit/submit
 
-* Link to the pull request.
+* Link to the pull request: https://github.com/yanxiliu230/hiperglm/pull/5
 * (Optional) Answer to the bonus question.
+
+No. Ideally the convergence tolerance would be small. However due to finite precision, the current log likelihood and previous might never get close enough to pass the convergence criterion.
