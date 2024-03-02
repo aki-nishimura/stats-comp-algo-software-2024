@@ -67,7 +67,7 @@ bench::mark(
 )
 ```
 
-Cholesky decomposition is fastest (median time: 171 ms), followed by LU decomposition (median time: 212 ms), and then QR decomposition (median time: 521 ms).
+Cholesky decomposition is fastest (median time: 170 ms), followed by LU decomposition (median time: 180 ms), and then QR decomposition (median time: 533 ms).
 
 These relative speeds somewhat agree with what I expected. The complexity analyses presented in the lecture slides showed that Cholesky decomposition has complexity $\sim \frac{1}{3}p^3$, LU decomposition has complexity $\sim \frac{2}{3}p^3$, and QR decomposition has complexity $\sim 2np^2 - \frac{2}{3}p^3 = \frac{4}{3}p^3$ (in this scenario where $n=p$ for $p$ parameters and $n$ data points). This implies that the Cholesky decomposition should take about half of the time of the LU decomposition, which should then take about half of the time of the QR decomposition. 
 
@@ -105,21 +105,29 @@ mat_size <- 1024L
 A <- rand_positive_def_matrix(mat_size, cond_num = 1e3)
 x <- rnorm(mat_size)
 
-std_result <- matvec_double(A, x)
-prec_result <- matvec_ldouble(A, x)
+l2_norm <- function(x) {
+  sqrt(sum(x^2))
+}
 
-std_l2 <- sqrt(sum((std_result)^2))
-prec_l2 <- sqrt(sum((prec_result)^2))
+calc_diffs <- function(x1, x2) {
+  x1_norm <- l2_norm(x1) 
+  l2_norm_diff <- l2_norm(x1 - x2)
+  l2_norm_rel_diff <- l2_norm_diff / x1_norm
+  coord_rel_diff <- abs(x1 - x2) / abs(x1)
+  return(list(l2_norm_rel_diff = l2_norm_rel_diff, coord_rel_diff = coord_rel_diff))
+}
 
-relative_l2 <- (prec_l2 - std_l2)/prec_l2
+Ax_double <- matvec_double(A, x)
+Ax_ldouble <- matvec_ldouble(A, x)
 
-relative_coord <- (prec_result - std_result)/prec_result
-quantile(relative_coord, p = c(0, 0.25, 0.5, 0.75, 1))
+diffs <- calc_diffs(Ax_ldouble, Ax_double)
+print(paste0("l2-norm relative difference: ", diffs$l2_norm_rel_diff))
+print(paste0("Max coordinate-wise relative differences: ", max(diffs$coord_rel_diff)))
 ```
 
-The relative difference in $\ell^2$-norm is -3.958355e-16.
+The relative difference in l2-norm is 5.76e-16. 
 
-The coordinate-wise relative differences have mean -2.877685e-16, variance 4.761493e-28, and quantiles outlined in the table above.
+The maximum of the coordinate-wise relative differences is 9.97e-13. 
 
 As expected, the observed magnitudes of these differences are very small. The long double type provides additional precision compared to the double type, so the results obtained using long double are expected to be more accurate. However, due to the finite precision of any numerical representation, some small differences between the results are inevitable. These differences are generally expected to be on the order of machine epsilon ($\sim$ 2.220446e-16 for double type), which is consistent with the magnitudes of the differences observed here.
 
@@ -142,69 +150,31 @@ mat_size <- 1024L
 
 A <- rand_positive_def_matrix(mat_size, cond_num)
 x <- rnorm(mat_size)
-x_l2 <- sqrt(sum(x^2))
+
 b <- matvec_ldouble(A, x)
+x_lu <- solve(A, b)
+x_chol <- solve_via_cholesky(A, b)
+x_qr <- qr.solve(A, b)
 
-# LU Decomposition
-LU_soln <- solve(A, b)
-LU_soln_l2 <- sqrt(sum((LU_soln)^2))
-print((LU_soln_l2 - x_l2)/x_l2)
+diffs_lu <- calc_diffs(x, x_lu)
+diffs_chol <- calc_diffs(x, x_chol)
+diffs_qr <- calc_diffs(x, x_qr)
 
-# Cholesky Decomposition
-R <- chol(A)
-Chol_soln <- backsolve(R, forwardsolve(t(R), b))
-Chol_soln_l2 <- sqrt(sum((Chol_soln)^2))
-print((Chol_soln_l2 - x_l2)/x_l2)
+df <- data.frame(
+  Method = c(rep("LU", length(diffs_lu$coord_rel_diff)),
+             rep("Cholesky", length(diffs_chol$coord_rel_diff)),
+             rep("QR", length(diffs_qr$coord_rel_diff))),
+  CoordinateDifference = log10(c(diffs_lu$coord_rel_diff, diffs_chol$coord_rel_diff, diffs_qr$coord_rel_diff))
+)
 
-# QR Decomposition
-QR_soln <- qr.solve(A, b)
-QR_soln_l2 <- sqrt(sum((QR_soln)^2))
-print((QR_soln_l2 - x_l2)/x_l2)
+library(ggplot2)
+ggplot(df, aes(x = Method, y = CoordinateDifference)) +
+  geom_boxplot() +
+  ylab("log10(Coordinate-wise Relative Differences)") +
+  ggtitle("Comparison of Accuracy Between Methods")
 ```
 
-```{r}
-library(tidyverse)
-data.frame(Method = c("LU", "LU", "Cholesky", "Cholesky", "QR", "QR"),
-                     Difference = c((LU_soln_l2 - x_l2)/x_l2, sqrt(sum((LU_soln - x)^2)),
-                                     (Chol_soln_l2 - x_l2)/x_l2, sqrt(sum((Chol_soln - x)^2)),
-                                     (QR_soln_l2 - x_l2)/x_l2, sqrt(sum((QR_soln - x)^2))),
-                     Metric = c("Relative L2", "Euclidean", 
-                                "Relative L2", "Euclidean", 
-                                "Relative L2", "Euclidean")) %>%
-  ggplot(aes(fill = Method, y = Difference, x = Method)) + 
-  geom_bar(position="dodge", stat="identity") + 
-  facet_wrap(~Metric, ncol = 1, scales = "free_y") +
-  theme_minimal()
-```
-
-```{r}
-plot_df <- data.frame(X = x, LU = LU_soln, 
-                      Cholesky = Chol_soln, QR = QR_soln) %>%
-  as.matrix() %>%
-  t()
-
-cmdscale(dist(plot_df), k = 2) %>%
-  data.frame() %>%
-  rownames_to_column(var = "label") %>%
-  mutate(dist = sqrt((X1 - first(X1))^2 + (X2 - first(X2))^2)) %>%
-  mutate(dist = formatC(dist, format = "e", digits = 2)) %>%
-  mutate(dist = case_when(dist == "0.00e+00" ~ "",
-                          TRUE ~ dist)) %>%
-  mutate(Y1 = first(X1), Y2 = first(X2)) %>% 
-  ggplot(aes(x = X1, y = X2, label = label)) + 
-  geom_point() + 
-  geom_text(nudge_y = 0, nudge_x = -2.5e-11) + 
-  geom_text(aes(label = dist), nudge_y = 0, nudge_x = 3e-11) + 
-  geom_segment(aes(x = X1, y = X2, xend = Y1, yend = Y2)) + 
-  xlim(-3e-10, 2e-10) + 
-  theme_minimal()
-```
-
-Initially, I used bar charts to visualize the errors, which were summarized using both the Euclidean distance and the Relative L2-norm difference. The two bar charts together offer a clear depiction of the relative sizes of the errors, but they don't provide a spatial context for the results. For that, we need to refer to the second plot.
-
-The second plot is a multi-dimensional scaling of the $x$ vectors obtained from each of the three solving methods. This plot reduces the $x$ points from a 1,024-dimensional space to a 2-dimensional space while maintaining the distances between the points. It's important to note that the y-axis is much more granular than the x-axis, and the labels attached to each point are the actual distances (regardless of spatial orientation). 
-
-Based on these two plots, LU decomposition appears to be the most accurate, being the closest to the "ground truth" $x$ vector. LU decomposition's accuracy is followed by Cholesky decomposition's accuracy, and finally, QR decomposition's accuracy. The solutions from each of these methods seem to be distributed around the ground truth without a clear bias towards a specific direction of error. However, this observation is based on a small sample and may not hold true for larger samples.
+Based on the plot above, LU decomposition appears to be the most accurate (followed by Cholesky decomposition and then QR decomposition). It should be noted, though, that all three algorithms yield comparably small relative errors.
 
 ### Task &#x4E09;
 
