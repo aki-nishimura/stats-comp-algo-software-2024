@@ -1,6 +1,8 @@
 ---
 title: 'Homework: Numerical linear algebra'
 output:
+  html_document:
+    df_print: paged
   html_notebook:
     code_folding: none
     highlight: textmate
@@ -20,6 +22,8 @@ MathJax.Hub.Config({
 
 ```{r setup, include=FALSE}
 source(file.path("..", "R", "util.R"))
+library(ggplot2)
+library(reshape2)
 
 required_packages <- c("microbenchmark")
 install_and_load_packages(required_packages)
@@ -42,7 +46,7 @@ What are relative speeds among the algorithms?
 Do relative speeds agree with what you expect from the complexity analyses?
 If not (quite), why might that be?
 
-```{r, eval=FALSE}
+```{r, eval=TRUE}
 # Import the `rand_positive_def_matrix` function
 source(file.path("R", "random_matrix.R"))
 
@@ -52,6 +56,9 @@ b <- rnorm(mat_size)
 
 solve_via_cholesky <- function(A, b) {
   # Fill in
+  U <- chol(A)
+  x <- backsolve(U, forwardsolve(U, b, transpose = TRUE, upper.tri = TRUE))
+  return(x)
 }
 
 bench::mark(
@@ -62,8 +69,11 @@ bench::mark(
 )
 bench::mark(
   # Solve via QR decomposition
+  qr.solve(A, b)
 )
 ```
+
+**Answer:** Cholesky is the fastest, followed by LU, and then QR. This is consistent with the complexity analyses, as Cholesky is $p^3/3$, LU is $2p^3/3$, and QR is $4p^3/3$.
 
 ## Part B: Competition in terms of numerical accuracy/stability
 
@@ -84,7 +94,7 @@ What is the relative difference in $\ell^2$-norm?
 How about the coordinate-wise relative differences?
 Are the observed magnitudes of the differences what you'd expect?
 
-```{r, eval=FALSE}
+```{r, eval=TRUE}
 Rcpp::sourceCpp(file.path("src", "matvec_double.cpp"))
 Rcpp::sourceCpp(file.path("src", "matvec_ldouble.cpp"))
 
@@ -95,8 +105,25 @@ A <- rand_positive_def_matrix(mat_size, cond_num = 1e3)
 x <- rnorm(mat_size)
 
 # Fill in
+l2_norm <- function(x){
+  sqrt(sum(x^2))
+}
+rel_diff_l2 <- function(x, y){
+  l2_norm(x - y) / min(l2_norm(x), l2_norm(y))
+}
+rel_diff_entry <- function(x, y){
+  abs(x - y) / pmin(abs(x), abs(y))
+}
 
+
+double_b <- matvec_double(A, x)
+ldouble_b <- matvec_ldouble(A, x)
+ans_1 <- rel_diff_l2(double_b, ldouble_b)
+ans_2 <- range(rel_diff_entry(double_b, ldouble_b))
 ```
+
+**Answers:**
+the relative difference in $\ell^2$-norm is `r ans_1` and the coordinate-wise relative differences range from `r ans_2[1]` to `r ans_2[2]`. I think this makes sense because most of the entry-wise error are somewhere around `2.220446e-16` which is the machine epsilon for `double` precision, and this is also shown in the hw2 question.
 
 ### Task &#x2F06;
 
@@ -107,7 +134,7 @@ Then solve a positive-definite system $\bA \bx = \bb$ for $\bx$ using the three 
 Which algorithm appears to be more accurate than the others? 
 Visually demonstrate your answer.
 
-```{r, eval=FALSE}
+```{r, eval=TRUE}
 set.seed(1918)
 cond_num <- 1e6
 
@@ -118,8 +145,39 @@ A <- rand_positive_def_matrix(mat_size, cond_num)
 x <- rnorm(mat_size)
 
 # Fill in
+rel_diff_l2_truth <- function(x_truth, x){
+  l2_norm(x - x_truth) / l2_norm(x_truth)
+}
+rel_diff_entry_truth <- function(x_truth, x){
+  abs(x - x_truth) / l2_norm(x_truth)
+}
+b <- matvec_ldouble(A, x)
+x_LU <- solve(A, b)
+x_chol <- solve_via_cholesky(A, b)
+x_qr <- qr.solve(A, b, tol = .Machine$double.eps)
+rel_diff_l2_LU <- rel_diff_l2_truth(x, x_LU)
+rel_diff_l2_chol <- rel_diff_l2_truth(x, x_chol)
+rel_diff_l2_qr <- rel_diff_l2_truth(x, x_qr)
+rel_diff_entry_LU <- median(rel_diff_entry_truth(x, x_LU))
+rel_diff_entry_chol <- median(rel_diff_entry_truth(x, x_chol))
+rel_diff_entry_qr <- median(rel_diff_entry_truth(x, x_qr))
+
+results <- data.frame(
+  Method = factor(rep(c("LU", "Chol", "QR"), each = 2)),
+  Type = rep(c("Median L2", "Median Entry"), 3),
+  Value = c(rel_diff_l2_LU, rel_diff_entry_LU, 
+            rel_diff_l2_chol, rel_diff_entry_chol, 
+            rel_diff_l2_qr, rel_diff_entry_qr)
+)
+
+# Create the bar plot
+ggplot2::ggplot(results, aes(x = Method, y = Value, fill = Type)) +
+  geom_bar(stat = "identity", position = position_dodge()) +
+  labs(y = "Relative Difference", x = "Method") +
+  theme(legend.title = element_blank())
 
 ```
+
 
 ### Task &#x4E09;
 
@@ -139,14 +197,15 @@ We also vary the condition number of $\bA$ and assess whether the results would 
 The QR solver will throw an error when the system is ill-condition enough that the numerical solution might not be very accurate. 
 To force it to return the solution in any case, set `tol = .Machine$double.eps`.
 
-```{r, eval=FALSE}
+```{r, eval=TRUE}
 # Utility functions for bookkeeping simulation results.
 source(file.path("R", "num_linalg_sim_study_helper.R"))
 
-n_sim <- 32L
+for(cond_num in c(1e6, 1e9, 1e12)){
+  n_sim <- 32L
 mat_size <- 512L
-cond_num <- 1e6
-metrics <- c("norm", "median", "five_percentile", "ninety_five_percentile")
+# cond_num <- 1e6
+metrics <- c("norm", "median", "five_percentile", "ninety_five_percentile", "mean")
   # TODO: add another metric and modify the helper script accordingly
 
 rel_error_list <- lapply(
@@ -160,6 +219,9 @@ for (sim_index in 1:n_sim) {
   b <- matvec_ldouble(A, x)
   x_approx <- list( 
     # Fill in
+    lu = solve(A, b),
+    chol = solve_via_cholesky(A, b),
+    qr = qr.solve(A, b, tol = .Machine$double.eps)
   )
   for (method in c("lu", "chol", "qr")) {
     rel_error <- lapply(
@@ -174,9 +236,33 @@ for (sim_index in 1:n_sim) {
 }
 
 # TODO: visually compare errors
+# Assuming rel_error_list is your list structure as shown in the image
+# You will need to convert it to a data frame and then to long format for ggplot2
+rel_error_list <- rel_error_list[4:6]
+# Convert the list to a data frame
+rel_error_df <- as.data.frame(do.call(rbind, lapply(rel_error_list, function(x) do.call(cbind, x))))
+
+# Add a 'method' column to the data frame
+rel_error_df$method <- rep(c("lu", "chol", "qr"), each = n_sim)
+
+# Reshape the data to long format
+rel_error_long <- melt(rel_error_df, id.vars = "method")
+
+# Plot using ggplot2
+p <- ggplot(rel_error_long, aes(group = method, fill = method)) +
+  geom_density(aes(log(value)), alpha = 0.6) +
+  labs(y = "Value", x = "Method", title = paste("log(Metrics) by methods, cond_num", cond_num)) +
+  facet_wrap(~ variable, scales = "free_y") +
+  scale_fill_brewer(palette = "Set1")
+
+plot(p)
+
+}
 
 ```
 
+**Answer:**
+Firstly, for the accuracy of the three algorithms when condition number is $10^6$, averagely speaking the Cholesky method is the most accurate, followed by LU, and then QR. This is consistent across all metrics.Varying the condition number to $10^9$ and $10^{12}$, the error gets larger and larger for all methods, but the same pattern for different methods is observed. The Cholesky method is averagely the most accurate, followed by LU, and then QR. This is consistent across all metrics. But we can see that for Cholesky and LU, the variance of the relative error is increasing as the condition number increases. This is not the case for QR. In this sense, QR is more stable than Cholesky and LU when condition number is high and increasing. 
 
 <script type="text/x-mathjax-config">
 MathJax.Hub.Config({
@@ -262,3 +348,4 @@ Nonetheless, reasoning as above helps you quantify how much deviation from the n
 ## Things to commit/submit
 
 * Link to the pull request.
+https://github.com/thepianistalex/hiperglm/pull/9
