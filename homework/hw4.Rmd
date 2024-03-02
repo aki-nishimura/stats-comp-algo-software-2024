@@ -191,7 +191,7 @@ ggplot(data= df, aes(x=x_true, y=value, color=variable)) +
   theme_minimal()
 ```
 
-Both the l2-norm relative difference and the coordinate-wise relative difference show that the method from most to least accurate are : **Cholesky, LU, QR**. The trend is consistent over all x values.
+Both the l2-norm relative difference and the coordinate-wise relative difference show that the method from most to least accurate are : **Cholesky, LU, QR**.
 
 
 ### Task &#x4E09;
@@ -395,4 +395,4 @@ Nonetheless, reasoning as above helps you quantify how much deviation from the n
 
 ## Things to commit/submit
 
-* Link to the pull request.
+* Link to the pull request. [https://github.com/Wenxuan-Lu/hiperglm/pull/4]
