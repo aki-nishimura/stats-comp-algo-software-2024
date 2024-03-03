@@ -1228,6 +1228,33 @@ B <- do.call(cbind, b_list) # Or use \`dplyr::bind_cols()`
 bench::mark(X %*% B)
 ```
 
+<!-- RcppEigen ver -->
+```{r, eval=FALSE, include=FALSE}
+sourceCpp(code = 
+  "#include <RcppEigen.h>
+  // [[Rcpp::depends(RcppEigen)]]
+  
+  using Eigen::Map;
+  using Eigen::MatrixXd; 
+  using Eigen::VectorXd;  
+  
+  // [[Rcpp::export]]
+  VectorXd dgemv_eigen(Map<MatrixXd> A, Map<VectorXd> v) {
+    if (A.cols() != v.size()) {
+      Rcpp::stop("Incompatible matrix dimensions.");
+    }
+    return A * v;
+  }"
+)
+
+bench::mark(
+  for (l in 1:k) {
+    dgemv_eigen(X, b_list[[l]])
+  }
+)
+bench::mark(dgemm_eigen(X, B))
+```
+
 ---
 
 # Consequences of data motion bottleneck
