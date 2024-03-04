@@ -1,9 +1,8 @@
 ---
 title: 'Homework: Finite Precision Arithmetic & Gradient Descent'
 output:
-  html_notebook:
-    code_folding: none
-    highlight: textmate
+  html_document:
+    df_print: paged
 ---
 
 
@@ -35,6 +34,36 @@ b <- 0.5 + .Machine$double.eps
 
 Why do we get the different result?
 
+**Answer**: This is an issue of carrying over a digit. Let's run through each of these computations:
+
+- Example 1, LHS: $(2^0(1 + 2^{-52}) + 2^0(1 + 2^{-52})) + 2^0(1) = 2^1(1 + 2^{-52}) + 2^0(1) = \boxed{2^1(1 + 2^{-1} + 2^{-52})}$. Each of these terms can be stored using 52-bit fraction, 11-bit exponent, and 1-bit sign.
+
+<!-- - Example 1, LHS: $((1 + 2^{-52}) + (1 + 2^{-52})) + 1 = (2 + 2^{-51}) + 1 = \boxed{3 + 2^{-51}}$. Each of these terms can be stored using 52-bit fraction, 11-bit exponent, and 1-bit sign. -->
+
+- Example 1, RHS: $2^0(1 + 2^{-52}) + (2^0(1 + 2^{-52}) + 2^0(1)) = 2^0(1 + 2^{-52}) + 2^1(1 + 2^{-53})$. The $2^1(1 + 2^{-53})$ term is problematic, requiring more than 52 fractional bits to store. So the machine truncates the term, representing it as $2^1(1)$. Then, the sum becomes $2^0(1 + 2^{-52}) + 2^1(1) = 2^1(1 + 2^{-1} + 2^{-53})$, again requiring more bits to store than are available. So the machine truncates again, returning $\boxed{2^1(1 + 2^{-1})}$.
+
+<!-- - Example 1, RHS: $(1 + 2^{-52}) + ((1 + 2^{-52}) + 1) = (1 + 2^{-52}) + (2 + 2^{-52})$. The $2 + 2^{-52}$ term is problematic, requiring more bits to store than are available. So the machine truncates the term, representing it as $2$. Then, the sum becomes $(1 + 2^{-52}) + 2 = 3 + 2^{-52}$, which also requires more bits to store than are available. So the machine truncates again, returning $\boxed{3}$. -->
+
+- Example 2, LHS: $(2^0(1 + 2^{-52}) + (2^{-1}(1 + 2^{-51})) + 2^0(1) = 2^0(1 + 2^{-1} + 2^{-51}) + 2^0(1) = \boxed{2^1(1 + 2^{-2} + 2^{-52})}$. Each of these terms can be stored using 52-bit fraction, 11-bit exponent, and 1-bit sign.
+
+<!-- - Example 2, LHS: $((1 + 2^{-52}) + ((2^{-1} + 2^{-52})) + 1 = (1 + 2^{-1} + 2^{-51}) + 1 = \boxed{2 + 2^{-1} + 2^{-51}}$. Each of these terms can be stored using 52-bit fraction, 11-bit exponent, and 1-bit sign. -->
+
+- Example 2, RHS: $2^0(1 + 2^{-52}) + (2^{-1}(1 + 2^{-51}) + 2^0(1)) = 2^0(1 + 2^{-52}) + 2^0(1 + 2^{-1} + 2^{-52}) = \boxed{2^1(1 + 2^{-2} + 2^{-52})}$. Each of these terms can be stored using 52-bit fraction, 11-bit exponent, and 1-bit sign.
+
+<!-- - Example 2, RHS: $(1 + 2^{-52}) + ((2^{-1} + 2^{-52}) + 1) = (1 + 2^{-52}) + (1 + 2^{-1} + 2^{-52}) = \boxed{2 + 2^{-1} + 2^{-51}}$. Each of these terms can be stored using 52-bit fraction, 11-bit exponent, and 1-bit sign. -->
+
+```{r, eval=F, echo=F}
+0.5 + .Machine$double.eps == 0.5
+1 + .Machine$double.eps == 1
+2 + .Machine$double.eps == 2
+3 + .Machine$double.eps == 3
+
+-0.5 + .Machine$double.eps == -0.5
+-1 + .Machine$double.eps == -1
+-2 + .Machine$double.eps == -2
+-3 + .Machine$double.eps == -3
+```
+
 
 # Exercise 1: One-pass algorithm for calculating variance
 
@@ -52,26 +81,53 @@ How does the estimate change if you change the seed?
 **Bonus question:** 
 What is, roughly speaking, the distribution of the estimator `sample_var_with_question_mark` under repeated Monte Carlo simulations (i.e. without a fixed seed)?
 
-```{r}
-set.seed(140778)
+```{r, cache=T}
+# set.seed(140778)
 
-running_sum <- 0
-running_sum_sq <- 0
-
-n_sample <- 10^3
-for (i in 1:n_sample) {
-  theta <- 1e10 + rnorm(1)
-  running_sum <- running_sum + theta
-  running_sum_sq <- running_sum_sq + theta^2
+exercise1 <- function(seed){
+  running_sum <- 0
+  running_sum_sq <- 0
+  
+  n_sample <- 10^3
+  for (i in 1:n_sample) {
+    theta <- 1e10 + rnorm(1)
+    running_sum <- running_sum + theta
+    running_sum_sq <- running_sum_sq + theta^2
+  }
+  sample_mean <- running_sum / n_sample
+  sample_sec_mom <- running_sum_sq / n_sample
+  
+  sample_var_with_question_mark <- (sample_sec_mom - (sample_mean)^2)
+  return(sample_var_with_question_mark)
 }
-sample_mean <- running_sum / n_sample
-sample_sec_mom <- running_sum_sq / n_sample
 
-sample_var_with_question_mark <- (sample_sec_mom - (sample_mean)^2)
+sample_var_with_question_mark <- sapply(1:10000, exercise1)
+hist(sample_var_with_question_mark)
+qqnorm(sample_var_with_question_mark)
+qqline(sample_var_with_question_mark)
+mean(sample_var_with_question_mark)
+var(sample_var_with_question_mark)
 ```
 
 ## Things to commit/submit
-Answers to the questions above.
+
+**Answer to question:**
+
+- The sample mean was 1e10 (= the true mean). \
+I expected this result because our sample size is 1,000, which seems large enough for the central limit theorem to apply.
+
+- The sample second moment was 1e20. Close to the true second moment, which is E[(1e10 + X)^2] = 1e20 + 2e10 E[X] + E[X^2] = 1e20 + 1. \
+<!-- = E[1e20 + 2e10 X + X^2] -->
+I also expected this result, by the central limit theorem.
+
+- The estimate for the sample variance was -147,456. Not close to the true variance, which is (1e20 + 1) - (1e10)^2 = 1, the same as the variance of X~N(0,1). \
+I did not expect a negative estimate for a nonnegative estimand, haha.
+I think this is happening because our algorithm/method has large variance. The estimate changes a LOT when I change the seed.
+<!-- I suppose this is an example of numeric instability, though I'm not sure why it's happening since the largest number in this calculation is only 1e20. No, so this is an example of our algorithm having large variance. -->
+
+**Answer to bonus question using simulation:** I ran the algorithm using 10,000 different seeds, and the distribution of the estimator seems asymptotically normal, with very high variance (see the above output).
+
+**Attempt at bonus question using math:** Our estimator is $\frac{\sum X_i^2}{n} - (\frac{\sum X_i}{n})^2 = \frac{\sum X_i^2}{n} - \frac{\sum X_i^2 + 2 \sum X_i X_j}{n^2} = \frac{(n-1) \sum X_i^2 + 2 \sum X_i X_j}{n^2}$, which has mean $\frac{n-1}{n^2}$ and variance $E(\frac{(n-1) \sum X_i^2 + 2 \sum X_i X_j}{n^2})^2 - \frac{(n-1)^2}{n^4}$ (I guess I could try to simplify this, but I won't). I wonder if this distribution is a function of chi-squared random variables, since $\sum X_i^2 \sim \chi^2_n$ and $X_i X_j = \frac{(X_i + X_j)^2 - (X_i - X_j)^2}{4} \sim \frac{\chi^2_1 - \chi^2_1}{2}$.
 
 
 # Exercise 2: Generating random real numbers in finite precision arithmetic
@@ -84,9 +140,15 @@ The amount of randomness in it, therefore, is equivalent to 52 Bernoulli random 
 Write a function to generate a Uniform(1, 2) random variable in double-precision with randomness coming only from the `rbinom()` function.
 Check the function's behavior by plotting a histogram of random variables generated from it. 
 
-```{r, eval=FALSE}
+```{r, eval=TRUE}
+set.seed(140778)
+
 double_prec_runif <- function () {
-  # Fill in
+  bernoullis <- rbinom(52, 1, 0.5)
+  powers_of_2 <- 2^(-(1:52))
+  unif_0_1 <- sum(powers_of_2 * bernoullis)
+  unif_1_2 <- unif_0_1 + 1
+  return(unif_1_2)
 }
 
 n_draw <- 10^5
@@ -117,13 +179,16 @@ When you call `calc_num_expected_duplicate(n_draw = 10^6, n_choice = 2^52)` to c
 What is the issue?
 
 ```{r}
-calc_num_expected_duplicate <- function (n_draw, n_choice) {
-  # To be remedied.
-  prob_item_never_chosen <- (1 - 1 / n_choice) ^ n_draw
-  n_expected_unique <- n_choice * (1 - prob_item_never_chosen)
-  return(n_draw - n_expected_unique)
+# unremedied function
+calc_num_expected_duplicate_old <- function (n_draw, n_choice) {
+  prob_item_never_chosen <- (1 - 1 / n_choice) ^ n_draw # evaluates to 1 - n_draw / n_choice due to precision
+  n_expected_unique <- n_choice * (1 - prob_item_never_chosen) # evaluates to n_draw
+  return(n_draw - n_expected_unique) # evaluates to 0
 }
+calc_num_expected_duplicate_old(n_draw = 10^6, n_choice = 2^52)
 ```
+
+**Answer:** Mathematically, $(1 - n^{-1})^d = 1 - d n^{-1} + {d \choose 2} n^{-2} + \cdots + (-1)^d n^{-d}$. However, with $n=2^{52}$, the terms $n^{-2}$ through $n^{-d}$ are all too small for the machine to represent, so they all get truncated to 0. Therefore, $(1 - n^{-1})^d$ evaluates to $1 - d n^{-1}$ in the computer, and $d - n [1 - (1 - n^{-1})^d]$ evaluates to 0.
 
 Formulas involving $1 + x$ for $|x| \ll 1$ ($x = - n^{-1}$ in the above case) occur commonly enough in statistics/scientific computing that R provides a function `log1p(x)` for computing $\log(1 + x)$ to deal with one such situation.
 In more general calculations involving $|x| \ll 1$ (e.g. for a "sinc" function $\operatorname{sinc}(x) = \sin(x) / x$), a Taylor expansion provides a general approach to control truncation errors.
@@ -133,6 +198,29 @@ Remedy the `calc_num_expected_duplicate()` function by applying the second-order
 ii) applying the second-order expansion to $(1 - x)^d$ corresponds to applying the first-order expansion to the overall expression $d - x^{-1} [1 - (1 - x)^d]$.)
 Use the more numerically accurate version of `calc_num_expected_duplicate()` to calculate the expected number of duplicates among $10^6$ Uniform(1, 2) random variables.
 
+```{r}
+# remedied
+calc_num_expected_duplicate <- function (n_draw, n_choice) {
+  n_duplicates <- n_draw * (n_draw - 1) / n_choice / 2
+  return(n_duplicates)
+}
+calc_num_expected_duplicate(n_draw = 10^6, n_choice = 2^52)
+```
+
+```{r, eval=FALSE, echo=FALSE}
+# function remedied using log1p()
+# oops I didn't get it right
+calc_num_expected_duplicate_old <- function (n_draw, n_choice) {
+  log_prob_item_never_chosen <- n_draw * log1p(-1/n_choice)
+  log_n_never_chosen <- log(n_choice) + log_prob_item_never_chosen
+  # prob_item_never_chosen <- exp(log_prob_item_never_chosen)
+  # n_expected_unique <- n_choice - n_choice * prob_item_never_chosen)
+  n_never_chosen <- exp(log_n_never_chosen)
+  return(n_draw - n_expected_unique)
+}
+calc_num_expected_duplicate_old(n_draw = 10^6, n_choice = 2^52)
+```
+
 ## Part C
 
 The expected number from Part B, if you calculated it correctly, suggests that it is extremely rare to get duplicate values when generating $10^6$ uniform random variables in double-precision.
@@ -141,11 +229,20 @@ If we use R's `runif()` function, however, this is _not_ what we observe because
 Check the number of duplicates from `runif(10^6)` against the expected value for a floating-point number with 32-bits of precision. 
 Check also that, using your implementation of random uniform from Part A, duplicates are indeed rare in double-precision.
 
-```{r, eval=FALSE}
+```{r, cache=T}
+set.seed(140778)
+
 n_draw <- 10^6
 base_r_unif <- runif(n_draw, min = 1, max = 2)
 unif_rv <- sapply(1:n_draw, function (i) double_prec_runif())
-# Check the number of duplicates against the expected value
+
+# Check the number of duplicates
+sum(duplicated(base_r_unif))
+sum(duplicated(unif_rv))
+
+# Check the expected number of duplications for base R implementation
+expected_base_r_duplicates <- calc_num_expected_duplicate(n_draw = 10^6, n_choice = 2^32)
+expected_base_r_duplicates
 ```
 
 
@@ -163,23 +260,26 @@ We evaluate its derivative using an analytical formula and compare it to the cen
 Using the starter code provided below, plot the relative error of the numerical approximation in a log-log scale.
 What do you expect the slope of the plotted line to be?
 
-```{r, eval=FALSE}
+**Answer:** Since the centered difference approximates the derivative up to $O(\Delta x^2)$, and we are plotting on a log-log scale, I expect the slope to be 2.
+<!-- or 2 + a constant -->
+
+```{r}
 #' Approximate derivative via centered-difference approximation
 approximate_deriv <- function(func, x, dx) {
-  # Fill in
+  return((func(x + dx) - func(x - dx)) / 2 / dx)
 }
 
 log_logistic_func <- function(x) {
-  # Fill in
+  return(x - log(1 + exp(x)))
 }
 
 log_logistic_deriv <- function(x) {
-  # Fill in
+  return(1 / (1 + exp(x)))
 }
 
 # Calculate and plot the relative errors of finite difference approximations
 set.seed(615)
-x <- rnorm(1)
+x <- rnorm(1) # hmm, the resulting plot looks the same even if x = 1 exactly
 
 log2_dx <- - seq(1, 52)
 numerical_deriv <- sapply(
@@ -216,6 +316,14 @@ Imagine a machine with five decimal digits of accuracy.
 What happens if we, on this machine, numerically differentiate $f(x) = x$ at $x = 1$ with $\Delta x = \frac{1}{2} \times 0.11111 \times 10^{-k}$ for $k = 0, 1, 2, \ldots$?
 Since $(0.11111)^{-1} = 9 \times (1 + 10^{-5} + 10^{-10} + \ldots)$, you can assume that division by $2 \Delta x$ is equivalent to multiplication by $9 \times 10^k$ on this five-decimal-digits machine.
 
+**Answers:** Since the centered difference approximates the derivative up to $O(\Delta x^2)$, and we are plotting on a log-log scale, I expect the slope to be 2. Indeed, from -17 to 0 (reading from right to left on this plot), the slope is 2.
+
+Meanwhile, the slope from -52 to -17 is much more jagged and appears to be roughly -1 on average. I'm not sure why there is numeric instability here, since all the step sizes are larger than machine epsilon. Maybe we lose precision (i.e., go beyond machine epsilon) when we perform functions like `log()` and `exp()` on these small numbers. Maybe the jaggedness of the line is due to $x$ (which was randomly generated) having fractional parts that get perturbed by our small steps sizes.
+
+Anyhow, if $f(x + \Delta x) - f(x - \Delta x)$ gets truncated to $f(x) - f(x) = 0$, then the centered difference estimate of the derivative at $x$ will be 0, and the relative error will be 1. The log base 2 relative error will be 0. Hmm, this would lead to a slope of 0, not -1. So I am not sure why the slope is -1 from -52 to -17.
+
+<!-- Wrong definition of relative error: relative error = truth/step size \implies log(relative error) = log(truth) - log(step size) \implies change in log(relative error) = log(step size) - log(step size/2) = log(step size)/2. Since change in step size is also log(step size)/2, the slope is 1. -->
+
 ## Part B: Extention to multivariate functions
 
 As mentioned in the lecture, the finite difference method extends to a function with multivariate input $f: \mathbb{R}^d \to \mathbb{R}$ and can be used to approximate the gradient $\nabla f(\boldsymbol{x})$.
@@ -224,13 +332,24 @@ The extension relies on the fact $f(\boldsymbol{x} + \Delta x \, \boldsymbol{e}_
 Using the starter code provided below, implement a function to approximate $\nabla f(\boldsymbol{x})$ via the centered difference method.
 To test this function, take as an example a quadratic function $f(\boldsymbol{x}) = - \boldsymbol{x}^\intercal \boldsymbol{\Phi} \boldsymbol{x} / 2$ with positive definite $\boldsymbol{\Phi}$, which can be thought of as a log-likelihood function for $\boldsymbol{x} \sim \mathscr{N}(\boldsymbol{0}, \boldsymbol{\Phi})$ up to an additive constant.
 First show that its gradient is given by $\nabla f(\boldsymbol{x}) = - \boldsymbol{\Phi} \boldsymbol{x}$; 
-more generally, the gradient of a quadratic function $g(\boldsymbol{x}) = \boldsymbol{x}^\intercal \boldsymbol{A} \boldsymbol{x}$ is given by $\nabla g(\boldsymbol{x} = (\boldsymbol{A} + \boldsymbol{A}^\intercal) \boldsymbol{x}$ for any square matrix $\boldsymbol{A}$.
+more generally, the gradient of a quadratic function $g(\boldsymbol{x}) = \boldsymbol{x}^\intercal \boldsymbol{A} \boldsymbol{x}$ is given by $\nabla g(\boldsymbol{x}) = (\boldsymbol{A} + \boldsymbol{A}^\intercal) \boldsymbol{x}$ for any square matrix $\boldsymbol{A}$.
 Then compare a numerically approximated gradient to one computed via an analytical formula.
 
-```{r, eval=FALSE}
+**Proof of gradient:** The gradient of $-\boldsymbol{x}^\intercal \boldsymbol{\Phi} \boldsymbol{x} / 2$ is $-(\boldsymbol{\Phi} + \boldsymbol{\Phi}^\intercal) \boldsymbol{x} / 2$ because derivatives respect scalar multiplication. If $\boldsymbol{\Phi}$ is symmetric (as positive definite matrices often are), then this evaluates to $-\boldsymbol{\Phi} \boldsymbol{x}$.
+
+<!-- sapply(1:length(x), function(i) func(x + dx * diag(length(x))[, i])) -->
+<!-- unit_vec <- diag(d)[, i] -->
+
+```{r}
 approx_grad <- function(func, x, dx = .Machine$double.eps^(1/3)) {
-  numerical_grad <- rep(0, length(x))
-  # Fill in
+  d <- length(x)
+  numerical_grad <- rep(0, d)
+  
+  for (i in 1:d){
+    unit_vec <- rep(0, d)
+    unit_vec[i] <- 1
+    numerical_grad[i] <- (func(x + dx * unit_vec) - func(x - dx * unit_vec)) / 2 / dx
+  }
   return(numerical_grad)
 }
 
@@ -246,7 +365,7 @@ gaussian_logp <- function(x, Sigma_inv) {
 }
 
 gaussian_grad <- function(x, Sigma_inv) {
-  grad <- rep(0, length(x)) # Replace with an actual formula
+  grad <- - Sigma_inv %*% x
   return(grad)
 }
 
