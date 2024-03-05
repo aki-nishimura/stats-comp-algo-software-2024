@@ -70,6 +70,8 @@ for (i in 1:10^6) {
 **Questions:**
 What behavior do you observe above? How do you explain it?
 
+**My Answers:**
+The final outcome of the inner product computation is inconsistent with earlier results, and the product's value alters each time the code is executed. This inconsistency arises because the index variable `i` is incorrectly initialized at 1 instead of 0, and it iterates up to `v.size()` rather than `v.size() - 1` within the loop. In the context of C++ and Rcpp, array indices start from 0. Consequently, an error occurs when attempting to access an invalid element at `v[i]` where `i` equals `v.size()`.
 
 ## Part B: Sloppy matrix-matrix multiplication
 
@@ -95,6 +97,9 @@ dgemm_eigen(A, B)
 
 **Questions:**
 What do you get as an output? What if you re-run the code chunk? Explain the observed behavior.
+
+**My Answers:**
+The result is a 4 by 2 matrix, where the first column is a repetition of 1024 four times, and the second column generates random numbers each time the code is executed. Matrix A has dimensions 4 $\times$ 1024, and matrix B has dimensions 512 $\times$ 2. When the matrices' dimensions are not suitable for multiplication, the output defaults to a shape with the same number of rows as the left matrix and the same number of columns as the right matrix. Both matrices A and B are stored in a contiguous memory block in column-major order. Therefore, when computing the dot product of each row of A (length = 1024) with the first column of B (length = 512), the computer accesses a 1024-length vector of 1's for matrix B (since B is stored and allocated in a 1024-length vector), leading to a repeated 1024 for the first column in the output. However, when performing the dot product of A's rows with B's second column, the computer accesses a 1024-length vector, the first half of which is stored as B's second column, and the second half is undefined due to unallocated space, resulting in a random and incorrect second column in the output.
 
 ## Part C: Consequence of "tresspassing"
 
@@ -129,6 +134,8 @@ Running the same piece of code from an R console (instead of an RStudio session)
 * Why does the second code chunk run fine?
 * Modify `axpy_c.cpp` to make the function safer to use.
 
+**My Answers:**
+The R session terminated when executing the first code chunk above. This occurred because the y vector's length is 1e3, while the x vector's length is 1e7. This discrepancy causes the loop in `axpy_c()` to try to access memory beyond y's boundaries when operating on indices of x that exceed 1e3. The second code segment executed successfully because the x vector and y vector have lengths of 1e3 and 1e7, respectively. The operation is performed within the confines of the x and y vectors in the loop, with the first 1e3 elements of y being modified and the remaining elements remaining unchanged. I've modified `axpy_c.cpp` to make the function safer to use.
 
 # Exercise 2: Multiplying two matrices ain't quite what you learned in your linear algebra class
 
