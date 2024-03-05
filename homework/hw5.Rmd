@@ -27,6 +27,18 @@ What feature(s) of a modern CPU is (are) responsible for this?
 And where in the above videos is this explained?
 Provide a rough starting time point in (e.g. "19:18") of the discussion.
 
+**Answer:**
+
+The third video **Advanced CPU Designs** explains this when it talks about instruction piplining (5:35), dependency of the instructions (7:15), and conditional jump instructions (7:50).
+
+For each instruction, the fetch-decode-execute(-store) cycle is needed. Moreover, different stages in a cycle use a different part of the CPU. To increase the processing speed, CPU uses instruction piplining to parallelize the instruction cycles so that different stages of different instructions can be performed simultaneously.
+
+However, if there are dependencies among the instructions, the CPU may need to stall the pipeline to avoid problems. This can cause a decrease in the speed.
+
+In particular, if-else statements are complied to conditional jump instructions, and the execution flow depends on the evaluation of the condition value. Modern CPU can perform branch prediction and speculative execution, where it guesses the evaluation result and executes according to the guesses. This enables the pipeline to run efficiently if the guess is correct. When a branch misprediction occurs, a pipeline flush is needed and the pipeline slows down to be refilled with the correct instructions. In the case when there are multiple if-else statements, the probability of branch mispredictions increases, which increases the pipeline stall time and further slows down the program.
+
+In the `sign_via_if()` example, the correctness of the branch prediction depends on the value of the input vector. A correct branch prediction results in a fast speed, whereas a branch misprediction results in a slow speed. Thus, the execution speed depends on the input.
+
 
 # Exercise 1: Coding on the edge &mdash; being responsible for your own safety in the C++ world
 
@@ -69,6 +81,8 @@ for (i in 1:10^6) {
 
 **Questions:**
 What behavior do you observe above? How do you explain it?
+
+invalid address access
 
 
 ## Part B: Sloppy matrix-matrix multiplication
