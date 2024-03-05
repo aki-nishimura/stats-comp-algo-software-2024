@@ -82,7 +82,11 @@ for (i in 1:10^6) {
 **Questions:**
 What behavior do you observe above? How do you explain it?
 
-invalid address access
+**Answer:**
+
+The inner product result changes. This is not as expected because the inner product calculation is deterministic, and the result should be the same from one run to another. 
+
+Explain: There is an off-by-one error in the loop. The loop should start from 0 and end at v.size()-1 because C++ uses zero-based indexing. The array values are stored from `v[0]` to `v[v.size()-1]`, and `v[v.size()]` accesses an invalid address beyond the last element. If `v[v.size()]` is accessible, then the result depends on the value stored at that address. It can be either a garbage value or a value belongs to some other objects. The value may be either consistent or not from one run to the other because the address of the input array may change and the value at the address beyond the array element may change. Thus, the calculation result changes and the behavior is undefined. If `v[v.size()]` is not accessible, then a segmentation fault occurs and the program halts. This can happen if the program tries to access memory beyond the bound of an allocated memory block.
 
 
 ## Part B: Sloppy matrix-matrix multiplication
@@ -109,6 +113,14 @@ dgemm_eigen(A, B)
 
 **Questions:**
 What do you get as an output? What if you re-run the code chunk? Explain the observed behavior.
+
+**Answer:**
+
+I restarted the R session and ran the code. For the first time, I got a 4 by 2 matrix, where values in the first column are 1024 and values in the second column are NaN. I reran the code for multiple times. Values in the first column stays the same. However, values in the second column may change from one run to another, and all rows in the same column have the same value.
+
+Explain: The function has undefined behavior due to incompatible matrix dimensions. `Map<MatrixXd>` passes the matrix input by reference. The multiplication operation assumes dimension compatibility and accesses the values through the address directly without checking whether the address belongs to the input matrix. Though the function behavior is undefined, we can guess about how the calculation is carried out.
+
+It is possible that the multiplication operation performs a matrix multiplication between a 4 by 1024 matrix and a 1024 by 2 matrix using the given addresses. Elements in the first matrix are accessed correctly and accurately. For the second matrix, since C++ stores matrix by columns, both rows in the second matrix are interpreted as the first column of the matrix, and the next unpredictable 1024 memory slots are treated as values in the second column. Thus, the resulting matrix always have 1024 in its first column, and entries in the second column are the same and can be any arbitrary values. When the R session is just restarted, it is possible that the unpredictable 1024 memory slots are undefined or the calculation result happens to be the bit representation of NaN values, leading to NaNs in the second column in the first run.
 
 ## Part C: Consequence of "tresspassing"
 
@@ -142,6 +154,14 @@ axpy_c(a, x, y)
 Running the same piece of code from an R console (instead of an RStudio session) should give you more information on what actually happens.
 * Why does the second code chunk run fine?
 * Modify `axpy_c.cpp` to make the function safer to use.
+
+**Answer:**
+
+The R session was terminated due to a fatal error when I ran the first code chunk. This is because the length of x is much longer than that of y. In the loop of `axpy_c()`, the index `i` runs from 0 to the x.size() - 1. When the program accesses `y[i]` for some `i` beyond the bounds of the vector y, invalid address access occurs. The out-of-bounds access, including accessing protected memory and triggering hardware exceptions, can lead to undefined behavior, which in this case causes the R session to terminate.
+
+The second code chunk runs fine because the size of vector x is smaller than the size of vector y, so the index `i` neither exceeds the size of x nor y. The program never accesses any invalid address. Thus, the calculation is well defined. 
+
+`axpy_c.cpp` is modified with an additional check that vector x and y must have the same length.
 
 
 # Exercise 2: Multiplying two matrices ain't quite what you learned in your linear algebra class
