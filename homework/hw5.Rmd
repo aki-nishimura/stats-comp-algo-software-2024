@@ -27,6 +27,14 @@ What feature(s) of a modern CPU is (are) responsible for this?
 And where in the above videos is this explained?
 Provide a rough starting time point in (e.g. "19:18") of the discussion.
 
+**My Answers:**
+The `sign_via_if()` Rcpp function can have its execution speed influenced by many features of a modern CPU.
+
+First, **branch prediction** plays a significant role. This feature allows the CPU to anticipate the outcome of a conditional operation, such as one of the if-else statements in the `sign_via_if()` function, before it happens. When the CPU's prediction aligns with the actual outcome, it can proceed with executing instructions without delay, enhancing the execution speed. However, if the prediction is incorrect, known as a "branch misprediction," the CPU must discard the prematurely-executed instructions and wait for the conditional operation to complete, which slows down the execution. This concept is discussed in the "Advanced CPU Designs" video, starting around the 8:53 mark.
+
+Second, the **caching** mechanism of CPUs can also affect the execution speed. CPUs use caches to quickly access data that is frequently used or expected to be used soon. If the data required for an operation is already in the cache, referred to as a "cache hit," the CPU can access it faster than if it has to fetch it from the main memory, a "cache miss." The distribution of values in the input vector to `sign_via_if()` could influence the cache hit rate, and consequently, the execution speed. The concept of caching is introduced around the 3:16 mark in the "Advanced CPU Designs" video.
+
+Last, **instruction pipelining** can influence the execution speed. This technique enhances the CPU's instruction throughput by dividing the processor's work into a series of independent steps, each of which can be executed by different processor units simultaneously. This concept is explained starting around the 5:34 mark in the "Advanced CPU Designs" video.
 
 # Exercise 1: Coding on the edge &mdash; being responsible for your own safety in the C++ world
 
@@ -164,7 +172,13 @@ B <- matrix(rnorm(n_inner * n_col_out), nrow = n_inner, ncol = n_col_out)
 
 ```{r}
 # Check the output of `row_col_dot_matmat`
+r_result <- A %*% B
+cpp_row_result <- row_col_dot_matmat(A, B)
+all.equal(r_result, cpp_row_result)
 ```
+
+**My Answers:**
+Please see `matmat.cpp` for my implementation. The outputs from the base R matrix multiplication and `row_col_dot_matmat` in the code chunk above agree.
 
 ## Part B: Going one step beyond your linear algebra class
 
@@ -176,19 +190,37 @@ Which one is faster and why?
 
 ```{r}
 # Check and benchmark
+cpp_col_result <- col_oriented_matmat(A, B)
+all.equal(r_result, cpp_col_result)
+
+library(microbenchmark)
+bench::mark(
+  row_col_dot_matmat(A, B)
+)
+bench::mark(
+  col_oriented_matmat(A, B)
+)
 ```
 
 Also compare with performance of the matrix-matrix multiplication via `%*%` in R, which uses whatever the BLAS library your R was configured with.
 (You can find out which BLAS library R is using via `sessionInfo()` or `extSoftVersion()`.) 
 
 ```{r}
-# Fill in
+bench::mark(
+  A %*% B
+)
 ```
 
 When benchmarking alternative implementations (or alternative algorithms, more generally), keep in mind that the relative performance depends significantly on the size of a test problem.
 It is important, therefore, to benchmark your implementation/algorithm on problems of realistic size. 
 See the benchmark results of linear algebra libraries from [the Eigen development team](https://eigen.tuxfamily.org/index.php?title=Benchmark) and the results under "Gcbd benchmark" in [this github repository](https://github.com/andre-wojtowicz/blas-benchmarks), for example.
 
+**My Answers:**
+Please see `matmat.cpp` for my implementation.
+
+The `col_oriented_matmat` method (median = 737ms) outperforms the `row_col_dot_matmat` method (median = 5.05s) because matrix multiplication tends to be slower when using row operations, as matrices are stored as column vectors. When a row operation is performed, the processor accesses memory in a non-sequential manner, which can slow down the process due to the need to retrieve data from various memory locations.
+
+The base R matrix multiplication operator `%*%` (median = 744ms) is marginally slower than the `col_oriented_matmat` method implemented in Rcpp. This could be attributed not only to the efficient column-oriented matrix-vector multiplication used in the latter algorithm but also to the fact that C++ code can be optimized by the compiler for more efficient execution.
 
 ## Part C: Doing it the right way
 
@@ -246,13 +278,24 @@ You can check supports for AVX and FMA from the output of `lscpu`; try `lscpu | 
 ```{r, warning=FALSE, eval=FALSE}
 # Import `dgemm_eigen()` from lecture
 Rcpp::sourceCpp(file.path("..", "lecture", "src", "gemm_eigen.cpp"))
+Rcpp::sourceCpp(file.path("src", "matmat.cpp"))
 ```
 
 ```{r, eval=FALSE}
 # Benchmark
-dgemm_eigen(A, B)
+bench::mark(
+  dgemm_eigen(A, B)
+)
+bench::mark(
+  row_col_dot_matmat(A, B)
+)
+bench::mark(
+  col_oriented_matmat(A, B)
+)
 ```
 
+**My Answers:**
+TBA
 
 # Exercise 3: Continuing development of `hiperglm` &mdash; optimizing its performance via RcppEigen
 
@@ -283,3 +326,5 @@ Below you find tips on how to use Rcpp(Eigen) which, combined with the lecture m
     But then RcppEigen is just an Rcpp wrapper of Eigen, so you might just have to refer to Eigen's documentation for further details. 
 3. Incorporate the least squares solver via Eigen's QR into the IWLS algorithm for finding MLE.
 Make it the default option and check that all the tests still pass when using the QR-based solver.
+
+Link to pull request: <https://github.com/acolum/hiperglm/pull/5>
