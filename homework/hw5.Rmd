@@ -177,11 +177,11 @@ So a conceptually natural way to implement a matrix multiplication is looping th
 Implement a matrix-matrix multiplication based on this approach as `row_col_dot_matmat` using the starter code provided in the `matmat.cpp` file.
 Then check that its output agrees with the base R matrix multiplication.
 
-```{r, eval=FALSE}
+```{r, eval=TRUE}
 Rcpp::sourceCpp(file.path("src", "matmat.cpp"))
 ```
 
-```{r, eval=FALSE}
+```{r, eval=TRUE}
 n_row_out <- 1024L
 n_inner <- 2048L
 n_col_out <- 512L
@@ -190,7 +190,10 @@ B <- matrix(rnorm(n_inner * n_col_out), nrow = n_inner, ncol = n_col_out)
 ```
 
 ```{r}
-# Check the output of `row_col_dot_matmat`
+# check correctness
+result_mat_rcpp = row_col_dot_matmat(A, B)
+result_mat_base = A %*% B
+are_all_close(result_mat_rcpp, result_mat_base)
 ```
 
 ## Part B: Going one step beyond your linear algebra class
@@ -201,15 +204,72 @@ Recalling from lecture that "column-oriented" matrix-vector multiplication is mo
 Then compare performances of `row_col_dot_matmat` and `col_oriented_matmat` (but only after you test your column-oriented implementation).
 Which one is faster and why?
 
+**Answer:** From the benchmark below, we see that `col_oriented_matmat` is faster.
+In `row_col_dot_matmat`, the point loops over one row in matrix A and one column in matrix B to obtain one element in the resulting matrix. Since C++ matrices are column-oriented and the size of the input matrices is relatively large, the looping through a row in matrix A results in many cache misses and requires reloading of the relevant data chunk into the cache. Furthermore, this many cash misses are repeated for the calculation of every element in the resulting matrix, which dramatically slows down the computation. On the other hand, `col_oriented_matmat` only loops through each column, resulting in much fewer cache misses and a faster speed.
+
+Compared with matrix-matrix multiplication via `%*%` in R, `%*%` is the fastest, and the speed of `col_oriented_matmat` is close to `%*%` operation.
+
+As shown below, the current R installation uses the default, unoptimized BLAS library.
+
+sessionInfo() output:
+
+R version 4.3.1 (2023-06-16 ucrt)
+Platform: x86_64-w64-mingw32/x64 (64-bit)
+Running under: Windows 11 x64 (build 22631)
+
+Matrix products: default
+
+
+locale:
+[1] LC_COLLATE=English_United States.utf8  LC_CTYPE=English_United States.utf8    LC_MONETARY=English_United States.utf8 LC_NUMERIC=C                          
+[5] LC_TIME=English_United States.utf8    
+
+time zone: America/New_York
+tzcode source: internal
+
+attached base packages:
+[1] stats     graphics  grDevices utils     datasets  methods   base     
+
+other attached packages:
+[1] RcppEigen_0.3.3.9.4 Rcpp_1.0.11        
+
+loaded via a namespace (and not attached):
+ [1] digest_0.6.33     utf8_1.2.4        fastmap_1.1.1     xfun_0.41         magrittr_2.0.3    glue_1.6.2        tibble_3.2.1      knitr_1.45        htmltools_0.5.6.1
+[10] pkgconfig_2.0.3   rmarkdown_2.25    lifecycle_1.0.3   profmem_0.6.0     cli_3.6.1         bench_1.1.3       fansi_1.0.5       vctrs_0.6.4       compiler_4.3.1   
+[19] rstudioapi_0.15.0 tools_4.3.1       evaluate_0.23     pillar_1.9.0      yaml_2.3.7        rlang_1.1.1      
+
+extSoftVersion() output:
+                     zlib                     bzlib                        xz                      PCRE                       ICU                       TRE 
+                 "1.2.13"      "1.0.8, 13-Jul-2019"                   "5.4.1"        "10.42 2022-12-11"                    "72.1" "TRE 0.8.0 R_fixes (BSD)" 
+                    iconv                  readline                      BLAS 
+              "win_iconv"  
+
 ```{r}
-# Check and benchmark
+# check correctness
+result_mat_rcpp = col_oriented_matmat(A, B)
+result_mat_base = A %*% B
+are_all_close(result_mat_rcpp, result_mat_base)
+```
+
+```{r}
+# benchmark
+bench::mark(
+  row_col_dot_matmat(A, B)
+)
+bench::mark(
+  col_oriented_matmat(A, B)
+)
+bench::mark(
+  A %*% B
+)
 ```
 
 Also compare with performance of the matrix-matrix multiplication via `%*%` in R, which uses whatever the BLAS library your R was configured with.
 (You can find out which BLAS library R is using via `sessionInfo()` or `extSoftVersion()`.) 
 
-```{r}
-# Fill in
+```{r, eval=FALSE}
+sessionInfo()
+extSoftVersion()
 ```
 
 When benchmarking alternative implementations (or alternative algorithms, more generally), keep in mind that the relative performance depends significantly on the size of a test problem.
@@ -273,13 +333,268 @@ You can check supports for AVX and FMA from the output of `lscpu`; try `lscpu | 
 ```{r, warning=FALSE, eval=FALSE}
 # Import `dgemm_eigen()` from lecture
 Rcpp::sourceCpp(file.path("..", "lecture", "src", "gemm_eigen.cpp"))
+Rcpp::sourceCpp(file.path("..", "lecture", "src", "gemv_eigen.cpp"))
+Rcpp::sourceCpp(file.path("src", "matmat.cpp"))
 ```
 
 ```{r, eval=FALSE}
-# Benchmark
-dgemm_eigen(A, B)
+# check correctness for dgemv_eigen
+v <- as.numeric(B[,1])
+result_vec_rcpp = dgemv_eigen(A, v)
+result_vec_base = A %*% v
+are_all_close(result_mat_rcpp, result_mat_base)
 ```
 
+```{r, eval=FALSE}
+n_row_out <- 1024L
+n_inner <- 2048L
+n_col_out <- 512L
+A <- matrix(rnorm(n_row_out * n_inner), nrow = n_row_out, ncol = n_inner)
+B <- matrix(rnorm(n_inner * n_col_out), nrow = n_inner, ncol = n_col_out)
+v <- as.numeric(B[,1])
+
+# Benchmark
+bench::mark(
+  dgemm_eigen(A, B)
+)
+bench::mark(
+  row_col_dot_matmat(A, B)
+)
+bench::mark(
+  col_oriented_matmat(A, B)
+)
+bench::mark(
+  A %*% B
+)
+bench::mark(
+  dgemv_eigen(A, v)
+)
+```
+
+**Results on my PC**
+```{r}
+SSE2 = c("Off", "On", "Off", "Off", "On", "On", "Off", "On")
+AVX2 = c("Off", "Off", "On", "Off", "On", "Off", "On", "On")
+FMA = c("Off", "Off", "Off", "On", "Off", "On", "On", "On")
+dgemm_eigen_t = c("301ms", "159ms", "85.7ms", "48.7ms", "83.8ms", "46.4ms", "47.4ms", "45.7ms")
+row_col_dot_matmat_t = c("43.4s", "42.6s", "42.5s", "43.3s", "44.1s", "43.2s", 
+                         "43.5s", "42s")
+col_oriented_matmat_t = c("882ms", "867ms", "846ms", "835ms", "852ms", "857ms", "835ms", "837ms")
+base_R_t = c("786ms", "809ms", "797ms", "759ms", "766ms", "789ms", "790ms", "792ms")
+dgemv_eigen_t = c("830us", "612us", "606us", "606us", "602us", "615us", "609us", "608us")
+data.frame(`SSE2(default)`=SSE2, AVX2=AVX2, FMA=FMA, 
+           dgemm_eigen=dgemm_eigen_t, row_col_dot_matmat=row_col_dot_matmat_t,
+           col_oriented_matmat=col_oriented_matmat_t, base_R=base_R_t,
+           dgemv_eigen=dgemv_eigen_t)
+```
+
+**Results on JHPCE**
+```{r}
+SSE = c("Off", "On", "Off", "Off", "On", "On", "Off", "On")
+AVX2 = c("Off", "Off", "On", "Off", "On", "Off", "On", "On")
+FMA = c("Off", "Off", "Off", "On", "Off", "On", "On", "On")
+dgemm_eigen_t = c("NA", "122ms", "55.2ms", "49.9ms", "56ms", "49.6ms", "47.8ms", "49.9ms")
+row_col_dot_matmat_t = c("NA", "17.1s", "17.1s", "17s", "17s", "17.1s", "16.9s", "17.1s")
+col_oriented_matmat_t = c("NA", "555ms", "558ms", "542ms", "556ms", "560ms", "549ms", "564ms")
+base_R_t = c("NA", "319ms", "320ms", "305ms", "306ms", "304ms", "329ms", "307ms")
+dgemv_eigen_t = c("NA", "576us", "506us", "459us", "532us", "485us", "466us", "443us")
+data.frame(SSE=SSE, AVX2=AVX2, FMA=FMA, 
+           dgemm_eigen=dgemm_eigen_t, row_col_dot_matmat=row_col_dot_matmat_t,
+           col_oriented_matmat=col_oriented_matmat_t, base_R=base_R_t,
+           dgemv_eigen=dgemv_eigen_t)
+```
+
+**CPU model**
+
+compute-152
+
+Architecture:            x86_64
+  CPU op-mode(s):        32-bit, 64-bit
+  Address sizes:         52 bits physical, 57 bits virtual
+  Byte Order:            Little Endian
+CPU(s):                  48
+  On-line CPU(s) list:   0-47
+Vendor ID:               AuthenticAMD
+  Model name:            AMD EPYC 9224 24-Core Processor
+    CPU family:          25
+    Model:               17
+    Thread(s) per core:  2
+    Core(s) per socket:  24
+    Socket(s):           1
+    Stepping:            1
+    Frequency boost:     enabled
+    CPU max MHz:         3706.0540
+    CPU min MHz:         1500.0000
+    BogoMIPS:            4999.88
+    Flags:               fpu vme de pse tsc msr pae mce cx8 apic sep mtrr pge mca cmov pat pse36 clflush mmx fxsr sse sse2 ht
+                         syscall nx mmxext fxsr_opt pdpe1gb rdtscp lm constant_tsc rep_good nopl nonstop_tsc cpuid extd_apicid
+                          aperfmperf rapl pni pclmulqdq monitor ssse3 fma cx16 pcid sse4_1 sse4_2 x2apic movbe popcnt aes xsav
+                         e avx f16c rdrand lahf_lm cmp_legacy svm extapic cr8_legacy abm sse4a misalignsse 3dnowprefetch osvw
+                         ibs skinit wdt tce topoext perfctr_core perfctr_nb bpext perfctr_llc mwaitx cpb cat_l3 cdp_l3 invpcid
+                         _single hw_pstate ssbd mba perfmon_v2 ibrs ibpb stibp vmmcall fsgsbase bmi1 avx2 smep bmi2 erms invpc
+                         id cqm rdt_a avx512f avx512dq rdseed adx smap avx512ifma clflushopt clwb avx512cd sha_ni avx512bw avx
+                         512vl xsaveopt xsavec xgetbv1 xsaves cqm_llc cqm_occup_llc cqm_mbm_total cqm_mbm_local avx512_bf16 cl
+                         zero irperf xsaveerptr rdpru wbnoinvd amd_ppin cppc arat npt lbrv svm_lock nrip_save tsc_scale vmcb_c
+                         lean flushbyasid decodeassists pausefilter pfthreshold avic v_vmsave_vmload vgif x2avic v_spec_ctrl a
+                         vx512vbmi umip pku ospke avx512_vbmi2 gfni vaes vpclmulqdq avx512_vnni avx512_bitalg avx512_vpopcntdq
+                          la57 rdpid overflow_recov succor smca fsrm flush_l1d
+Virtualization features:
+  Virtualization:        AMD-V
+Caches (sum of all):
+  L1d:                   768 KiB (24 instances)
+  L1i:                   768 KiB (24 instances)
+  L2:                    24 MiB (24 instances)
+  L3:                    64 MiB (4 instances)
+NUMA:
+  NUMA node(s):          1
+  NUMA node0 CPU(s):     0-47
+Vulnerabilities:
+  Itlb multihit:         Not affected
+  L1tf:                  Not affected
+  Mds:                   Not affected
+  Meltdown:              Not affected
+  Mmio stale data:       Not affected
+  Retbleed:              Not affected
+  Spec store bypass:     Mitigation; Speculative Store Bypass disabled via prctl
+  Spectre v1:            Mitigation; usercopy/swapgs barriers and __user pointer sanitization
+  Spectre v2:            Mitigation; Retpolines, IBPB conditional, IBRS_FW, STIBP always-on, RSB filling, PBRSB-eIBRS Not affe
+                         cted
+  Srbds:                 Not affected
+  Tsx async abort:       Not affected
+
+
+**Answer:**
+
+`dgemm_eigen` runs the slowest when no optimization option is set. All options have an effect on the processing speed. The improvement on performance from the most to the least are: FMA, AVX2, and SSE2 (the default SSE version on my PC). Both AVX2 and SSE2 enable the single instruction, multiple data (SIME) processing that allows vectorized computations, which is suitable for the repetitive operations in a matrix-matrix multiplication. Since AVX2 is an extension of SSE2, once AVX2 is set, adding SSE2 does not further improve the performance. FMA combines multiplication and addition operations into a single instruction. Once FMA is set, adding other options does not significantly improve the performance. This dominant effect might due to the fact that matrix multiplication is combinations of multiplications and additions, so adding FMA is most effective in boosting the performance. The same effect holds on JHPCE. 
+
+For the custom matrix-matrix multiplication functions `row_col_dot_matmat` and `col_oriented_matmat`, the optimization options do not have a significant influence on the performance. The same holds on JHPCE. This might due to the fact that unlike the Eigen library which utilizes vectorized instructions, the custom functions are implemented without using any low-level optimization. Thus, they are less likely to benefit from the SIMD instructions. Thus, the effect of optimization flags, if there are any, are not pronounced. The same holds for `base_R %*%` as the previous section shows that the current R installation uses the default, unoptimized BLAS library.
+
+On my PC, the performance of `dgemv_eigen` improves when any optimization flag is added. Different flags do not have different effects on the processing speed. On JHPCE, the pattern of effect for different flags are similar to those on `dgemm_eigen`. However, the amount of speed improvement for `dgemv_eigen` is much less than that of `dgemm_eigen` for both my PC and JHPCE. The optimization flags have a more pronounced effect on a matrix-matrix than on a matrix-vector multiplication. This is because a matrix-matrix multiplication involves multiple rows and multiple columns during the calculation. It is computationally more intensive and has a higher potential for parallelism. 
+
+On JHPCE, I didn't run the case when all flags are removed due to the error /jhpce/shared/community/core/conda_R/4.3/R/lib64/R/site-library/RcppEigen/include/Eigen/src/Core/AssignEvaluator.h:631:63: error: SSE register return with SSE disabled. It seems like SSE is required for the Eigen library if neither AVX2 nor FMA is set.
+
+# draft
+
+FMA (Fused Multiply-Add):
+FMA is an instruction set that combines multiplication and addition operations into a single instruction. This can reduce the number of instructions needed for certain calculations, leading to improved performance and increased precision. FMA can be particularly beneficial in numerical linear algebra and other computational tasks that involve large numbers of multiply-add operations.
+
+SSE (Streaming SIMD Extensions):
+SSE is a set of instructions introduced by Intel that allows for Single Instruction, Multiple Data (SIMD) operations. This means that a single instruction can be applied to multiple data points simultaneously, which can significantly speed up vectorized calculations. 
+
+AVX (Advanced Vector Extensions)
+AVX is an extension of the SSE (Streaming SIMD Extensions) instruction set and is designed to improve the performance of floating-point and integer arithmetic operations by allowing for more data to be processed in parallel.
+AVX provides wider vector registers (256 bits compared to 128 bits in SSE), which enables it to perform operations on larger chunks of data at once. 
+
+PC:
+NOne：
+301， 40， 894， 811， 802
+292， 43.4， 882， 762， 830
+318， 44.3， 867， 786， 833
+
+SSE
+157, 41.7, 897, 809,602
+159, 42.6,867,813,612
+163,43.4,833,772,612
+
+AVX2
+85.7, 43.7,850, 797, 605
+86.6, 42.5, 833,809,609
+83.6, 42.4, 846, 761,606
+
+FMA
+48.7, 42.4, 850, 759, 611
+45.5, 43.3, 835, 768, 606
+
+SSE, AVX2
+85.4, 42.3, 852,777,603
+83.8, 44.1,860,766,596
+
+SSE, FMA
+46.4, 43.2, 857, 818, 615
+44.7, __, 850, 789, 606
+
+AVX2, FMA
+47.4, 43.5, 835, 790,609
+47.9, ___, 862, 804, 620
+47.6, ___, 836, 781, 604
+
+SSE, AVX2, FMA
+46.5, 42, 851, 780, 608
+46.7, ___, 837, 792, 618
+45.4, ___, 813, 740, 603
+44.4, ___, 863, 792, 623
+
+
+JHPCE:
+
+None
+/jhpce/shared/community/core/conda_R/4.3/R/lib64/R/site-library/RcppEigen/include/Eigen/src/Core/AssignEvaluator.h:631:63: error: SSE register return with SSE disabled
+
+SSE
+140ms, 19.6s, 642ms, 576ms, 1.35ms
+136,  19.6s, 679ms, 855,  1.52
+137, ____,  667, 555, 1.11
+139, ____, 681, 936, 1.37
+
+122, 16.2, 555, 436, 560
+120, 17.1, 559, 319, 576
+
+AVX2
+57.5, 17.5, 587, 390, 512us
+57.9, 17.4, 582, 348, 669
+59, ____, 581, 365, 801
+59.6, ___, 578, 429, 596
+
+55.2, 17.1, 562, 315, 506
+55.2, 17.1, 558, 320, 462
+
+FMA
+49.7, 16.7, 557, 314, 476
+49.6, 16.7, 577, 315, 412
+48.7, ___, 542, 306, 426
+50.6, ____, 548, 320, 480
+
+50.4, 17, 555, 332, 427
+49.9, 17, 542, 305, 459
+
+SSE, AVX2
+56.6, 16.9, 592, 312, 464
+58.5, 17.1, 576, 308, 480
+58.5, ___, 577, 320, 462
+55.4, ____, 587, 320, 437
+
+56.2, 17, 562, 306, 478
+56, 17, 556, 299, 532
+
+SSE, FMA
+50.4, 16.6, 548, 326, 419
+47.7, 16.7, 552, 307, 430
+49.2, ___, 553, 319, 433
+48.6, ____, 541, 316, 410
+48.5, ____, 548, 303, 469
+
+49.6, 178.1, 555, 333, 485
+50.5, 17.1, 560, 304, 556
+
+AVX2, FMA
+52.4, 17.4, 550, 322, 423
+50, 16.7, 539, 322, 421
+50, ____, 546, 323, 419
+51.5, ___, 562, 325, 455
+51.5, ___, 572, 301, 427
+
+47.8, 16.9, 569, 329, 485
+51.2, 17 ,549, 304, 466
+
+SSE, AVX2, FMA
+50.2, 16.5, 551, 319, 434
+49.1, 16.8, 541, 332, 493
+49.9, ___, 545, 290, 458
+52.9, ___, 558, 309, 419
+51.5, ___, 549, 302, 493
+
+49.9, 17.1, 564m 307, 443
+51.2, 
 
 # Exercise 3: Continuing development of `hiperglm` &mdash; optimizing its performance via RcppEigen
 
