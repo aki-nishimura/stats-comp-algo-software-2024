@@ -28,6 +28,9 @@ What feature(s) of a modern CPU is (are) responsible for this?
 And where in the above videos is this explained?
 Provide a rough starting time point in (e.g. "19:18") of the discussion.
 
+This relates to minute 8 in video 3.
+In `sign_via_diff()`, the operations in the statement can be performed simultaneously as they are unconditional, however, if has a set of conditions that have to be checked first before performing the operation.
+
 # Exercise 1: Coding on the edge — being responsible for your own safety in the C++ world
 
 ## Part A: Buggy inner product
@@ -266,7 +269,8 @@ You can check supports for AVX and FMA from the output of `lscpu`; try `lscpu | 
 ```{r, warning=FALSE, eval=FALSE}
 # Import `dgemm_eigen()` from lecture
 
-# Rcpp::sourceCpp(file.path(".", "lecture", "src", "gemm_eigen.cpp"))
+
+# Rcpp::sourceCpp(file.path("..", "lecture", "src", "gemm_eigen.cpp"))
 ```
 
 ```{r, eval=FALSE}
