@@ -27,6 +27,7 @@ What feature(s) of a modern CPU is (are) responsible for this?
 And where in the above videos is this explained?
 Provide a rough starting time point in (e.g. "19:18") of the discussion.
 
+One feature of the modern CPU that may be responsible for this is the speculative execution, because this can lead to very efficient run times if the computer guess correctly but slower runtimes when it guesses incorrectly. So depending on the values of the input vector, the guess of the computer may change. This discussion can be found at about 7:54 in the Advanced CPU Designs video above.
 
 # Exercise 1: Coding on the edge &mdash; being responsible for your own safety in the C++ world
 
@@ -70,6 +71,7 @@ for (i in 1:10^6) {
 **Questions:**
 What behavior do you observe above? How do you explain it?
 
+The code chunk above errors every time I run it because the last inner product disagrees with the previous ones. This is because the C++ code above is trying to access indices outside the range of the arrays, likely resulting in an issue with accessing things in memory that are not relevant to the computation.
 
 ## Part B: Sloppy matrix-matrix multiplication
 
@@ -95,6 +97,8 @@ dgemm_eigen(A, B)
 
 **Questions:**
 What do you get as an output? What if you re-run the code chunk? Explain the observed behavior.
+
+On the first run, I get a 4x2 matrix with entries in the first column having the value 1024 and the second column being all NaN. On subsequent runs, I get the same result or the second column will contain entries of 512. This is because A and B are of incompatible dimensions, so when we try to index into entries of B that don't exist, we get incorrect and unstable results.
 
 ## Part C: Consequence of "tresspassing"
 
@@ -129,6 +133,9 @@ Running the same piece of code from an R console (instead of an RStudio session)
 * Why does the second code chunk run fine?
 * Modify `axpy_c.cpp` to make the function safer to use.
 
+The first chunk of code results in the R session being aborted, likely due to memory constraints. This is because the code iterates from 1 to the length of x, but when x is longer than y, this results in memory issues. The second chunk of code runs fine because x is shorter than y.
+
+
 
 # Exercise 2: Multiplying two matrices ain't quite what you learned in your linear algebra class
 
@@ -144,19 +151,17 @@ Implement a matrix-matrix multiplication based on this approach as `row_col_dot_
 Then check that its output agrees with the base R matrix multiplication.
 
 ```{r, eval=FALSE}
-Rcpp::sourceCpp(file.path("src", "matmat.cpp"))
-```
-
-```{r, eval=FALSE}
 n_row_out <- 1024L
 n_inner <- 2048L
 n_col_out <- 512L
 A <- matrix(rnorm(n_row_out * n_inner), nrow = n_row_out, ncol = n_inner)
 B <- matrix(rnorm(n_inner * n_col_out), nrow = n_inner, ncol = n_col_out)
-```
 
-```{r}
 # Check the output of `row_col_dot_matmat`
+Rcpp::sourceCpp(file.path("src", "matmat.cpp"))
+my_matmul <- row_col_dot_matmat(A,B)
+R_matmul <- A %*% B
+are_all_close(my_matmul, R_matmul)
 ```
 
 ## Part B: Going one step beyond your linear algebra class
@@ -168,7 +173,20 @@ Then compare performances of `row_col_dot_matmat` and `col_oriented_matmat` (but
 Which one is faster and why?
 
 ```{r}
-# Check and benchmark
+n_row_out <- 1024L
+n_inner <- 2048L
+n_col_out <- 512L
+A <- matrix(rnorm(n_row_out * n_inner), nrow = n_row_out, ncol = n_inner)
+B <- matrix(rnorm(n_inner * n_col_out), nrow = n_inner, ncol = n_col_out)
+
+Rcpp::sourceCpp(file.path("src", "matmat.cpp"))
+my_matmul_col <- col_oriented_matmat(A,B)
+
+R_matmul <- A %*% B
+are_all_close(my_matmul_col, R_matmul)
+
+bench::mark(row_col_dot_matmat(A,B))
+bench::mark(col_oriented_matmat(A,B))
 ```
 
 Also compare with performance of the matrix-matrix multiplication via `%*%` in R, which uses whatever the BLAS library your R was configured with.
@@ -176,6 +194,8 @@ Also compare with performance of the matrix-matrix multiplication via `%*%` in R
 
 ```{r}
 # Fill in
+bench::mark(col_oriented_matmat(A,B))
+bench::mark(A %*% B)
 ```
 
 When benchmarking alternative implementations (or alternative algorithms, more generally), keep in mind that the relative performance depends significantly on the size of a test problem.
@@ -223,7 +243,10 @@ Selectively turn on and off SSE, AVX2, and FMA to see how each option affects th
 Finally, turn on both AVX2 and FMA and check the resulting performances.
 Report what you find.
 
+
+
 Next, implement an RcppEigen function `dgemv_eigen()` that computes the matrix-vector product $A v$ given the input matrix $A$ and vector $v$ of compatible sizes.
+
 Then, using the same matrix $A$ as an input to `dgemv_eigen()`, repeat the above experiment of turning on and off the optimization flags.
 Contrast the results on the matrix-vector operation with those on the matrix-matrix operation using RcppEigen.
 Explain why these hardware optimization options may have the different degrees of impacts on performance.
@@ -243,9 +266,13 @@ Rcpp::sourceCpp(file.path("..", "lecture", "src", "gemm_eigen.cpp"))
 
 ```{r, eval=FALSE}
 # Benchmark
-dgemm_eigen(A, B)
+#dgemm_eigen(A, B)
+bench::mark(dgemm_eigen(A,B))
 ```
 
+When benchmarking `dgemm_eigen()`, I found that having an empty `Makevars` file resulted in a runtime of 138ms on Intel(R) Xeon(R) CPU E5-2650 v4 @ 2.20GHz. When I turned on AVX(2) and FMA, I got a run time of 135ms. Turning off SSE and leaving AVX(2) and FMA on gave a runtime of 134ms.
+
+For `dgemv_eigen()`, I was not able to compile it with SSE turned off. With AVX(2) and FMA turned on, it ran in 5.34ms. With AVX(2) and FMA turned off, it ran in 15.2ms.
 
 # Exercise 3: Continuing development of `hiperglm` &mdash; optimizing its performance via RcppEigen
 
