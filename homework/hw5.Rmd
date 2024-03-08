@@ -266,12 +266,18 @@ You can check supports for AVX and FMA from the output of `lscpu`; try `lscpu | 
 
 ```{r, warning=FALSE, eval=FALSE}
 # Import `dgemm_eigen()` from lecture
-Rcpp::sourceCpp(file.path("..", "lecture", "src", "gemm_eigen.cpp"))
+
+# Rcpp::sourceCpp(file.path(".", "lecture", "src", "gemm_eigen.cpp"))
 ```
 
 ```{r, eval=FALSE}
 # Benchmark
-dgemm_eigen(A, B)
+bench::mark(dgemm_eigen(A, B))
+
+#   expression       min median `itr/sec` mem_alloc `gc/sec` n_itr
+#   <bch:expr>    <bch:> <bch:>     <dbl> <bch:byt>    <dbl> <int>
+# 1 dgemm_eigen(… 59.2ms   60ms      16.6       4MB        0     9
+
 ```
 
 # Exercise 3: Continuing development of `hiperglm` — optimizing its performance via RcppEigen
