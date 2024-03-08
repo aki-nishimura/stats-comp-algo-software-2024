@@ -10,3 +10,6 @@
 lecture/libs/*
 lecture/*.pdf
 !lecture/mathjax_config.html
+
+homework/hw4 problems
+homework/hw5-run-script.R
