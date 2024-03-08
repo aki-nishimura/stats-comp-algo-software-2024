@@ -137,9 +137,8 @@ axpy_c(a, x, y)
 -   Why does the second code chunk run fine?
 -   ***Everytime I run the first chunk, RStudio crashes. This could be because, in the first case the length of x was much longer than y. Once our iteration crosses the length of y, similar to exercise 2 part 1, we would be trying to reach memory that is not allocated for vector y hence making the program crash. This is not the case in the second code chunk as we're not accessing elements outside the vector.***
 
-```{=html}
 <!-- -->
-```
+
 -   Modify `axpy_c.cpp` to make the function safer to use.
 
 # Exercise 2: Multiplying two matrices ain't quite what you learned in your linear algebra class
