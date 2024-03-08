@@ -1,6 +1,8 @@
 ---
 title: 'Homework: Finite Precision Arithmetic & Gradient Descent'
 output:
+  html_document:
+    df_print: paged
   html_notebook:
     code_folding: none
     highlight: textmate
@@ -35,6 +37,52 @@ b <- 0.5 + .Machine$double.eps
 
 Why do we get the different result?
 
+**Answer:**
+
+Real numbers are encoded in 64-bit double-precision floating-point format in R. There is a 1-bit sign bit, an 11-bit exponent, and a 52-bit fraction. The real values of a given representation is $(-1)^{sign} (1+\sum_{i=1}^{52}b_{52-i}2^{-i}) \times 2^{e-1023}$, where $b_{i}$ is the $i^{th}$ bit in fraction and $e$ is the exponent. The finite-precision representation of real numbers can cause imprecision in arithmetic operations due to round-off errors.
+
+In this example, `.Machine$double.eps` $=2^{-52}$ is the smallest difference between 1 and the next larger representable number. All the numbers here are positive, so I omit the sign bit in the following demonstration. The exponent and the fractional representation of all numbers are shown below.
+
+In the first case, 
+
+$$
+\begin{align*}
+a &= (1+2^{-52}) &\times 2^{1023-1023} \\
+b &= (1+2^{-52}) &\times 2^{1023-1023} \\
+c &= (1) &\times 2^{1023-1023} \\
+a+b &= (1+2^{-52}) &\times 2^{1024-1023} \\
+(a + b) + c &= (1+2^{-1}+2^{-52}) &\times 2^{1024-1023} \\
+b + c  &\approx (1) &\times 2^{1024-1023} \\
+a + (b + c) &\approx (1+2^{-1}) &\times 2^{1024-1023}
+\end{align*}
+$$
+
+In the second case, 
+
+$$
+\begin{align*}
+a &= (1+2^{-52}) &\times 2^{1023-1023} \\
+b &= (1+2^{-51}) &\times 2^{1022-1023} \\
+c &= (1) &\times 2^{1023-1023} \\
+a+b &= (1+2^{-1}+2^{-51}) &\times 2^{1023-1023} \\
+(a + b) + c &= (1+2^{-2}+2^{-52}) &\times 2^{1024-1023} \\
+b + c &= (1+2^{-1}+2^{-52}) &\times 2^{1023-1023} \\
+a + (b + c) &= (1+2^{-2}+2^{-52}) &\times 2^{1024-1023} \\
+\end{align*}
+$$
+When the exponent is $k$, the minimum distinguishable difference is $2^{-52+k-1023}$. The minimum distinguishable difference in $b+c$ is $2^{-51}$ in the first case and is $2^{-52}$ in the second case. Thus, there is a round-off error on RHS in the first case but not the second. Since the calculation is accurate on LHS in both cases, this results in an evaluation of `FALSE` in the first case and a `TRUE` in the second case.
+
+
+```{r, eval=FALSE, include=FALSE}
+# adapted from https://stackoverflow.com/questions/50217954/double-precision-64-bit-representation-of-numeric-value-in-r-sign-exponent
+Rcpp::cppFunction('void print_hex(double x) {
+    uint64_t y;
+    static_assert(sizeof x == sizeof y, "Size does not match!");
+    std::memcpy(&y, &x, sizeof y);
+    Rcpp::Rcout << std::hex << y << std::endl;
+}', plugins = "cpp11", includes = "#include <cstdint>")
+```
+
 
 # Exercise 1: One-pass algorithm for calculating variance
 
@@ -53,6 +101,7 @@ How does the estimate change if you change the seed?
 What is, roughly speaking, the distribution of the estimator `sample_var_with_question_mark` under repeated Monte Carlo simulations (i.e. without a fixed seed)?
 
 ```{r}
+# original code
 set.seed(140778)
 
 running_sum <- 0
@@ -68,10 +117,57 @@ sample_mean <- running_sum / n_sample
 sample_sec_mom <- running_sum_sq / n_sample
 
 sample_var_with_question_mark <- (sample_sec_mom - (sample_mean)^2)
+sample_var_with_question_mark
 ```
 
+```{r}
+# show the distribution of sample_var_with_question_mark
+
+set.seed(10)
+seed_rep_num = 1000
+seeds = sample.int(1e8, seed_rep_num, replace=TRUE)
+
+sample_var_with_question_mark_SAMPLE = rep(0, seed_rep_num)
+
+for (curr_seed in 1:seed_rep_num) {
+  set.seed(seeds[curr_seed])
+  running_sum <- 0
+  running_sum_sq <- 0
+  
+  n_sample <- 10^3
+  for (i in 1:n_sample) {
+    theta <- 1e10 + rnorm(1)
+    running_sum <- running_sum + theta
+    running_sum_sq <- running_sum_sq + theta^2
+  }
+  sample_mean <- running_sum / n_sample
+  sample_sec_mom <- running_sum_sq / n_sample
+  
+  sample_var_with_question_mark <- (sample_sec_mom - (sample_mean)^2)
+  sample_var_with_question_mark_SAMPLE[curr_seed] = sample_var_with_question_mark
+}
+
+plot(density(sample_var_with_question_mark_SAMPLE), 
+     main="Empirical distribution of sample_var_with_question_mark")
+```
+
+```{r}
+qqnorm(sample_var_with_question_mark_SAMPLE)
+qqline(sample_var_with_question_mark_SAMPLE)
+```
+
+
 ## Things to commit/submit
-Answers to the questions above.
+
+**Answer:**
+
+I got `-147456` with the original seed $140778$. This does not make sense because $\theta \sim N(1e10, 1)$, so the sample variance should be approximately $1$.
+
+The estimation is not accurate because arithmetic operations are not precise when real numbers are represented using the double-precision floating-point format. In `1e10 + rnorm(1)`, a relatively small number `rnorm(1)` is added to a very large number `1e10`. Since the minimum distinguishable difference decreases as the number becomes larger, this addition can cause round-off error and the precision in the `rnorm(1)` part is lost. In addition, the squaring of a large number in `theta^2` can cause additional loss in precision due to the same reason. As these round-off errors accumulate over 1000 iterations, the result becomes highly inaccurate. 
+
+When the seed is changed, a difference sample is generated, so the sample variance changes. However, it is still far away from its theoretical value 1 because the round-off error remains.
+
+The distribution of `sample_var_with_question_mark` without a fixed seed is roughly normal with mean 1 and a very large variance. We can think of the round-off errors as random noise added to the sample. Since both round-up and round-down errors exist, they approximately cancel each other. Moreover, the variance of the round-off error is large, as shown in the example. Thus, the round-off error is approximately normal with mean 0 and a large variance. Accordingly, `sample_var_with_question_mark` centers around 1 and has a very large variance.
 
 
 # Exercise 2: Generating random real numbers in finite precision arithmetic
@@ -84,9 +180,17 @@ The amount of randomness in it, therefore, is equivalent to 52 Bernoulli random 
 Write a function to generate a Uniform(1, 2) random variable in double-precision with randomness coming only from the `rbinom()` function.
 Check the function's behavior by plotting a histogram of random variables generated from it. 
 
-```{r, eval=FALSE}
+```{r, eval=TRUE}
 double_prec_runif <- function () {
-  # Fill in
+  # generate a Uniform(1, 2) random variable
+  fraction_part = rbinom(n=52, size=1, prob=0.5)
+  random_number = 1
+  for (i in 1:52) {
+    if (fraction_part[i]) {
+      random_number = random_number + 2^(-i)
+    }
+  }
+  return(random_number)
 }
 
 n_draw <- 10^5
@@ -120,10 +224,20 @@ What is the issue?
 calc_num_expected_duplicate <- function (n_draw, n_choice) {
   # To be remedied.
   prob_item_never_chosen <- (1 - 1 / n_choice) ^ n_draw
+  print(prob_item_never_chosen)
+  print(prob_item_never_chosen == 1)
   n_expected_unique <- n_choice * (1 - prob_item_never_chosen)
   return(n_draw - n_expected_unique)
 }
+calc_num_expected_duplicate(n_draw=1e6, n_choice=2^(52)) == 0
 ```
+
+**Answer:**
+
+  1. In this example, `1 - 1 / n_choice` can be represented accurately with the double-precision floating-point format. However, it is very close to 1, so taking an exponential of it is still close to 1. This results in an round-off error because the exponent part of the number representation does not change much, and so does the minimum distinguishable difference. Any arithmetic changes smaller than the minimum distinguishable difference is rounded-off. Since `n_draw` is large, this leads to a loss of precision. 
+
+  2. Moreover, in `n_choice * (1 - prob_item_never_chosen)`, `n_choice` is much larger than `1 - prob_item_never_chosen`, the latter of which is close to $0$. Multiplying a small number with a large number causes the minimum distinguishable difference to decrease. This round-off error further contribute to the loss of precision.
+
 
 Formulas involving $1 + x$ for $|x| \ll 1$ ($x = - n^{-1}$ in the above case) occur commonly enough in statistics/scientific computing that R provides a function `log1p(x)` for computing $\log(1 + x)$ to deal with one such situation.
 In more general calculations involving $|x| \ll 1$ (e.g. for a "sinc" function $\operatorname{sinc}(x) = \sin(x) / x$), a Taylor expansion provides a general approach to control truncation errors.
@@ -133,6 +247,42 @@ Remedy the `calc_num_expected_duplicate()` function by applying the second-order
 ii) applying the second-order expansion to $(1 - x)^d$ corresponds to applying the first-order expansion to the overall expression $d - x^{-1} [1 - (1 - x)^d]$.)
 Use the more numerically accurate version of `calc_num_expected_duplicate()` to calculate the expected number of duplicates among $10^6$ Uniform(1, 2) random variables.
 
+**Answer:**
+
+Let $f(x) = x^d$. Then the second-order Taylor expansion of $f(\cdot)$ around $x=1$ is 
+
+$$
+\begin{align*}
+f(1+x) &\approx f(1) + f'(1)x + \frac{x^2}{2}f''(1) \\
+       &= 1 + dx + \frac{x^2}{2}d(d-1)
+\end{align*}
+$$
+
+The original formula is simplified as
+
+$$
+\begin{align*}
+d - n \left(1-(1-\frac{1}{n})^d\right) &=
+d - n + n(1-\frac{1}{n})^d \\
+&\approx d - n + n(1 - \frac{d}{n} + \frac{1}{2n^2}d(d-1)) \\
+&= d - n + n - d + \frac{1}{2n}d(d-1) \\
+&= \frac{1}{2n}d(d-1)
+\end{align*}
+$$
+
+We can use log transformation to increase the accuracy in computation.
+
+$$d - n \left(1-(1-\frac{1}{n})^d\right) = exp\left(log(d) + log(d-1) - log(n) - log(2)\right)$$
+
+```{r}
+# Remedied using second-order Taylor expansion
+calc_num_expected_duplicate <- function (n_draw, n_choice) {
+  result = log(n_draw) + log(n_draw - 1) - log(n_choice) - log(2)
+  return(exp(result))
+}
+calc_num_expected_duplicate(n_draw=1e6, n_choice=2^(52))
+```
+
 ## Part C
 
 The expected number from Part B, if you calculated it correctly, suggests that it is extremely rare to get duplicate values when generating $10^6$ uniform random variables in double-precision.
@@ -141,11 +291,16 @@ If we use R's `runif()` function, however, this is _not_ what we observe because
 Check the number of duplicates from `runif(10^6)` against the expected value for a floating-point number with 32-bits of precision. 
 Check also that, using your implementation of random uniform from Part A, duplicates are indeed rare in double-precision.
 
-```{r, eval=FALSE}
+```{r, eval=TRUE}
 n_draw <- 10^6
 base_r_unif <- runif(n_draw, min = 1, max = 2)
 unif_rv <- sapply(1:n_draw, function (i) double_prec_runif())
+
 # Check the number of duplicates against the expected value
+cat(sprintf("The number of duplicates from runif(10^6) is %d\n", n_draw - length(unique(base_r_unif))))
+cat(sprintf("The expected number of duplicates from runif(10^6) is %.4f\n", calc_num_expected_duplicate(n_draw=n_draw, n_choice=2^(32))))
+cat(sprintf("The number of duplicates from double_prec_runif() is %d\n", n_draw - length(unique(unif_rv))))
+cat(sprintf("The expected number of duplicates from runif(10^6) is %.4f\n", calc_num_expected_duplicate(n_draw=n_draw, n_choice=2^(52))))
 ```
 
 
@@ -163,18 +318,27 @@ We evaluate its derivative using an analytical formula and compare it to the cen
 Using the starter code provided below, plot the relative error of the numerical approximation in a log-log scale.
 What do you expect the slope of the plotted line to be?
 
-```{r, eval=FALSE}
+**Answer:** I expect the plot on the log-log scale to be a straight line that has a slope of -2. Moreover, as $\Delta x$ tends to 0 and $log \Delta x$ tends to $-\infty$, the error goes to 0 and the log error goes to $-\infty$.
+
+The centered difference approximation is $\frac{f(x + \Delta x) - f(x - \Delta x)}{2 \Delta x} \approx f'(x) + \frac{(\Delta x)^2f'''(x)}{6} = f'(x) + \Theta((\Delta x)^2)$. Thus, the error is $\epsilon \approx \Theta((\Delta x)^2)$.
+
+By definition of big-theta notation, there exists constants $c_1$, $c_2$, $n_0 > 0$ such that for all $n > n_0$, $c_1(\Delta x)^2 \leq \epsilon \leq c_2(\Delta x)^2$. This indicates that $c'_1 + 2log_2(\Delta x) \leq log_2 \epsilon \leq c'_2 + 2log_2(\Delta x)$. For $\Delta x = 2^{-k}$ and $k=1,\dots, 52$, $c'_1 - 2k \leq log_2 \epsilon \leq c'_2 - 2k$. Thus, the slope on the log-log scale is approximately -2.
+
+```{r, eval=TRUE}
 #' Approximate derivative via centered-difference approximation
 approximate_deriv <- function(func, x, dx) {
-  # Fill in
+  # (f(x+dx) - f(x-dx)) / (2*dx)
+  return((func(x+dx) - func(x-dx)) / (2*dx))
 }
 
 log_logistic_func <- function(x) {
-  # Fill in
+  # f(x)=log{exp(x)/(1+exp(x))} = x - log(1+exp(x))
+  return(x - log(1+exp(x)))
 }
 
 log_logistic_deriv <- function(x) {
-  # Fill in
+  # f'(x) = 1 / (1+exp(x))
+  return(1 / (1+exp(x)))
 }
 
 # Calculate and plot the relative errors of finite difference approximations
@@ -216,6 +380,14 @@ Imagine a machine with five decimal digits of accuracy.
 What happens if we, on this machine, numerically differentiate $f(x) = x$ at $x = 1$ with $\Delta x = \frac{1}{2} \times 0.11111 \times 10^{-k}$ for $k = 0, 1, 2, \ldots$?
 Since $(0.11111)^{-1} = 9 \times (1 + 10^{-5} + 10^{-10} + \ldots)$, you can assume that division by $2 \Delta x$ is equivalent to multiplication by $9 \times 10^k$ on this five-decimal-digits machine.
 
+**Answer:** The relative error plot partially agrees with the theory. It is approximately a straight line with slope -2 when $\Delta x$ is larger than $2^{-16}$. However, as $\Delta x$ further decreases, log error increases linearly with a slope 1 and some fluctuations.
+
+When $\Delta x$ is small, $f(x+\Delta x) - f(x-\Delta x))$ is close to 0. This small difference cannot be accurately represented because real numbers are stored using the double-precision floating-point format. The lose of precision is much larger than the approximation error in the centered difference. As a result, even though the theoretical approximation error decreases for smaller $\Delta x$'s, the lose of precision increases and contributes to an increase of the total error. This leads to the increasing pattern when $\Delta x$ is very small.
+
+Suppose $\Delta x = 2^{-k}$. The centered difference is $\frac{f(x + \Delta x) - f(x - \Delta x)}{2 \Delta x} = \frac{diff_k}{2 \times 2^{-k}} = \frac{diff_k/2}{2 \times 2^{-(k+1)}} \approx \frac{diff_{k+1}}{2 \times 2^{-(k+1)}}$. Thus, when $\Delta x$ decreases from $2^{-k}$ to $2^{-(k+1)}$, the difference $f(x + \Delta x) - f(x - \Delta x)$ should also decrease by approximately half. For a difference close to zero, halving causes the lose of the last significant digit in its binary expansion when calculating $f(x + \Delta x)$ and $f(x - \Delta x)$. This causes the relative error to double. Thus, the relative error $\epsilon(k)$ as a function of $k$ is approximately $\epsilon(k) \propto 2^k \Rightarrow log_2 \epsilon(k) \approx \text{const} + k$, which is consistent with the slope 1 in the latter part of the plot.
+
+In the latter part of the plot, the log error increases with fluctuations because the amount of round-off error depends on the last few digits for $f(x + \Delta x) - f(x - \Delta x)$ in its binary expansion. Though the round-off error is expected to be doubled as $k$ increases by 1, the actual error may increase, remain the same, or even have a slight decrease depending on whether a round-up or a round-down error occurs. Thus, the log error increases with fluctuations.
+
 ## Part B: Extention to multivariate functions
 
 As mentioned in the lecture, the finite difference method extends to a function with multivariate input $f: \mathbb{R}^d \to \mathbb{R}$ and can be used to approximate the gradient $\nabla f(\boldsymbol{x})$.
@@ -227,10 +399,64 @@ First show that its gradient is given by $\nabla f(\boldsymbol{x}) = - \boldsymb
 more generally, the gradient of a quadratic function $g(\boldsymbol{x}) = \boldsymbol{x}^\intercal \boldsymbol{A} \boldsymbol{x}$ is given by $\nabla g(\boldsymbol{x} = (\boldsymbol{A} + \boldsymbol{A}^\intercal) \boldsymbol{x}$ for any square matrix $\boldsymbol{A}$.
 Then compare a numerically approximated gradient to one computed via an analytical formula.
 
-```{r, eval=FALSE}
+**Answer:**
+
+Suppose $\boldsymbol{x} \in \mathbb{R}^n$ and $\boldsymbol{\Phi} \in \mathbb{R}^{n\times n}$. Note that the positive definite matrix $\boldsymbol{\Phi}$ is symmetric.
+
+The analytical form of $\nabla f(\boldsymbol{x})$ is as follows:
+
+$$
+\begin{align*}
+f(\boldsymbol{x}) &= - \boldsymbol{x}^\intercal \boldsymbol{\Phi} \boldsymbol{x} / 2 = -\frac{1}{2} \sum_{i=1}^n \sum_{j=1}^n \boldsymbol{x}_i \boldsymbol{x}_j \boldsymbol{\Phi}_{ij} \\
+\frac{\partial f(\boldsymbol{x})}{\partial \boldsymbol{x}_k} &= -\left(\sum_{i \in {1, \dots, n}, i \neq k} \boldsymbol{x}_i \boldsymbol{\Phi}_{ik}\right) -\boldsymbol{x}_k \boldsymbol{\Phi}_{kk} = -\sum_{i=1}^n \boldsymbol{x}_i \boldsymbol{\Phi}_{ik}\\
+\nabla f(\boldsymbol{x}) &= -\boldsymbol{\Phi}\boldsymbol{x}
+\end{align*}
+$$
+
+The approximation of $\nabla f(\boldsymbol{x})$ through centered difference method is as follows:
+
+$$
+\begin{align*}
+f(\boldsymbol{x} + \Delta x \boldsymbol{e}_k) 
+&\approx f(\boldsymbol{x}) + \sum_{i=1}^n \frac{\partial f(\boldsymbol{x})}{\partial \boldsymbol{x}_i} (\Delta x \boldsymbol{e}_k)_i  \\
+&\quad + \frac{1}{2} \sum_{i=1}^n  \sum_{j=1}^n\frac{\partial^2 f(\boldsymbol{x})}{\partial \boldsymbol{x}_i \partial \boldsymbol{x}_j} (\Delta x \boldsymbol{e}_k)_i (\Delta x \boldsymbol{e}_k)_j \\
+&\quad + \frac{1}{6} \sum_{i=1}^n  \sum_{j=1}^n \sum_{k=1}^n \frac{\partial^3 f(\boldsymbol{x})}{\partial \boldsymbol{x}_i \partial \boldsymbol{x}_j \partial \boldsymbol{x}_k} (\Delta x \boldsymbol{e}_k)_i (\Delta x \boldsymbol{e}_k)_j (\Delta x \boldsymbol{e}_k)_k \\
+&= f(\boldsymbol{x}) + \frac{\partial f(\boldsymbol{x})}{\partial \boldsymbol{x}_k} \Delta x 
++ \frac{1}{2} \frac{\partial^2 f(\boldsymbol{x})}{\partial \boldsymbol{x}_k^2} (\Delta x)^2 
++ \frac{1}{6} \frac{\partial^3 f(\boldsymbol{x})}{\partial \boldsymbol{x}_k^3} (\Delta x)^3
+\\
+\frac{\partial f(\boldsymbol{x})}{\partial \boldsymbol{x}_k} &\approx \frac{f(\boldsymbol{x}_k + \Delta x \boldsymbol{e}_k) - f(\boldsymbol{x}_k - \Delta x \boldsymbol{e}_k)}{2 \Delta x} + \Theta((\Delta x)^2)
+\end{align*}
+$$
+
+More generally, for $g(\boldsymbol{x}) = \boldsymbol{x}^\intercal \boldsymbol{A} \boldsymbol{x}$,
+
+$$
+\begin{align*}
+g(\boldsymbol{x}) &= \boldsymbol{x}^\intercal \boldsymbol{A} \boldsymbol{x}
+= \sum_{i=1}^n \sum_{j=1}^n \boldsymbol{x}_i \boldsymbol{x}_j \boldsymbol{A}_{ij} \\
+\frac{\partial g(\boldsymbol{x})}{\partial \boldsymbol{x}_k} 
+&= \left(\sum_{i \in {1, \dots, n}, i \neq k} \boldsymbol{x}_i \boldsymbol{A}_{ik}\right)
++ \left(\sum_{i \in {1, \dots, n}, i \neq k} \boldsymbol{x}_i \boldsymbol{A}_{ki}\right) 
++2\boldsymbol{x}_k \boldsymbol{A}_{kk} 
+= \sum_{i=1}^n \boldsymbol{x}_i (\boldsymbol{A}_{ki} + \boldsymbol{A}_{ik}) \\
+\nabla g(\boldsymbol{x}) &= (\boldsymbol{A} + \boldsymbol{A}^\intercal) \boldsymbol{x} \\
+\frac{\partial g(\boldsymbol{x})}{\partial \boldsymbol{x}_k}
+&\approx  \frac{g(\boldsymbol{x}_k + \Delta x \boldsymbol{e}_k) - g(\boldsymbol{x}_k - \Delta x \boldsymbol{e}_k)}{2 \Delta x} + \Theta((\Delta x)^2)
+\end{align*}
+$$
+
+
+```{r, eval=TRUE}
 approx_grad <- function(func, x, dx = .Machine$double.eps^(1/3)) {
   numerical_grad <- rep(0, length(x))
-  # Fill in
+  for (i in 1:length(x)) {
+    plus_dx = x
+    plus_dx[i] = plus_dx[i] + dx
+    minus_dx = x
+    minus_dx[i] = minus_dx[i] - dx
+    numerical_grad[i] = (func(plus_dx) - func(minus_dx)) / (2 * dx)
+  }
   return(numerical_grad)
 }
 
@@ -246,7 +472,8 @@ gaussian_logp <- function(x, Sigma_inv) {
 }
 
 gaussian_grad <- function(x, Sigma_inv) {
-  grad <- rep(0, length(x)) # Replace with an actual formula
+  grad = -Sigma_inv %*% matrix(x, ncol=1)
+  grad = as.vector(grad)
   return(grad)
 }
 
@@ -304,4 +531,4 @@ Please, pretty please, do not calculate an inverse of a matrix.
     
 ## Things to commit/submit
 
-Link to the pull request.
+Link to the pull request. <https://github.com/Wenxuan-Lu/hiperglm/pull/1>
