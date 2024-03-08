@@ -35,7 +35,7 @@ For each instruction, the fetch-decode-execute(-store) cycle is needed. Moreover
 
 However, if there are dependencies among the instructions, the CPU may need to stall the pipeline to avoid problems. This can cause a decrease in the speed.
 
-In particular, if-else statements are complied to conditional jump instructions, and the execution flow depends on the evaluation of the condition value. Modern CPU can perform branch prediction and speculative execution, where it guesses the evaluation result and executes according to the guesses. This enables the pipeline to run efficiently if the guess is correct. When a branch misprediction occurs, a pipeline flush is needed and the pipeline slows down to be refilled with the correct instructions. In the case when there are multiple if-else statements, the probability of branch mispredictions increases, which increases the pipeline stall time and further slows down the program.
+In particular, if-else statements are complied as conditional jump instructions, and the execution flow depends on the evaluation of the condition value. Modern CPU can perform branch prediction and speculative execution, where it guesses the evaluation result and executes according to the guesses. This enables the pipeline to run efficiently if the guess is correct. When a branch misprediction occurs, a pipeline flush is needed and the pipeline slows down to be refilled with the correct instructions. In the case when there are multiple if-else statements, the probability of branch mispredictions increases, which increases the pipeline stall time and further slows down the program.
 
 In the `sign_via_if()` example, the correctness of the branch prediction depends on the value of the input vector. A correct branch prediction results in a fast speed, whereas a branch misprediction results in a slow speed. Thus, the execution speed depends on the input.
 
@@ -467,134 +467,11 @@ Vulnerabilities:
 
 `dgemm_eigen` runs the slowest when no optimization option is set. All options have an effect on the processing speed. The improvement on performance from the most to the least are: FMA, AVX2, and SSE2 (the default SSE version on my PC). Both AVX2 and SSE2 enable the single instruction, multiple data (SIME) processing that allows vectorized computations, which is suitable for the repetitive operations in a matrix-matrix multiplication. Since AVX2 is an extension of SSE2, once AVX2 is set, adding SSE2 does not further improve the performance. FMA combines multiplication and addition operations into a single instruction. Once FMA is set, adding other options does not significantly improve the performance. This dominant effect might due to the fact that matrix multiplication is combinations of multiplications and additions, so adding FMA is most effective in boosting the performance. The same effect holds on JHPCE. 
 
-For the custom matrix-matrix multiplication functions `row_col_dot_matmat` and `col_oriented_matmat`, the optimization options do not have a significant influence on the performance. The same holds on JHPCE. This might due to the fact that unlike the Eigen library which utilizes vectorized instructions, the custom functions are implemented without using any low-level optimization. Thus, they are less likely to benefit from the SIMD instructions. Thus, the effect of optimization flags, if there are any, are not pronounced. The same holds for `base_R %*%` as the previous section shows that the current R installation uses the default, unoptimized BLAS library.
+For the custom matrix-matrix multiplication functions `row_col_dot_matmat` and `col_oriented_matmat`, the optimization options do not have a significant influence on the performance. The same holds on JHPCE. This might due to the fact that unlike the Eigen library which utilizes vectorized instructions, the custom functions are implemented without explicitly using any low-level optimization. Thus, they are less likely to benefit from the SIMD instructions. Thus, the effect of optimization flags, if there are any, are not pronounced. The same holds for `base_R %*%` as the previous section shows that the current R installation uses the default, unoptimized BLAS library.
 
 On my PC, the performance of `dgemv_eigen` improves when any optimization flag is added. Different flags do not have different effects on the processing speed. On JHPCE, the pattern of effect for different flags are similar to those on `dgemm_eigen`. However, the amount of speed improvement for `dgemv_eigen` is much less than that of `dgemm_eigen` for both my PC and JHPCE. The optimization flags have a more pronounced effect on a matrix-matrix than on a matrix-vector multiplication. This is because a matrix-matrix multiplication involves multiple rows and multiple columns during the calculation. It is computationally more intensive and has a higher potential for parallelism. 
 
 On JHPCE, I didn't run the case when all flags are removed due to the error /jhpce/shared/community/core/conda_R/4.3/R/lib64/R/site-library/RcppEigen/include/Eigen/src/Core/AssignEvaluator.h:631:63: error: SSE register return with SSE disabled. It seems like SSE is required for the Eigen library if neither AVX2 nor FMA is set.
-
-# draft
-
-FMA (Fused Multiply-Add):
-FMA is an instruction set that combines multiplication and addition operations into a single instruction. This can reduce the number of instructions needed for certain calculations, leading to improved performance and increased precision. FMA can be particularly beneficial in numerical linear algebra and other computational tasks that involve large numbers of multiply-add operations.
-
-SSE (Streaming SIMD Extensions):
-SSE is a set of instructions introduced by Intel that allows for Single Instruction, Multiple Data (SIMD) operations. This means that a single instruction can be applied to multiple data points simultaneously, which can significantly speed up vectorized calculations. 
-
-AVX (Advanced Vector Extensions)
-AVX is an extension of the SSE (Streaming SIMD Extensions) instruction set and is designed to improve the performance of floating-point and integer arithmetic operations by allowing for more data to be processed in parallel.
-AVX provides wider vector registers (256 bits compared to 128 bits in SSE), which enables it to perform operations on larger chunks of data at once. 
-
-PC:
-NOne：
-301， 40， 894， 811， 802
-292， 43.4， 882， 762， 830
-318， 44.3， 867， 786， 833
-
-SSE
-157, 41.7, 897, 809,602
-159, 42.6,867,813,612
-163,43.4,833,772,612
-
-AVX2
-85.7, 43.7,850, 797, 605
-86.6, 42.5, 833,809,609
-83.6, 42.4, 846, 761,606
-
-FMA
-48.7, 42.4, 850, 759, 611
-45.5, 43.3, 835, 768, 606
-
-SSE, AVX2
-85.4, 42.3, 852,777,603
-83.8, 44.1,860,766,596
-
-SSE, FMA
-46.4, 43.2, 857, 818, 615
-44.7, __, 850, 789, 606
-
-AVX2, FMA
-47.4, 43.5, 835, 790,609
-47.9, ___, 862, 804, 620
-47.6, ___, 836, 781, 604
-
-SSE, AVX2, FMA
-46.5, 42, 851, 780, 608
-46.7, ___, 837, 792, 618
-45.4, ___, 813, 740, 603
-44.4, ___, 863, 792, 623
-
-
-JHPCE:
-
-None
-/jhpce/shared/community/core/conda_R/4.3/R/lib64/R/site-library/RcppEigen/include/Eigen/src/Core/AssignEvaluator.h:631:63: error: SSE register return with SSE disabled
-
-SSE
-140ms, 19.6s, 642ms, 576ms, 1.35ms
-136,  19.6s, 679ms, 855,  1.52
-137, ____,  667, 555, 1.11
-139, ____, 681, 936, 1.37
-
-122, 16.2, 555, 436, 560
-120, 17.1, 559, 319, 576
-
-AVX2
-57.5, 17.5, 587, 390, 512us
-57.9, 17.4, 582, 348, 669
-59, ____, 581, 365, 801
-59.6, ___, 578, 429, 596
-
-55.2, 17.1, 562, 315, 506
-55.2, 17.1, 558, 320, 462
-
-FMA
-49.7, 16.7, 557, 314, 476
-49.6, 16.7, 577, 315, 412
-48.7, ___, 542, 306, 426
-50.6, ____, 548, 320, 480
-
-50.4, 17, 555, 332, 427
-49.9, 17, 542, 305, 459
-
-SSE, AVX2
-56.6, 16.9, 592, 312, 464
-58.5, 17.1, 576, 308, 480
-58.5, ___, 577, 320, 462
-55.4, ____, 587, 320, 437
-
-56.2, 17, 562, 306, 478
-56, 17, 556, 299, 532
-
-SSE, FMA
-50.4, 16.6, 548, 326, 419
-47.7, 16.7, 552, 307, 430
-49.2, ___, 553, 319, 433
-48.6, ____, 541, 316, 410
-48.5, ____, 548, 303, 469
-
-49.6, 178.1, 555, 333, 485
-50.5, 17.1, 560, 304, 556
-
-AVX2, FMA
-52.4, 17.4, 550, 322, 423
-50, 16.7, 539, 322, 421
-50, ____, 546, 323, 419
-51.5, ___, 562, 325, 455
-51.5, ___, 572, 301, 427
-
-47.8, 16.9, 569, 329, 485
-51.2, 17 ,549, 304, 466
-
-SSE, AVX2, FMA
-50.2, 16.5, 551, 319, 434
-49.1, 16.8, 541, 332, 493
-49.9, ___, 545, 290, 458
-52.9, ___, 558, 309, 419
-51.5, ___, 549, 302, 493
-
-49.9, 17.1, 564m 307, 443
-51.2, 
 
 # Exercise 3: Continuing development of `hiperglm` &mdash; optimizing its performance via RcppEigen
 
@@ -625,3 +502,5 @@ Below you find tips on how to use Rcpp(Eigen) which, combined with the lecture m
     But then RcppEigen is just an Rcpp wrapper of Eigen, so you might just have to refer to Eigen's documentation for further details. 
 3. Incorporate the least squares solver via Eigen's QR into the IWLS algorithm for finding MLE.
 Make it the default option and check that all the tests still pass when using the QR-based solver.
+
+**Link to the pull requests:** <https://github.com/Wenxuan-Lu/hiperglm/pull/5>
