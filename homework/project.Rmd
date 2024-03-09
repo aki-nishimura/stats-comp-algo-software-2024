@@ -29,6 +29,7 @@ To get you started in this path, you will be asked in this assignment to continu
 # Task 1: Refactor the instructor's `hiperglm` package to use S3 methods for log-likelihood and derivative calculation
 
 Start by forking the instructor's version of the `hiperglm` repo found [here](https://github.com/aki-nishimura/hiperglm).
+Then make a `general-model` branch in which you will commit all your work.
 The repo as of [this commit](https://github.com/aki-nishimura/hiperglm/tree/logit-model-eigen-cleaned) should be roughly at the same stage of development as your version.
 The two subsequent commits set the stage for introducing a "regression model" S3 object and accompanying methods to handle the model-specific calculations required for fitting generalized linear models.
 
