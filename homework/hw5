@@ -27,6 +27,16 @@ What feature(s) of a modern CPU is (are) responsible for this?
 And where in the above videos is this explained?
 Provide a rough starting time point in (e.g. "19:18") of the discussion.
 
+**Answer**
+
+Reason 1 - Advanced CPU Designs: Crash Course Computer Science #9 "5:35-9:42"
+
+The variation in execution speed of the sign_via_if() Rcpp function depending on the value of an input vector can be attributed to the instruction pipelines present in present day (or modern computers). As stated in the video, "while one instruction is getting executed, the next instruction could be getting decoded...so that multiple components of the CPU could be active at any given time." In our case, the if statement presents a "fork in a road", and the computer moves forward with a informed guess(correct upto 90% of the times in modern computers). This is called speculative execution. The advanced CPUs use this process to guess the result of the 'if' statement (or more generally any branching) and run the corresponding pipeline based on the guess. If the guess is correct, the CPU moves forward with the pipeline. However if the guess is wrong, the CPU performs a pipeline flush, essentially deleting all the results from the pipeline and starting all over again. In these cases, the execution speed is slower than its counterpart.
+
+Reason 2 - Advanced CPU Designs: Crash Course Computer Science #9 "3:10-5:35"
+
+Modern computers have cache which helps them access a particular subset of the data stored faster, leading to more efficient computation. The variable execution time of the sign-via-if function is thus also contingent upon the operation of the cache system. This variability arises primarily due to the distinction between cache hits and cache misses: if the required data is already stored in the cache, the function can be executed swiftly, benefiting from reduced access time; conversely, if the data is not cached, the CPU must retrieve it from RAM, incurring a longer latency. The efficiency of the cache system is also influential, as its size and management strategies affect the likelihood of cache hits or misses. Additionally, the cache's role as a repository for intermediate data during computations may impact the availability of relevant information for the function, potentially leading to cache misses and variable execution times.
+
 
 # Exercise 1: Coding on the edge &mdash; being responsible for your own safety in the C++ world
 
@@ -40,7 +50,7 @@ cat(readLines(file.path("src", "inner_prod.cpp")), sep = '\n')
 
 Ignoring the bug for the moment, run the code below and see what you get.
 
-```{r, eval=FALSE}
+```{r, eval=TRUE}
 Rcpp::sourceCpp(file.path("src", "inner_prod.cpp"))
 
 vec_size <- 1023L
@@ -53,7 +63,7 @@ Still ignoring the bug, run the code below that calculates the same inner produc
 I mean, whether there is a bug or not, an output of a deterministic calculation should surely be the same each time?
 Try running the code chunk multiple times. 
 
-```{r, error=TRUE, eval=FALSE}
+```{r, error=TRUE, eval=TRUE}
 first_val <- inner_prod(v, w)
 
 for (i in 1:10^6) {
@@ -70,6 +80,13 @@ for (i in 1:10^6) {
 **Questions:**
 What behavior do you observe above? How do you explain it?
 
+**Answer** 
+
+I observe that the result is not consistent over multiple runs of the code, and it is not expected, given the deterministic setting of our problem(and thus a deterministic answer was expected.)
+
+The inconsistency in the final inner product result occurs consistently due to the indexing discrepancy in C++, where arrays start from 0 instead of 1. This results in accessing memory beyond the bounds of vectors 'v' and 'w', (consider $v[1023]$ and  $w[1023]$) leading to it being allocated values which  may produce incorrect results or modify/access memory
+ that it does not own, leading to wrong results in both cases. Consequently, running the calculation in a loop introduces uncertainty in the entire program, as subsequent results differ from the initial one, triggering the errors. This error can be averted by putting place certain checks such as 'assert(i < size())'.
+
 
 ## Part B: Sloppy matrix-matrix multiplication
 
@@ -84,7 +101,7 @@ cat(readLines(file.path("src", "gemm_eigen_unprotected.cpp")), sep = '\n')
 
 Run the code below using the above "unprotected" matrix-matrix multiplication.
 
-```{r, eval=FALSE}
+```{r, eval=TRUE}
 Rcpp::sourceCpp(file.path("src", "gemm_eigen_unprotected.cpp"))
 
 A <- matrix(1, nrow = 4, ncol = 1024)
@@ -96,13 +113,41 @@ dgemm_eigen(A, B)
 **Questions:**
 What do you get as an output? What if you re-run the code chunk? Explain the observed behavior.
 
+**Answer** I am getting solutions which are not correct. Some of the examples are- \[
+\begin{array}{cc}
+    \multicolumn{2}{c}{\text{Matrix}} \\
+    \hline
+    1024 & 512 \\
+    1024 & 512 \\
+    1024 & 512 \\
+    1024 & 512 \\
+\end{array}
+\]
+ and \[
+\begin{array}{cc}
+    \multicolumn{2}{c}{\text{Matrix}} \\
+    \hline
+    1024 & \text{NaN} \\
+    1024 & \text{NaN} \\
+    1024 & \text{NaN} \\
+    1024 & \text{NaN} \\
+\end{array}
+\]
+
+Each column shares the same value throughout. Specifically, the first column consistently holds the value 1024, while the content of the second column changes with each run of the code. We note that for matrices that are not dimensional compatible, we find that the results are obtained to be random, instead of getting any warning regarding of matrix incompatibility. This is because the implementation of 'gemm_eigen_unprotected.cpp' does not take care of putting the appropriate checks in place, which could in turn prevent the same. It must be noted in such 'unprotected' scenarios, the matrix calculation moves forward with the instructions, without taking into account if the memory location it is accessing is part of the corresponding matrix or not. It must be noted that given the column-based calculations which underline C++, the program accesses the values in a column-wise fashion. 
+
+When dealing with a matrix multiplication operation in C++, consider our scenario where matrix A has 1024 columns. During the multiplication process, C++ accesses the initial 1024 elements of B (which is essentiall all the eleemnts of the matrix (because it is a 512*2 matrix)) from memory for the computation. We note that this results in multiplying the rows of A with the corresponding vector obtained by concatenating both columns of B, resulting in the constant answer of 1024. However, the situation becomes more complex when handling the second column.
+
+As C++ proceeds with the matrix multiplication, it attempts to access elements beyond the allocated memory space of matrix B. Since matrix B is not provisioned with sufficient memory to accommodate all the elements required for the multiplication operation, C++ ends up accessing data outside of the allocated memory range. Consequently, the values in the second column become subject to variability across different executions of the code. This variability arises due to the discrepancy between the memory access patterns dictated by the matrix dimensions and the available memory space, leading to inconsistent results in the output.
+
+
 ## Part C: Consequence of "tresspassing"
 
 The code below uses the `axpy_c()` function as seen in lecture.
 Run it and see what happens. 
 (I am not sure if the behavior is reproducible 100% of time; if you don't observe anything striking, restart the R session and run the code chunk in a fresh state.)
 
-```{r, eval=FALSE}
+```{r, eval=TRUE}
 Rcpp::sourceCpp(file.path("src", "axpy_c.cpp"), rebuild = TRUE)
 
 a <- 3.14
@@ -114,7 +159,7 @@ axpy_c(a, x, y)
 
 Now try running the code below; it should execute just fine unlike the above one.
 
-```{r, eval=FALSE}
+```{r, eval=TRUE}
 a <- 3.14
 x <- rep(1, 1e3L)
 y <- rep(0.00159, 1e7L)
@@ -128,6 +173,20 @@ axpy_c(a, x, y)
 Running the same piece of code from an R console (instead of an RStudio session) should give you more information on what actually happens.
 * Why does the second code chunk run fine?
 * Modify `axpy_c.cpp` to make the function safer to use.
+
+**Answer**
+
+The behavior observed in the provided code snippets is due to memory access violations caused by accessing elements beyond the allocated memory space for the vectors x and y.
+
+First Code Chunk:
+
+In the first code chunk, the size of vector y is set to 1000 (rep(0.00159, 1e3L)), while the size of vector x is set to 10 million (rep(1, 1e7L)). During the execution of the axpy_c() function, each element of vector y is updated based on the corresponding element of vector x. However, as the loop iterates over the elements of x (10 million elements), it attempts to access memory locations beyond the allocated space for y (1000 elements). This results in a memory access violation and may cause the R session to terminate abruptly.
+
+Second Code Chunk:
+
+In contrast, the second code chunk allocates 10 million elements for vector y and 1000 elements for vector x. Therefore, when executing the axpy_c() function, the loop iterates over the smaller vector x (1000 elements) without attempting to access memory beyond the allocated space for vector y. Consequently, the code runs without encountering any memory access violations, and the R session continues to execute as expected.
+
+To make the axpy_c() function safer to use, one can add a check to ensure that the sizes of vectors x and y match before performing the element-wise operation. 
 
 
 # Exercise 2: Multiplying two matrices ain't quite what you learned in your linear algebra class
@@ -143,11 +202,11 @@ So a conceptually natural way to implement a matrix multiplication is looping th
 Implement a matrix-matrix multiplication based on this approach as `row_col_dot_matmat` using the starter code provided in the `matmat.cpp` file.
 Then check that its output agrees with the base R matrix multiplication.
 
-```{r, eval=FALSE}
+```{r, eval=TRUE}
 Rcpp::sourceCpp(file.path("src", "matmat.cpp"))
 ```
 
-```{r, eval=FALSE}
+```{r, eval=TRUE}
 n_row_out <- 1024L
 n_inner <- 2048L
 n_col_out <- 512L
@@ -155,9 +214,16 @@ A <- matrix(rnorm(n_row_out * n_inner), nrow = n_row_out, ncol = n_inner)
 B <- matrix(rnorm(n_inner * n_col_out), nrow = n_inner, ncol = n_col_out)
 ```
 
-```{r}
-# Check the output of `row_col_dot_matmat`
+```{r, eval=TRUE}
+result_cpp <- row_col_dot_matmat(A, B)
+
+# Calculate matrix product using base R matrix multiplication
+result_r <- A %*% B
+
+# Check if the results are the same
+are_all_close(result_cpp, result_r)
 ```
+
 
 ## Part B: Going one step beyond your linear algebra class
 
@@ -168,14 +234,51 @@ Then compare performances of `row_col_dot_matmat` and `col_oriented_matmat` (but
 Which one is faster and why?
 
 ```{r}
+
+Rcpp::sourceCpp(file.path("src", "matmat.cpp"))
+
 # Check and benchmark
+# Load required libraries
+library(Rcpp)
+library(microbenchmark)
+
+# Define matrices A and B
+n_row_out <- 1024L
+n_inner <- 2048L
+n_col_out <- 512L
+A <- matrix(rnorm(n_row_out * n_inner), nrow = n_row_out, ncol = n_inner)
+B <- matrix(rnorm(n_inner * n_col_out), nrow = n_inner, ncol = n_col_out)
+
 ```
 
 Also compare with performance of the matrix-matrix multiplication via `%*%` in R, which uses whatever the BLAS library your R was configured with.
 (You can find out which BLAS library R is using via `sessionInfo()` or `extSoftVersion()`.) 
 
+**Answer**
+
+We find that the row based operations are much more time consuming compared with column-based operations. We thus find that the row-oriented matrix-matrix operations are much slower than the column-oriented matrix-matrix operations(10 sec vs 814 ms). The BLAS based approach was uniformly better than othe column-oriented matrix-matrix operation, primarily due to further optimizations in the BLAS library, although the column oriented approach was quite close to the BLAS approach in terms of running time(781 ms vs 814 ms).
+
+Row-oriented matrix multiplication is slower than column-oriented due to the inefficient memory access patterns it generates. In row-oriented multiplication, accessing rows of one matrix and columns of the other leads to frequent cache misses and slower performance as data is not accessed contiguously. On the contrary, column-oriented multiplication accesses data in a more contiguous manner, aligning better with cache line sizes and reducing cache misses. This results in improved performance by fetching adjacent elements together and exploiting spatial locality for faster memory access, making column-oriented multiplication more efficient than its row-oriented counterpart. BLAS (Basic Linear Algebra Subprograms) also employs column-oriented operations for matrix-matrix multiplication. Matrices are often stored in column-major order within BLAS implementations, facilitating efficient memory access patterns and cache utilization.
+
+
+
 ```{r}
-# Fill in
+#to check version of BLAS
+sessionInfo()
+
+# Benchmark row_col_dot_matmat
+benchmark_row <- microbenchmark(row_col_dot_matmat(A, B), times = 10L)
+
+# Benchmark col_oriented_matmat
+benchmark_col <- microbenchmark(col_oriented_matmat(A, B), times = 10L)
+
+# Benchmark row_col_dot_matmat
+benchmark_AB <- microbenchmark(A%*%B, times = 10L)
+
+# Print the benchmark results
+print(benchmark_row)
+print(benchmark_col)
+print(benchmark_AB)
 ```
 
 When benchmarking alternative implementations (or alternative algorithms, more generally), keep in mind that the relative performance depends significantly on the size of a test problem.
@@ -223,10 +326,162 @@ Selectively turn on and off SSE, AVX2, and FMA to see how each option affects th
 Finally, turn on both AVX2 and FMA and check the resulting performances.
 Report what you find.
 
+**Solution**
+
+We compute the results for the JHPCE compute-091 node. The specifications are presented herewith-
+
+Architecture:            x86_64
+  CPU op-mode(s):        32-bit, 64-bit
+  Address sizes:         46 bits physical, 48 bits virtual
+  Byte Order:            Little Endian
+CPU(s):                  48
+  On-line CPU(s) list:   0-47
+Vendor ID:               GenuineIntel
+  Model name:            Intel(R) Xeon(R) CPU E5-2650L v3 @ 1.80GHz
+    CPU family:          6
+    Model:               63
+    Thread(s) per core:  2
+    Core(s) per socket:  12
+    Socket(s):           2
+    Stepping:            2
+    CPU max MHz:         2500.0000
+    CPU min MHz:         1200.0000
+    BogoMIPS:            3600.11
+    Flags:               fpu vme de pse tsc msr pae mce cx8 apic sep mtrr pge mca cmov pat pse36 clflush dts acpi mmx fxsr sse sse2 ss ht tm pbe sy
+                         scall nx pdpe1gb rdtscp lm constant_tsc arch_perfmon pebs bts rep_good nopl xtopology nonstop_tsc cpuid aperfmperf pni pcl
+                         mulqdq dtes64 monitor ds_cpl vmx smx est tm2 ssse3 sdbg fma cx16 xtpr pdcm pcid dca sse4_1 sse4_2 x2apic movbe popcnt tsc_
+                         deadline_timer xsave avx f16c rdrand lahf_lm abm cpuid_fault epb invpcid_single pti intel_ppin ssbd ibrs ibpb stibp tpr_sh
+                         adow vnmi flexpriority ept vpid ept_ad fsgsbase tsc_adjust bmi1 avx2 smep bmi2 erms invpcid cqm xsaveopt cqm_llc cqm_occup
+                         _llc dtherm ida arat pln pts md_clear flush_l1d
+Virtualization features:
+  Virtualization:        VT-x
+Caches (sum of all):
+  L1d:                   768 KiB (24 instances)
+  L1i:                   768 KiB (24 instances)
+  L2:                    6 MiB (24 instances)
+  L3:                    60 MiB (2 instances)
+NUMA:
+  NUMA node(s):          2
+  NUMA node0 CPU(s):     0-11,24-35
+  NUMA node1 CPU(s):     12-23,36-47
+Vulnerabilities:
+  Itlb multihit:         KVM: Mitigation: VMX disabled
+  L1tf:                  Mitigation; PTE Inversion; VMX conditional cache flushes, SMT vulnerable
+  Mds:                   Mitigation; Clear CPU buffers; SMT vulnerable
+  Meltdown:              Mitigation; PTI
+  Mmio stale data:       Mitigation; Clear CPU buffers; SMT vulnerable
+  Retbleed:              Not affected
+  Spec store bypass:     Mitigation; Speculative Store Bypass disabled via prctl
+  Spectre v1:            Mitigation; usercopy/swapgs barriers and __user pointer sanitization
+  Spectre v2:            Mitigation; Retpolines, IBPB conditional, IBRS_FW, STIBP conditional, RSB filling, PBRSB-eIBRS Not affected
+  Srbds:                 Not affected
+  Tsx async abort:       Not affected
+ 
+```{r, eval=FALSE}
+
+# Import `dgemm_eigen()` from lecture
+Rcpp::sourceCpp(file.path("src", "gemm_eigen.cpp"), rebuild = TRUE)
+n_row_out <- 1024L
+n_inner <- 2048L
+n_col_out <- 512L
+A <- matrix(rnorm(n_row_out * n_inner), nrow = n_row_out, ncol = n_inner)
+B <- matrix(rnorm(n_inner * n_col_out), nrow = n_inner, ncol = n_col_out)
+
+```
+
+```{r, eval=FALSE}
+# Benchmark
+microbenchmark(dgemm_eigen(A, B))
+```
+
+```{r, eval=FALSE}
+Rcpp::sourceCpp(file.path("src", "matmat.cpp"), rebuild = TRUE)
+```
+
+```{r, eval=FALSE}
+microbenchmark(col_oriented_matmat(A, B), times = 10L)
+```
+
 Next, implement an RcppEigen function `dgemv_eigen()` that computes the matrix-vector product $A v$ given the input matrix $A$ and vector $v$ of compatible sizes.
 Then, using the same matrix $A$ as an input to `dgemv_eigen()`, repeat the above experiment of turning on and off the optimization flags.
 Contrast the results on the matrix-vector operation with those on the matrix-matrix operation using RcppEigen.
 Explain why these hardware optimization options may have the different degrees of impacts on performance.
+
+**Solution**  SSE, AVX, and FMA Flags: The first three columns represent the presence (1) or absence (0) of SSE, AVX, and FMA instruction sets, respectively. These flags denote whether specific SIMD (Single Instruction, Multiple Data) instructions are enabled for computation, with 1 indicating enabled and 0 indicating disabled.
+
+% Table for Matrix-Matrix Multiplication
+\begin{table}[h]
+\centering
+\begin{tabular}{|c|c|c|c|c|}
+\hline
+\text{SSE} & \text{AVX} & \text{FMA} & \text{Col-oriented (milli)} & \text{dgemm (milli)} \\
+\hline
+1 & 1 & 0 & 1064 & 141 \\
+1 & 1 & 1 & 944 & 83 \\
+1 & 0 & 0 & 1059 & 276 \\
+1 & 0 & 1 & 946 & 87 \\
+0 & 1 & 0 & 1063 & 143 \\
+0 & 1 & 1 & 948 & 83 \\
+0 & 0 & 0 & 1072 & 279 \\
+0 & 0 & 1 & 951 & 83 \\
+\hline
+\end{tabular}
+\caption{Execution times (in milliseconds) for matrix-matrix multiplication.}
+\label{tab:matrix-matrix}
+\end{table}
+
+As expected, the Rcpp function works much faster than our custom made matrix. The table shows the execution times for matrix-matrix multiplication using different combinations of SSE, AVX, and FMA instructions. The "Col-oriented" column indicates the time taken when the matrix-calculation is done to exploit the column-oriented format. "dgemm" column shows the time taken when using the Rcpp implementation of matrix multiplication. 
+
+Impact of SIMD Instructions: Enabling SSE, AVX, or FMA instructions generally leads to improved performance, as seen from the comparison between rows with 1s and 0s in the respective columns. For instance, when all three instruction sets are enabled (1, 1, 1), both col-oriented and dgemm operations exhibit significantly reduced execution times compared to scenarios where one or more instruction sets are disabled.
+
+Effect of Specific Instruction Sets: Comparing rows with different combinations of SSE, AVX, and FMA flags provided insights into the relative contributions of each instruction set to performance. We observe that in cases where SSE is disabled (0), enabling AVX alone (1, 0, 0 or 0, 1, 0) results in improved performance, albeit to a lesser extent compared to scenarios where both SSE and AVX are enabled. Similarly, the inclusion of FMA (1, 1, 1 or 1, 0, 1) further enhances performance, particularly evident in the dgemm operation.
+
+Performance Discrepancy Between Operations: The performance disparity between col-oriented and dgemm operations is notable, with dgemm consistently exhibiting lower execution times across all configurations. 
+
+
+```{r, warning=FALSE, eval=FALSE}
+# Import `dgemm_eigen()` from lecture
+Rcpp::sourceCpp(file.path("src", "gemv_eigen.cpp"), rebuild = TRUE)
+n_row_out <- 1024L
+n_out <- 2048L
+A <- matrix(rnorm(n_row_out * n_out), nrow = n_row_out, ncol = n_out)
+B <- rnorm(n_out)
+```
+
+```{r, eval=FALSE}
+# Benchmark
+microbenchmark(dgemv_eigen(A, B))
+```
+
+**Solution** 
+SSE, AVX, and FMA Flags: Similar to the previous table, these columns denote whether SSE, AVX, and FMA instruction sets are enabled (1) or disabled (0) for computation.
+
+% Table for Matrix-Vector Multiplication
+\begin{table}[h]
+\centering
+\begin{tabular}{|c|c|c|c|}
+\hline
+\text{SSE} & \text{AVX} & \text{FMA} & \text{dgemv (micro)} \\
+\hline
+1 & 1 & 0 & 780 \\
+1 & 1 & 1 & 749 \\
+1 & 0 & 0 & 843 \\
+1 & 0 & 1 & 709 \\
+0 & 1 & 0 & 719 \\
+0 & 1 & 1 & 778 \\
+0 & 0 & 0 & 841 \\
+0 & 0 & 1 & 765 \\
+\hline
+\end{tabular}
+\caption{Execution times (in microseconds) for matrix-vector multiplication.}
+\label{tab:matrix-vector}
+\end{table}
+
+ The execution times are generally lower compared to matrix-matrix multiplication due to the simpler computational nature of matrix-vector multiplication. 
+ 
+ Effect of SIMD Instructions: Enabling SSE, AVX, or FMA instructions generally leads to improved performance in matrix-vector multiplication, consistent with the observations from the previous table. For instance, when all three instruction sets are enabled (1, 1, 1), the execution time for dgemv is significantly reduced compared to scenarios where one or more instruction sets are disabled.
+
+Relative Contributions of Instruction Sets: Comparing rows with different combinations of SSE, AVX, and FMA flags reveals the relative contributions of each instruction set to performance. Enabling AVX (alone or in combination with other instruction sets) tends to result in noticeable performance improvements, whereas the impact of SSE and FMA may vary depending on other factors such as computational workload and data characteristics.
 
 Run the above experiment both on your own computer and on a JHPCE node.
 In case you have a Mac computer with Apple silicon, then the experiment won't work on your computer, so just use JHPCE.
@@ -234,18 +489,6 @@ In addition to the results, report the CPU model on the JHPCE node you ran the e
 you can check this via the `lscpu` command. 
 The few really old nodes on JHPCE do not support AVX and FMA, so switch to another node in case you get assigned to those nodes.
 You can check supports for AVX and FMA from the output of `lscpu`; try `lscpu | grep avx` and `lscpu | grep fma`.
-
-
-```{r, warning=FALSE, eval=FALSE}
-# Import `dgemm_eigen()` from lecture
-Rcpp::sourceCpp(file.path("..", "lecture", "src", "gemm_eigen.cpp"))
-```
-
-```{r, eval=FALSE}
-# Benchmark
-dgemm_eigen(A, B)
-```
-
 
 # Exercise 3: Continuing development of `hiperglm` &mdash; optimizing its performance via RcppEigen
 
@@ -276,3 +519,5 @@ Below you find tips on how to use Rcpp(Eigen) which, combined with the lecture m
     But then RcppEigen is just an Rcpp wrapper of Eigen, so you might just have to refer to Eigen's documentation for further details. 
 3. Incorporate the least squares solver via Eigen's QR into the IWLS algorithm for finding MLE.
 Make it the default option and check that all the tests still pass when using the QR-based solver.
+
+Pull-link- https://github.com/achatto4/hiperglm/pull/5
