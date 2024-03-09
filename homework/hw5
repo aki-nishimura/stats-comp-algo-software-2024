@@ -464,7 +464,7 @@ SSE, AVX, and FMA Flags: Similar to the previous table, these columns denote whe
 \text{SSE} & \text{AVX} & \text{FMA} & \text{dgemv (micro)} \\
 \hline
 1 & 1 & 0 & 780 \\
-1 & 1 & 1 & 749 \\
+1 & 1 & 1 & 683 \\
 1 & 0 & 0 & 843 \\
 1 & 0 & 1 & 709 \\
 0 & 1 & 0 & 719 \\
@@ -479,9 +479,9 @@ SSE, AVX, and FMA Flags: Similar to the previous table, these columns denote whe
 
  The execution times are generally lower compared to matrix-matrix multiplication due to the simpler computational nature of matrix-vector multiplication. 
  
- Effect of SIMD Instructions: Enabling SSE, AVX, or FMA instructions generally leads to improved performance in matrix-vector multiplication, consistent with the observations from the previous table. For instance, when all three instruction sets are enabled (1, 1, 1), the execution time for dgemv is significantly reduced compared to scenarios where one or more instruction sets are disabled.
+ Effect of SIMD Instructions: Enabling SSE, AVX, or FMA instructions generally leads to improved performance in matrix-vector multiplication, consistent with the observations from the previous table. We find that when all three instruction sets are enabled (1, 1, 1), the execution time for dgemv is significantly reduced compared to scenarios where one or more instruction sets are disabled.
 
-Relative Contributions of Instruction Sets: Comparing rows with different combinations of SSE, AVX, and FMA flags reveals the relative contributions of each instruction set to performance. Enabling AVX (alone or in combination with other instruction sets) tends to result in noticeable performance improvements, whereas the impact of SSE and FMA may vary depending on other factors such as computational workload and data characteristics.
+Relative Contributions of Instruction Sets: Comparing rows with different combinations of SSE, AVX, and FMA flags reveals the relative contributions of each instruction set to performance. Enabling AVX (alone or in combination with other instruction sets) tends to result in noticeable performance improvements, whereas the impact of SSE and FMA may vary depending on other factors such as computational workload and data characteristics. However we find that the patterns observed are not as clear cut compared to the previous case. 
 
 Run the above experiment both on your own computer and on a JHPCE node.
 In case you have a Mac computer with Apple silicon, then the experiment won't work on your computer, so just use JHPCE.
