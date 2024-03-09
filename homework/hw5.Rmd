@@ -72,7 +72,8 @@ for (i in 1:10^6) {
 **Questions:**
 What behavior do you observe above? How do you explain it?
 
-**Answers:** Sometimes the matrix multiplication yields 1022 (or a number close to it like 1022.0000004141), other times Inf, other times a large number like 3.86e28. I would have hoped the result would be consistently 1023 since that is the size of the matrix. Looking at `inner_prod.cpp`, I think what is going on is that the for loop is using 1-indexing but Cpp uses 0-indexing.
+**Answers:** Sometimes the matrix multiplication yields 1022 (or a number close to it like 1022.0000004141), other times Inf, other times a large number like 3.86e28. I would have hoped the result would be consistently 1023 since that is the size of the matrix. Looking at `inner_prod.cpp`, I think what is going on is that the for loop is using 1-indexing but Cpp uses 0-indexing, so the for loop is skipping the first index of the vector and going past the last index of the vector (at which it may be pulling some crazy value like Inf).
+<!-- I have written a 0-indexed function called `correct_inner_prod()` in `matmat.cpp`. -->
 
 
 ## Part B: Sloppy matrix-matrix multiplication
@@ -148,11 +149,9 @@ When I try running the first code chunk, R encounters a fatal error and aborts t
 
 The second code chunk runs fine because, x has length 10^3 while y has length 10^7, so only the first 10^3 entries of y are modified.
 
-I wrote a new script in the `src/` folder called `safe_axpy_c.cpp` and tested it in the chunk below.
+I wrote a new function in `axpy_c.cpp` called `safe_axpy_c()` and tested it in the chunk below.
 
 ```{r my-axpy, eval=FALSE}
-Rcpp::sourceCpp(file.path("src", "safe_axpy_c.cpp"), rebuild = TRUE)
-
 a <- 3.14
 x <- rep(1, 1e7L)
 y <- rep(0.00159, 1e3L)
@@ -174,11 +173,11 @@ So a conceptually natural way to implement a matrix multiplication is looping th
 Implement a matrix-matrix multiplication based on this approach as `row_col_dot_matmat` using the starter code provided in the `matmat.cpp` file.
 Then check that its output agrees with the base R matrix multiplication.
 
-```{r, eval=FALSE}
+```{r, eval=TRUE}
 Rcpp::sourceCpp(file.path("src", "matmat.cpp"))
 ```
 
-```{r, eval=FALSE}
+```{r, eval=TRUE}
 n_row_out <- 1024L
 n_inner <- 2048L
 n_col_out <- 512L
@@ -186,8 +185,13 @@ A <- matrix(rnorm(n_row_out * n_inner), nrow = n_row_out, ncol = n_inner)
 B <- matrix(rnorm(n_inner * n_col_out), nrow = n_inner, ncol = n_col_out)
 ```
 
-```{r}
+```{r row-matmat}
+Rcpp::sourceCpp(file.path("src", "matmat.cpp"))
+
 # Check the output of `row_col_dot_matmat`
+result <- row_col_dot_matmat(A, B)
+result_baseR <- A %*% B
+identical(result, result_baseR)
 ```
 
 ## Part B: Going one step beyond your linear algebra class
@@ -198,15 +202,27 @@ Recalling from lecture that "column-oriented" matrix-vector multiplication is mo
 Then compare performances of `row_col_dot_matmat` and `col_oriented_matmat` (but only after you test your column-oriented implementation).
 Which one is faster and why?
 
-```{r}
-# Check and benchmark
+**Answer**: Column-oriented implementation should be faster because R stores matrices by columns, so data motion is more efficient that way.
+
+I don't know why my `bench::mark()` isn't working even though my `col_oriented_matmat()` and `row_col_dot_matmat()` functions both work and match up with `%*%`.
+
+```{r col-matmat}
+Rcpp::sourceCpp(file.path("src", "matmat.cpp"))
+
+# Check
+result <- col_oriented_matmat(A, B)
+identical(result, result_baseR)
+
+# Benchmark
+# bench::mark(row_col_dot_matmat(A, B))
+# bench::mark(col_oriented_matmat(A, B))
 ```
 
 Also compare with performance of the matrix-matrix multiplication via `%*%` in R, which uses whatever the BLAS library your R was configured with.
 (You can find out which BLAS library R is using via `sessionInfo()` or `extSoftVersion()`.) 
 
 ```{r}
-# Fill in
+bench::mark(A %*% B)
 ```
 
 When benchmarking alternative implementations (or alternative algorithms, more generally), keep in mind that the relative performance depends significantly on the size of a test problem.
@@ -267,14 +283,28 @@ The few really old nodes on JHPCE do not support AVX and FMA, so switch to anoth
 You can check supports for AVX and FMA from the output of `lscpu`; try `lscpu | grep avx` and `lscpu | grep fma`.
 
 
-```{r, warning=FALSE, eval=FALSE}
+```{r, warning=FALSE, eval=TRUE}
 # Import `dgemm_eigen()` from lecture
 Rcpp::sourceCpp(file.path("..", "lecture", "src", "gemm_eigen.cpp"))
+
+# Import my dgemv_eigen() function
+Rcpp::sourceCpp(file.path("src", "dgemv_eigen.cpp"))
 ```
 
-```{r, eval=FALSE}
-# Benchmark
-dgemm_eigen(A, B)
+```{r, eval=TRUE}
+# Benchmark RcppEigen implementation of matrix matrix multiplication
+bench::mark(dgemm_eigen(A, B))
+
+# Check RcppEigen implementation of matrix vector multiplication
+v <- rnorm(n_inner)
+result <- dgemv_eigen(A, v)
+result_baseR <- A %*% v
+all(abs(result - result_baseR) < 1e-10)
+all(abs((result - result_baseR) / result_baseR) < 1e-10)
+
+# Benchmark RcppEigen implementation of matrix vector multiplication vs. base R
+bench::mark(A %*% v)
+bench::mark(dgemv_eigen(A, v))
 ```
 
 
