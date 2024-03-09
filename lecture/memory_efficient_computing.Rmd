@@ -38,8 +38,8 @@ knitr::opts_chunk$set(comment = '')
 
 ### Example: online user-behavior data (Netflix, Amazon, online ads, ...)
 
-_Matrix factorization_ approximates the data matrix $\bm{X}$ through a decomposition
-$$\bm{X} \approx \bm{U} \bm{V}^\intercal,  \text{ i.e. } \,  x_{ij} \approx \langle \bm{u}_i, \bm{v}_j \rangle.$$
+_Matrix factorization_ approximates data matrix $\bm{X} \in \mathbb{R}^{n \times m}$ through a low-rank decomposition
+$$\bm{X} \approx \bm{U} \bm{V}^\intercal \text{ for },  \text{ i.e. } \,  x_{ij} \approx \langle \bm{u}_i, \bm{v}_j \rangle.$$
 <!-- (\text{or} \approx \bm{\Lambda} \bm{F}) -->
 --
 ![](figure/sparse_data/matrix_factorization_formulaeic_example.png)
@@ -58,9 +58,28 @@ $$\bm{X} \approx \bm{U} \bm{V}^\intercal,  \text{ i.e. } \,  x_{ij} \approx \lan
 
 ### Example: online user-behavior data (Netflix, Amazon, online ads, ...)
 
+<span style="white-space: nowrap;">
+Incidentally, the method is closely related to _factor analysis_:
+</span>
+
+$$\bm{G} = \bm{\Lambda} \bm{F} + \bm{E} \, \text{ or } \, 
+  ``\bm{X} = \bm{U} \bm{V}^\intercal + \bm{E}."$$
+
+![:image 100%](figure/sparse_data/factor_analysis_viz.png)
+
+And, if no missing values in $\bm{X}$ (or " $\!\!\bm{G}$"), SVD provides an optimal rank- $\!k$ approximation of $\bm{X}$:
+$$\left\| \bm{X} - \widetilde{\bm{U}}_k \bm{\Sigma}_k \widetilde{\bm{V}}_k^\intercal \right\|_\text{F}^2 
+  = \min_{\bm{U} \in \mathbb{R}^{n \times k}, \ \bm{V} \in \mathbb{R}^{m \times k}} \big\| \bm{X} - \bm{U} \bm{V}^\intercal \big\|_\text{F}^2.$$
+
+---
+
+# Large-yet-sparse data in modern apps
+
+### Example: online user-behavior data (Netflix, Amazon, online ads, ...)
+
 Estimates of $\bm{U}, \bm{V}$ are obtained by minimizing
 
-$$\sum_{\text{observed pairs of } (i,j)} \| x_{ij} - \langle \bm{u}, \bm{v} \rangle \|^2 + \sum_i \lambda \| \bm{u}_i \|^2 + \sum_j \lambda \| \bm{v}_j \|^2.$$
+$$\sum_{\text{observed pairs of } (i,j)} \| x_{ij} - \langle \bm{u}_i, \bm{v}_j \rangle \|^2 + \sum_i \lambda \| \bm{u}_i \|^2 + \sum_j \lambda \| \bm{v}_j \|^2.$$
  
 --
 
@@ -99,7 +118,7 @@ This can be done e.g. by
 # Large-yet-sparse data in modern apps
 
 ### Example: Markov random field &mdash; sparsity as modeling assumtpion
-![:image 90%](figure/inla_gmrf_approximatin.png)
+![:image 90%](figure/sparse_data/inla_gmrf_approximatin.png)
 
 ---
 
@@ -258,24 +277,6 @@ The idea is that all the relevant info can be captured by
 ```{r}
 X@p # Cumsum of non-zero elems per col
 ```
-* Indices of non-zero element along row/col
-```{r}
-X@i + 1L # Col indices stored in a flattened ("compressed") vector
-```
-* Values at those indices
-```{r}
-X@x
-```
-
----
-
-# Compressed sparse formats for computing
-
-The idea is that all the relevant info can be captured by
-* Number of non-zero elements in each row/col
-```{r}
-X@p # Cumsum of non-zero elems per col
-```
 * Indices of non-zero element along row/col (32-bit int)
 ```{r}
 X@i + 1L # Col indices stored in a flattened ("compressed") vector
@@ -401,9 +402,9 @@ cat(
 n_obs <- 10^6
 n_pred <- 10^4
 X <- simulate_sparse_binary_design(
-  n_obs, n_pred, density = .001, repr = 'T'
+  n_obs, n_pred, density = .001, repr = "T"
 )
-X_csc <- as(X, 'dgCMatrix')
+X_csc <- as(X, "CsparseMatrix")
 X_csr <- sparseMatrix(
   i = X@i, j = X@j, x = X_csc@x, repr = "R",
   index1 = FALSE # Use 0-based (instead of 1-based) indexing 
@@ -445,9 +446,9 @@ summarize_benchmark(
 n_obs <- 10^4
 n_pred <- 10^6
 X <- simulate_sparse_binary_design(
-  n_obs, n_pred, density = .001, repr = 'T'
+  n_obs, n_pred, density = .001, repr = "T"
 )
-X_csc <- as(X, 'dgCMatrix')
+X_csc <- as(X, "CsparseMatrix")
 X_csr <- sparseMatrix(
   i = X@i, j = X@j, x = X_csc@x, repr = "R",
   index1 = FALSE # Use 0-based (instead of 1-based) indexing 
@@ -483,9 +484,9 @@ summarize_benchmark(
 n_obs <- 10^4
 n_pred <- 10^6
 X <- simulate_sparse_binary_design(
-  n_obs, n_pred, density = .001, repr = 'T'
+  n_obs, n_pred, density = .001, repr = "T"
 )
-X_csc <- as(X, 'dgCMatrix')
+X_csc <- as(X, "CsparseMatrix")
 X_csr <- sparseMatrix(
   i = X@i, j = X@j, x = X_csc@x, repr = "R",
   index1 = FALSE # Use 0-based (instead of 1-based) indexing 
