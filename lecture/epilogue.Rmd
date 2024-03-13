@@ -1,0 +1,76 @@
+---
+title: 'Post "Statistical Computing, Algorithm, and Software Development" World'
+subtitle: "when real journey starts"
+author: "Aki Nishimura"
+date: "`r Sys.Date()`"
+output:
+  xaringan::moon_reader:
+    css: ["default", "default-fonts", "extra.css"]
+    lib_dir: libs
+    nature:
+      highlightStyle: github
+      slideNumberFormat: "%current%"
+      countIncrementalSlides: false
+      beforeInit: "macros.js"
+    includes:
+      before_body: mathjax_config.html
+---
+
+# Software eng/Computing: increasingly<br> $\hspace{8em}$ relevant skills
+
+![:vspace -5ex]
+![:image 100%, right](figure/stats_software_computing_triad.png)
+
+---
+
+# "Big data" are complex data
+
+![:image 90%](figure/data_size_vs_complexity.png)
+
+---
+
+# Tips on getting started with software<br>&emsp; & involved in open-source community
+
+Write a pkg you wanna use, keep code clean for yourself
+![:vspace -.5ex]
+
+--
+
+* Don't bother documenting everything in beta versions
+* Test critical components; coverage need not be 100%
+
+--
+
+![:vspace 1.5ex]
+Work with experienced people and community:
+![:vspace -.5ex]
+* Bioconductor, Neuroconductor, OHDSI, Scipy, ...
+
+--
+
+![:vspace 1.5ex]
+Solve real problems, address timely needs
+![:vspace -.75ex]
+&emsp; (as opposed to "solutions looking for problems")
+
+---
+
+# Keep learning, achieve more
+
+<blockquote>
+<p style="margin-top:6ex; font-size:25pt; font-family:garamond; font-style:normal;">
+Knowledge and productivity are like compound interest. ....
+<br>
+<br>
+The more you know, the more you learn; the more you learn, the more you can do; the more you can do, the more the opportunity - it is very much like compound interest.
+</p>
+</blockquote>
+
+<p style="margin-top:1ex; font-size:25pt; font-family:'Times New Roman';", class="right"> &mdash; Richard Hamming </p>
+
+---
+class: center, middle, inverse
+
+# Verbum sap (= enough said)
+
+## Thank you for taking the class!
