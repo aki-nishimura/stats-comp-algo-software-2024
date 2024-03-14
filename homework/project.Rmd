@@ -23,13 +23,30 @@ Even if the required modification turns out to be only a few lines of code, you 
 
 However frustrating it may be to deal with others' code, especially when you are not used to, it is an essential skill if you want to work as a part of a team.
 And such collaborative development of software suites will allow you to achieve things you otherwise couldn't by yourself.
-To get you started in this path, you will be asked in this assignment to continue the development of `hiperglm` using the instructor's, and _not_ your, implementation of the package.  
+To get you started in this path, you will be asked in this assignment to continue the development of `hiperglm` using the instructor's, and _not_ your, implementation of the package.
+
+
+# Task 0: Make a private copy of the instructor's public `hiperglm` repo
+
+The standard procedure for contributing to/building on others' code would be to fork their repo, work on the forked copy, and open a pull request if you want your work integrated back into the original repo.
+For the purpose of this final project, however, there is one minor issue with the above procedure ---
+[a fork of a public repo is necessarily public](https://docs.github.com/en/pull-requests/collaborating-with-pull-requests/working-with-forks/about-permissions-and-visibility-of-forks#about-visibility-of-forks) and cannot be made private.
+This makes it difficult for us to leavve feedback and grade-related info directly in the pull request.
+For this reason, you will instead create a private copy of the instructor's public `hiperglm` repo and push all your work this private copy.
+
+More precisely, follow the steps below to set this up:
+
+1. Clone the instructor's repo to your local computer via `git clone https://github.com/aki-nishimura/hiperglm`;
+2. Make a private repo, say `hiperglm-final-proj` (or any other suitable name of your choice), on your Github account;
+3. Change the URL of the remote `origin` to point to the private repo via `git remote set-url origin https://github.com/your_github_username/hiperglm-final-proj`;
+4. Invite the instructor and TAs as collaborators so that we can review your pull request.
+
+When you push to the remote with the above set-up, the content of your local git repo will show up in your private Github repo.
 
 
 # Task 1: Refactor the instructor's `hiperglm` package to use S3 methods for log-likelihood and derivative calculation
 
-Start by forking the instructor's version of the `hiperglm` repo found [here](https://github.com/aki-nishimura/hiperglm).
-Then make a `general-model` branch in which you will commit all your work.
+Make a `general-model` branch in which you will commit all your work.
 The repo as of [this commit](https://github.com/aki-nishimura/hiperglm/tree/logit-model-eigen-cleaned) should be roughly at the same stage of development as your version.
 The two subsequent commits set the stage for introducing a "regression model" S3 object and accompanying methods to handle the model-specific calculations required for fitting generalized linear models.
 
@@ -80,4 +97,5 @@ cat word_diff_out.txt | grep -e "^-[^-]" | wc -m | xargs # Num chars deleted
 
 # Submission
 
-Submit the completed assignment as a pull request to the instructor's `hiperglm` repo.
+Submit the completed assignment as a pull request from the `general-model` branch to `main/master` of your private `hiperglm` repo.
+Request a review from the instructor.
