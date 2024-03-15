@@ -27,6 +27,8 @@ What feature(s) of a modern CPU is (are) responsible for this?
 And where in the above videos is this explained?
 Provide a rough starting time point in (e.g. "19:18") of the discussion.
 
+**Answer:** I suppose something that could be responsible for this phenomenom is the time it takes to move data from RAM to the CPU (called a "bus" at 5:30 in the "Advanced CPU Designs" video).
+
 
 # Exercise 1: Coding on the edge &mdash; being responsible for your own safety in the C++ world
 
@@ -40,7 +42,7 @@ cat(readLines(file.path("src", "inner_prod.cpp")), sep = '\n')
 
 Ignoring the bug for the moment, run the code below and see what you get.
 
-```{r, eval=FALSE}
+```{r, eval=TRUE}
 Rcpp::sourceCpp(file.path("src", "inner_prod.cpp"))
 
 vec_size <- 1023L
@@ -53,7 +55,7 @@ Still ignoring the bug, run the code below that calculates the same inner produc
 I mean, whether there is a bug or not, an output of a deterministic calculation should surely be the same each time?
 Try running the code chunk multiple times. 
 
-```{r, error=TRUE, eval=FALSE}
+```{r, error=TRUE, eval=TRUE}
 first_val <- inner_prod(v, w)
 
 for (i in 1:10^6) {
@@ -70,6 +72,9 @@ for (i in 1:10^6) {
 **Questions:**
 What behavior do you observe above? How do you explain it?
 
+**Answers:** Sometimes the matrix multiplication yields 1022 (or a number close to it like 1022.0000004141), other times Inf, other times a large number like 3.86e28. I would have hoped the result would be consistently 1023 since that is the size of the matrix. Looking at `inner_prod.cpp`, I think what is going on is that the for loop is using 1-indexing but Cpp uses 0-indexing, so the for loop is skipping the first index of the vector and going past the last index of the vector (at which it may be pulling some crazy value like Inf).
+<!-- I have written a 0-indexed function called `correct_inner_prod()` in `matmat.cpp`. -->
+
 
 ## Part B: Sloppy matrix-matrix multiplication
 
@@ -84,7 +89,7 @@ cat(readLines(file.path("src", "gemm_eigen_unprotected.cpp")), sep = '\n')
 
 Run the code below using the above "unprotected" matrix-matrix multiplication.
 
-```{r, eval=FALSE}
+```{r, eval=TRUE}
 Rcpp::sourceCpp(file.path("src", "gemm_eigen_unprotected.cpp"))
 
 A <- matrix(1, nrow = 4, ncol = 1024)
@@ -95,6 +100,10 @@ dgemm_eigen(A, B)
 
 **Questions:**
 What do you get as an output? What if you re-run the code chunk? Explain the observed behavior.
+
+**Answers::** The first time I ran this chunk, I got a 4x2 matrix where the first column had all entries equal to 1024 and the second column had all entries equal to 3.389e243. On subsequent runs, I got 4x2 matrices where the first column had all entries equal to 1024 while the second column had all entries equal to a really positive number or a really negative number or NaN.
+
+My guess for what is going on is that Rcpp tries to produce a 4x2 matrix (because the outer dimensions of A and B are 4 and 2, respectively) but runs out of data in B in the following way --- my guess is that when computing any entry in the first column of A\*B, the program is taking all 1024 entries in the corresponding row of A and all 1024 entries in B (i.e., both rows of B), which is why the first column of A is 1024. Then, the program runs out of values in B to compute the second column of A\*B, so it uses really positive or really negative numbers (from somewhere in its memory, maybe a junk area?).
 
 ## Part C: Consequence of "tresspassing"
 
@@ -114,12 +123,17 @@ axpy_c(a, x, y)
 
 Now try running the code below; it should execute just fine unlike the above one.
 
-```{r, eval=FALSE}
+```{r, eval=TRUE}
+Rcpp::sourceCpp(file.path("src", "axpy_c.cpp"), rebuild = TRUE)
+
 a <- 3.14
 x <- rep(1, 1e3L)
 y <- rep(0.00159, 1e7L)
 
-axpy_c(a, x, y)
+result <- axpy_c(a, x, y)
+head(result)
+tail(result)
+table(result)
 ```
 
 **Questions/To-do's:**
@@ -128,6 +142,22 @@ axpy_c(a, x, y)
 Running the same piece of code from an R console (instead of an RStudio session) should give you more information on what actually happens.
 * Why does the second code chunk run fine?
 * Modify `axpy_c.cpp` to make the function safer to use.
+
+**Answers:**
+
+When I try running the first code chunk, R encounters a fatal error and aborts the session. I believe this happens because `axpy_c.cpp` is trying to access an index of y that is out of bounds, since x has length 10^7 while y has length 10^3.
+
+The second code chunk runs fine because, x has length 10^3 while y has length 10^7, so only the first 10^3 entries of y are modified.
+
+I wrote a new function in `axpy_c.cpp` called `safe_axpy_c()` and tested it in the chunk below.
+
+```{r my-axpy, eval=FALSE}
+a <- 3.14
+x <- rep(1, 1e7L)
+y <- rep(0.00159, 1e3L)
+
+result <- safe_axpy_c(a, x, y)
+```
 
 
 # Exercise 2: Multiplying two matrices ain't quite what you learned in your linear algebra class
@@ -143,11 +173,11 @@ So a conceptually natural way to implement a matrix multiplication is looping th
 Implement a matrix-matrix multiplication based on this approach as `row_col_dot_matmat` using the starter code provided in the `matmat.cpp` file.
 Then check that its output agrees with the base R matrix multiplication.
 
-```{r, eval=FALSE}
+```{r, eval=TRUE}
 Rcpp::sourceCpp(file.path("src", "matmat.cpp"))
 ```
 
-```{r, eval=FALSE}
+```{r, eval=TRUE}
 n_row_out <- 1024L
 n_inner <- 2048L
 n_col_out <- 512L
@@ -155,8 +185,13 @@ A <- matrix(rnorm(n_row_out * n_inner), nrow = n_row_out, ncol = n_inner)
 B <- matrix(rnorm(n_inner * n_col_out), nrow = n_inner, ncol = n_col_out)
 ```
 
-```{r}
+```{r row-matmat}
+Rcpp::sourceCpp(file.path("src", "matmat.cpp"))
+
 # Check the output of `row_col_dot_matmat`
+result <- row_col_dot_matmat(A, B)
+result_baseR <- A %*% B
+identical(result, result_baseR)
 ```
 
 ## Part B: Going one step beyond your linear algebra class
@@ -167,15 +202,27 @@ Recalling from lecture that "column-oriented" matrix-vector multiplication is mo
 Then compare performances of `row_col_dot_matmat` and `col_oriented_matmat` (but only after you test your column-oriented implementation).
 Which one is faster and why?
 
-```{r}
-# Check and benchmark
+**Answer**: Column-oriented implementation should be faster because R stores matrices by columns, so data motion is more efficient that way.
+
+I don't know why my `bench::mark()` isn't working even though my `col_oriented_matmat()` and `row_col_dot_matmat()` functions both work and match up with `%*%`.
+
+```{r col-matmat}
+Rcpp::sourceCpp(file.path("src", "matmat.cpp"))
+
+# Check
+result <- col_oriented_matmat(A, B)
+identical(result, result_baseR)
+
+# Benchmark
+# bench::mark(row_col_dot_matmat(A, B))
+# bench::mark(col_oriented_matmat(A, B))
 ```
 
 Also compare with performance of the matrix-matrix multiplication via `%*%` in R, which uses whatever the BLAS library your R was configured with.
 (You can find out which BLAS library R is using via `sessionInfo()` or `extSoftVersion()`.) 
 
 ```{r}
-# Fill in
+bench::mark(A %*% B)
 ```
 
 When benchmarking alternative implementations (or alternative algorithms, more generally), keep in mind that the relative performance depends significantly on the size of a test problem.
@@ -236,14 +283,28 @@ The few really old nodes on JHPCE do not support AVX and FMA, so switch to anoth
 You can check supports for AVX and FMA from the output of `lscpu`; try `lscpu | grep avx` and `lscpu | grep fma`.
 
 
-```{r, warning=FALSE, eval=FALSE}
+```{r, warning=FALSE, eval=TRUE}
 # Import `dgemm_eigen()` from lecture
 Rcpp::sourceCpp(file.path("..", "lecture", "src", "gemm_eigen.cpp"))
+
+# Import my dgemv_eigen() function
+Rcpp::sourceCpp(file.path("src", "dgemv_eigen.cpp"))
 ```
 
-```{r, eval=FALSE}
-# Benchmark
-dgemm_eigen(A, B)
+```{r, eval=TRUE}
+# Benchmark RcppEigen implementation of matrix matrix multiplication
+bench::mark(dgemm_eigen(A, B))
+
+# Check RcppEigen implementation of matrix vector multiplication
+v <- rnorm(n_inner)
+result <- dgemv_eigen(A, v)
+result_baseR <- A %*% v
+all(abs(result - result_baseR) < 1e-10)
+all(abs((result - result_baseR) / result_baseR) < 1e-10)
+
+# Benchmark RcppEigen implementation of matrix vector multiplication vs. base R
+bench::mark(A %*% v)
+bench::mark(dgemv_eigen(A, v))
 ```
 
 
