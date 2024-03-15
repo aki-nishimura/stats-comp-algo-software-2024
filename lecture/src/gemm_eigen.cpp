@@ -3,6 +3,7 @@
 
 using Eigen::Map;
 using Eigen::MatrixXd;  
+using Eigen::VectorXd;
 
 // [[Rcpp::export]]
 MatrixXd dgemm_eigen(Map<MatrixXd> A, Map<MatrixXd> B) {
@@ -13,4 +14,12 @@ MatrixXd dgemm_eigen(Map<MatrixXd> A, Map<MatrixXd> B) {
       // In C++, you are responsible for your own safety
   }
   return A * B;
+}
+
+// [[Rcpp::export]]
+VectorXd dgemv_eigen(Map<MatrixXd> A, Map<VectorXd> v) {
+  if (A.cols() != v.size()) {
+    Rcpp::stop("Incompatible matrix and vector dimensions.");
+  }
+  return A * v;
 }

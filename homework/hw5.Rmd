@@ -27,6 +27,14 @@ What feature(s) of a modern CPU is (are) responsible for this?
 And where in the above videos is this explained?
 Provide a rough starting time point in (e.g. "19:18") of the discussion.
 
+**My Answers:**
+The `sign_via_if()` Rcpp function can have its execution speed influenced by many features of a modern CPU.
+
+First, **branch prediction** plays a significant role. This feature allows the CPU to anticipate the outcome of a conditional operation, such as one of the if-else statements in the `sign_via_if()` function, before it happens. When the CPU's prediction aligns with the actual outcome, it can proceed with executing instructions without delay, enhancing the execution speed. However, if the prediction is incorrect, known as a "branch misprediction," the CPU must discard the prematurely-executed instructions and wait for the conditional operation to complete, which slows down the execution. This concept is discussed in the "Advanced CPU Designs" video, starting around the 8:53 mark.
+
+Second, the **caching** mechanism of CPUs can also affect the execution speed. CPUs use caches to quickly access data that is frequently used or expected to be used soon. If the data required for an operation is already in the cache, referred to as a "cache hit," the CPU can access it faster than if it has to fetch it from the main memory, a "cache miss." The distribution of values in the input vector to `sign_via_if()` could influence the cache hit rate, and consequently, the execution speed. The concept of caching is introduced around the 3:16 mark in the "Advanced CPU Designs" video.
+
+Last, **instruction pipelining** can influence the execution speed. This technique enhances the CPU's instruction throughput by dividing the processor's work into a series of independent steps, each of which can be executed by different processor units simultaneously. This concept is explained starting around the 5:34 mark in the "Advanced CPU Designs" video.
 
 # Exercise 1: Coding on the edge &mdash; being responsible for your own safety in the C++ world
 
@@ -70,6 +78,8 @@ for (i in 1:10^6) {
 **Questions:**
 What behavior do you observe above? How do you explain it?
 
+**My Answers:**
+The final outcome of the inner product computation is inconsistent with earlier results, and the product's value alters each time the code is executed. This inconsistency arises because the index variable `i` is incorrectly initialized at 1 instead of 0, and it iterates up to `v.size()` rather than `v.size() - 1` within the loop. In the context of C++ and Rcpp, array indices start from 0. Consequently, an error occurs when attempting to access an invalid element at `v[i]` where `i` equals `v.size()`.
 
 ## Part B: Sloppy matrix-matrix multiplication
 
@@ -95,6 +105,9 @@ dgemm_eigen(A, B)
 
 **Questions:**
 What do you get as an output? What if you re-run the code chunk? Explain the observed behavior.
+
+**My Answers:**
+The result is a 4 by 2 matrix, where the first column is a repetition of 1024 four times, and the second column generates random numbers each time the code is executed. Matrix A has dimensions 4 $\times$ 1024, and matrix B has dimensions 512 $\times$ 2. When the matrices' dimensions are not suitable for multiplication, the output defaults to a shape with the same number of rows as the left matrix and the same number of columns as the right matrix. Both matrices A and B are stored in a contiguous memory block in column-major order. Therefore, when computing the dot product of each row of A (length = 1024) with the first column of B (length = 512), the computer accesses a 1024-length vector of 1's for matrix B (since B is stored and allocated in a 1024-length vector), leading to a repeated 1024 for the first column in the output. However, when performing the dot product of A's rows with B's second column, the computer accesses a 1024-length vector, the first half of which is stored as B's second column, and the second half is undefined due to unallocated space, resulting in a random and incorrect second column in the output.
 
 ## Part C: Consequence of "tresspassing"
 
@@ -129,6 +142,8 @@ Running the same piece of code from an R console (instead of an RStudio session)
 * Why does the second code chunk run fine?
 * Modify `axpy_c.cpp` to make the function safer to use.
 
+**My Answers:**
+The R session terminated when executing the first code chunk above. This occurred because the y vector's length is 1e3, while the x vector's length is 1e7. This discrepancy causes the loop in `axpy_c()` to try to access memory beyond y's boundaries when operating on indices of x that exceed 1e3. The second code segment executed successfully because the x vector and y vector have lengths of 1e3 and 1e7, respectively. The operation is performed within the confines of the x and y vectors in the loop, with the first 1e3 elements of y being modified and the remaining elements remaining unchanged. I've modified `axpy_c.cpp` to make the function safer to use.
 
 # Exercise 2: Multiplying two matrices ain't quite what you learned in your linear algebra class
 
@@ -143,11 +158,11 @@ So a conceptually natural way to implement a matrix multiplication is looping th
 Implement a matrix-matrix multiplication based on this approach as `row_col_dot_matmat` using the starter code provided in the `matmat.cpp` file.
 Then check that its output agrees with the base R matrix multiplication.
 
-```{r, eval=FALSE}
+```{r, eval=TRUE}
 Rcpp::sourceCpp(file.path("src", "matmat.cpp"))
 ```
 
-```{r, eval=FALSE}
+```{r, eval=TRUE}
 n_row_out <- 1024L
 n_inner <- 2048L
 n_col_out <- 512L
@@ -157,7 +172,13 @@ B <- matrix(rnorm(n_inner * n_col_out), nrow = n_inner, ncol = n_col_out)
 
 ```{r}
 # Check the output of `row_col_dot_matmat`
+r_result <- A %*% B
+cpp_row_result <- row_col_dot_matmat(A, B)
+all.equal(r_result, cpp_row_result)
 ```
+
+**My Answers:**
+Please see `matmat.cpp` for my implementation. The outputs from the base R matrix multiplication and `row_col_dot_matmat` in the code chunk above agree.
 
 ## Part B: Going one step beyond your linear algebra class
 
@@ -169,19 +190,37 @@ Which one is faster and why?
 
 ```{r}
 # Check and benchmark
+cpp_col_result <- col_oriented_matmat(A, B)
+all.equal(r_result, cpp_col_result)
+
+library(microbenchmark)
+bench::mark(
+  row_col_dot_matmat(A, B)
+)
+bench::mark(
+  col_oriented_matmat(A, B)
+)
 ```
 
 Also compare with performance of the matrix-matrix multiplication via `%*%` in R, which uses whatever the BLAS library your R was configured with.
 (You can find out which BLAS library R is using via `sessionInfo()` or `extSoftVersion()`.) 
 
 ```{r}
-# Fill in
+bench::mark(
+  A %*% B
+)
 ```
 
 When benchmarking alternative implementations (or alternative algorithms, more generally), keep in mind that the relative performance depends significantly on the size of a test problem.
 It is important, therefore, to benchmark your implementation/algorithm on problems of realistic size. 
 See the benchmark results of linear algebra libraries from [the Eigen development team](https://eigen.tuxfamily.org/index.php?title=Benchmark) and the results under "Gcbd benchmark" in [this github repository](https://github.com/andre-wojtowicz/blas-benchmarks), for example.
 
+**My Answers:**
+Please see `matmat.cpp` for my implementation.
+
+The `col_oriented_matmat` method (median = 737ms) outperforms the `row_col_dot_matmat` method (median = 5.05s) because matrix multiplication tends to be slower when using row operations, as matrices are stored as column vectors. When a row operation is performed, the processor accesses memory in a non-sequential manner, which can slow down the process due to the need to retrieve data from various memory locations.
+
+The base R matrix multiplication operator `%*%` (median = 744ms) is marginally slower than the `col_oriented_matmat` method implemented in Rcpp. This could be attributed not only to the efficient column-oriented matrix-vector multiplication used in the latter algorithm but also to the fact that C++ code can be optimized by the compiler for more efficient execution.
 
 ## Part C: Doing it the right way
 
@@ -238,14 +277,93 @@ You can check supports for AVX and FMA from the output of `lscpu`; try `lscpu | 
 
 ```{r, warning=FALSE, eval=FALSE}
 # Import `dgemm_eigen()` from lecture
-Rcpp::sourceCpp(file.path("..", "lecture", "src", "gemm_eigen.cpp"))
+Rcpp::sourceCpp(file.path("..", "lecture", "src", "gemm_eigen.cpp"), rebuild = TRUE)
+Rcpp::sourceCpp(file.path("src", "matmat.cpp"), rebuild = TRUE)
 ```
 
 ```{r, eval=FALSE}
 # Benchmark
-dgemm_eigen(A, B)
+bench::mark(
+  dgemm_eigen(A, B)
+)
+bench::mark(
+  row_col_dot_matmat(A, B)
+)
+bench::mark(
+  col_oriented_matmat(A, B)
+)
 ```
 
+**My Answers:**
+From the table below, it's clear that `dgemm_eigen()` consistently outperforms the other two algorithms, with the column-wise operation coming in second and the row operation trailing behind. Without any optimization options enabled, `dgemm_eigen()` operates at a slower pace (median = 203ms), but this speed significantly improves when SSE (median = 112ms) is activated. The performance further enhances when either AVX2 (median = 57.9ms) or FMA (median = 39.9ms) is turned on, with FMA proving to be the most effective in speeding up `dgemm_eigen()`. Interestingly, the execution times for `col_oriented_matmat()` and `row_col_dot_matmat()` don't show substantial improvements with any of the optimization options.
+
+| Flag(s) | `dgemm`(median ms) | `row`(median s) | `col`(median ms) |
+|------|------|------|------|
+| None | 203  | 5.13 | 769 |
+| SSE  | 112  | 3.12 | 517 |
+| AVX2  | 57.9 | 2.65 | 498 |
+| FMA  | 39.9 | 3.65 | 514 |
+| SSE, AVX2 | 50.3 | 3.28 | 516 |
+| AVX2, FMA | 39.6 | 3.69 | 529 |
+| SSE, FMA | 39.7 | 3.07 | 509 |
+| SSE, AVX2, FMA | 42.5 | 3.21 | 517 |
+
+Please see `gemm_eigen.cpp` for my implementation of `dgemv_eigen()`. As shown in the table below, the execution times for `dgemv_eigen()` don't show substantial improvements with any of the optimization options, unlike the matrix-matrix multiplication algorithm `dgemm_eigen()`.
+
+Matrix-matrix multiplication is a highly parallelizable operation. It involves the multiplication of each element in a row of the first matrix with each element in a column of the second matrix, and these multiplications can be performed simultaneously (i.e., independently). This is where hardware optimization options like SSE, AVX2, and FMA can significantly speed up computation, as they enable the use of SIMD (Single Instruction, Multiple Data) operations (which allow multiple data points to be processed at once).
+
+On the other hand, matrix-vector multiplication is less parallelizable. It involves the multiplication of each element in a row of the matrix with a corresponding element in the vector, and these multiplications are then summed to produce a single result. While there is some level of parallelism (or independence) in this operation, it's not as high as in matrix-matrix multiplication. Also, in general, there are less computations in matrix-vector multiplication compared to matrix-matrix multiplication. These reasons are why the performance improvements from hardware optimization options are not as pronounced for `dgemv_eigen()` as they are for `dgemm_eigen()`.
+
+```{r, eval=FALSE}
+v <- rnorm(n = 2048, mean = 5, sd = 2)
+  
+bench::mark(
+  dgemv_eigen(A, v)
+)
+bench::mark(
+  row_col_dot_matmat(A, as.matrix(v))
+)
+bench::mark(
+  col_oriented_matmat(A, as.matrix(v))
+)
+```
+
+| Flag(s) | `dgemv`(median $\mu$s) | `row`(median ms) | `col`(median ms) |
+|------|------|------|------|
+| None | 823 | 14 | 1.86 |
+| SSE  | 801  | 17.1 | 1.92 |
+| AVX2  | 755 | 12.4 | 1.90 |
+| FMA  | 723 | 16 | 1.78 |
+| SSE, AVX2 | 747 | 15.3 | 1.65 |
+| AVX2, FMA | 692 | 19.1 | 1.84 |
+| SSE, FMA | 741 | 16.9 | 1.82 |
+| SSE, AVX2, FMA | 678 | 17.4 | 1.76 |
+
+I also ran the experiments above on a JHPCE node (Compute-153 with CPU model Intel(R) Xeon(R) Gold 6338 CPU @ 2.00GHz) with the following results:
+
+| Flag(s) | `dgemm`(median ms) | `row`(median s) | `col`(median ms) |
+|------|------|------|------|
+| None | 198  | 4.89 | 765 |
+| SSE  | 102  | 3.01 | 492 |
+| AVX2  | 49.8 | 2.45 | 467 |
+| FMA  | 27.9 | 2.66 | 499 |
+| SSE, AVX2 | 41.5 | 3.07 | 488 |
+| AVX2, FMA | 23.3 | 3.42 | 471 |
+| SSE, FMA | 22.6 | 2.78 | 454 |
+| SSE, AVX2, FMA | 24.4 | 2.55 | 423 |
+
+| Flag(s) | `dgemv`(median $\mu$s) | `row`(median ms) | `col`(median ms) |
+|------|------|------|------|
+| None | 798 | 13.2 | 1.73 |
+| SSE  | 764  | 11 | 1.79 |
+| AVX2  | 689 | 9.48 | 1.71 |
+| FMA  | 691 | 9.52 | 1.68 |
+| SSE, AVX2 | 647 | 9.44 | 1.57 |
+| AVX2, FMA | 625 | 9.21 | 1.76 |
+| SSE, FMA | 643 | 9.22 | 1.65 |
+| SSE, AVX2, FMA | 609 | 10.1 | 1.56 |
+
+Here, we can observe that the performances of both `dgemm_eigen()` and  `dgemv_eigen()` are improved by the hardware optimization options more on the JHPCE than on my own computer. This is likely due to the fact that the JHPCE node I was working on has a more modern CPU with better support for these optimization options.
 
 # Exercise 3: Continuing development of `hiperglm` &mdash; optimizing its performance via RcppEigen
 
@@ -276,3 +394,5 @@ Below you find tips on how to use Rcpp(Eigen) which, combined with the lecture m
     But then RcppEigen is just an Rcpp wrapper of Eigen, so you might just have to refer to Eigen's documentation for further details. 
 3. Incorporate the least squares solver via Eigen's QR into the IWLS algorithm for finding MLE.
 Make it the default option and check that all the tests still pass when using the QR-based solver.
+
+Link to pull request: <https://github.com/acolum/hiperglm/pull/5>
