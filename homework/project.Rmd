@@ -51,7 +51,7 @@ The repo as of [this commit](https://github.com/aki-nishimura/hiperglm/tree/logi
 The two subsequent commits set the stage for introducing a "regression model" S3 object and accompanying methods to handle the model-specific calculations required for fitting generalized linear models.
 
 The model-specific calculations are currently handled by functions named `calc_{linear,logit}_*()` for linear and logistic models.
-Replace the functions `calc_{linear,logit}_loglik()`, `calc_{linear,logit}_grad()`, and `calc_logit_loglink_deriv()` with S3 generics `calc_loglik()` and `calc_loglink_deriv()` and accompanying S3 methods.
+Replace the functions `calc_{linear,logit}_loglik()`, `calc_{linear,logit}_grad()`, and `calc_logit_loglink_deriv()` with S3 generics `calc_loglik()` and `calc_loglink_deriv()` and accompanying S3 methods, where `calc_loglink_deriv()` returns the derivative of the logarithm of the given model's link function.
 You additionally need a `calc_grad()` function, but this one should be just a regular function and _not_ an S3 generic.
 Use the feature `function(x, y, z, ...)` to support a variable number of arguments in `calc_loglik()`, `calc_grad()`, and  `calc_loglink_deriv()`, which allows you to account for the additional noise variance parameter required for linear model. 
 Refer to [the chapter on S3](https://adv-r.hadley.nz/s3.html) of Hadley's Advanced R if you need a refresher on the topic.
@@ -74,7 +74,9 @@ test-driven development, testing code at different scales from smallest logical 
 
 You will be evaluated on the quality of final code as well as development strategy, the latter of which must be reflected on your git history.
 
-Given the collaborative development aspect of this assignment, you are also required to re-use as much of the existing code as possible and to ensure consistency of what you add with the existing code.
+Given the collaborative development aspect of this assignment, you are also asked to re-use as much of the existing code as appropriate and to ensure consistency of what you add with the existing code.
+(On the other hand, you should feel free to change whatever deserves to be changed; 
+you are just asked not to unnecessarily butcher the provided code.)
 This is to emulate a real-life setting of contributing to an existing open-source project, in which it is essential to respect the existing designs and styles the team has established.
 
 To provide one reference point to judge how much of the code should be re-used, a command `git diff --stat pre-task-one..post-task-1` tells me (the instructor) that my personal attempt at Task 1 required 67 lines added and 78 deleted, with most of the additions and deletions being partially modifying the lines (which git still counts as deleting a line and adding a new one).
