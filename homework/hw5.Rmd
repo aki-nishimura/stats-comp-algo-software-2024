@@ -27,6 +27,18 @@ What feature(s) of a modern CPU is (are) responsible for this?
 And where in the above videos is this explained?
 Provide a rough starting time point in (e.g. "19:18") of the discussion.
 
+**Answer:**
+
+The third video **Advanced CPU Designs** explains this when it talks about instruction piplining (5:35), dependency of the instructions (7:15), and conditional jump instructions (7:50).
+
+For each instruction, the fetch-decode-execute(-store) cycle is needed. Moreover, different stages in a cycle use a different part of the CPU. To increase the processing speed, CPU uses instruction piplining to parallelize the instruction cycles so that different stages of different instructions can be performed simultaneously.
+
+However, if there are dependencies among the instructions, the CPU may need to stall the pipeline to avoid problems. This can cause a decrease in the speed.
+
+In particular, if-else statements are complied as conditional jump instructions, and the execution flow depends on the evaluation of the condition value. Modern CPU can perform branch prediction and speculative execution, where it guesses the evaluation result and executes according to the guesses. This enables the pipeline to run efficiently if the guess is correct. When a branch misprediction occurs, a pipeline flush is needed and the pipeline slows down to be refilled with the correct instructions. In the case when there are multiple if-else statements, the probability of branch mispredictions increases, which increases the pipeline stall time and further slows down the program.
+
+In the `sign_via_if()` example, the correctness of the branch prediction depends on the value of the input vector. A correct branch prediction results in a fast speed, whereas a branch misprediction results in a slow speed. Thus, the execution speed depends on the input.
+
 
 # Exercise 1: Coding on the edge &mdash; being responsible for your own safety in the C++ world
 
@@ -70,6 +82,12 @@ for (i in 1:10^6) {
 **Questions:**
 What behavior do you observe above? How do you explain it?
 
+**Answer:**
+
+The inner product result changes. This is not as expected because the inner product calculation is deterministic, and the result should be the same from one run to another. 
+
+Explain: There is an off-by-one error in the loop. The loop should start from 0 and end at v.size()-1 because C++ uses zero-based indexing. The array values are stored from `v[0]` to `v[v.size()-1]`, and `v[v.size()]` accesses an invalid address beyond the last element. If `v[v.size()]` is accessible, then the result depends on the value stored at that address. It can be either a garbage value or a value belongs to some other objects. The value may be either consistent or not from one run to the other because the address of the input array may change and the value at the address beyond the array element may change. Thus, the calculation result changes and the behavior is undefined. If `v[v.size()]` is not accessible, then a segmentation fault occurs and the program halts. This can happen if the program tries to access memory beyond the bound of an allocated memory block.
+
 
 ## Part B: Sloppy matrix-matrix multiplication
 
@@ -95,6 +113,14 @@ dgemm_eigen(A, B)
 
 **Questions:**
 What do you get as an output? What if you re-run the code chunk? Explain the observed behavior.
+
+**Answer:**
+
+I restarted the R session and ran the code. For the first time, I got a 4 by 2 matrix, where values in the first column are 1024 and values in the second column are NaN. I reran the code for multiple times. Values in the first column stays the same. However, values in the second column may change from one run to another, and all rows in the same column have the same value.
+
+Explain: The function has undefined behavior due to incompatible matrix dimensions. `Map<MatrixXd>` passes the matrix input by reference. The multiplication operation assumes dimension compatibility and accesses the values through the address directly without checking whether the address belongs to the input matrix. Though the function behavior is undefined, we can guess about how the calculation is carried out.
+
+It is possible that the multiplication operation performs a matrix multiplication between a 4 by 1024 matrix and a 1024 by 2 matrix using the given addresses. Elements in the first matrix are accessed correctly and accurately. For the second matrix, since C++ stores matrix by columns, both rows in the second matrix are interpreted as the first column of the matrix, and the next unpredictable 1024 memory slots are treated as values in the second column. Thus, the resulting matrix always have 1024 in its first column, and entries in the second column are the same and can be any arbitrary values. When the R session is just restarted, it is possible that the unpredictable 1024 memory slots are undefined or the calculation result happens to be the bit representation of NaN values, leading to NaNs in the second column in the first run.
 
 ## Part C: Consequence of "tresspassing"
 
@@ -129,6 +155,14 @@ Running the same piece of code from an R console (instead of an RStudio session)
 * Why does the second code chunk run fine?
 * Modify `axpy_c.cpp` to make the function safer to use.
 
+**Answer:**
+
+The R session was terminated due to a fatal error when I ran the first code chunk. This is because the length of x is much longer than that of y. In the loop of `axpy_c()`, the index `i` runs from 0 to the x.size() - 1. When the program accesses `y[i]` for some `i` beyond the bounds of the vector y, invalid address access occurs. The out-of-bounds access, including accessing protected memory and triggering hardware exceptions, can lead to undefined behavior, which in this case causes the R session to terminate.
+
+The second code chunk runs fine because the size of vector x is smaller than the size of vector y, so the index `i` neither exceeds the size of x nor y. The program never accesses any invalid address. Thus, the calculation is well defined. 
+
+`axpy_c.cpp` is modified with an additional check that vector x and y must have the same length.
+
 
 # Exercise 2: Multiplying two matrices ain't quite what you learned in your linear algebra class
 
@@ -143,11 +177,11 @@ So a conceptually natural way to implement a matrix multiplication is looping th
 Implement a matrix-matrix multiplication based on this approach as `row_col_dot_matmat` using the starter code provided in the `matmat.cpp` file.
 Then check that its output agrees with the base R matrix multiplication.
 
-```{r, eval=FALSE}
+```{r, eval=TRUE}
 Rcpp::sourceCpp(file.path("src", "matmat.cpp"))
 ```
 
-```{r, eval=FALSE}
+```{r, eval=TRUE}
 n_row_out <- 1024L
 n_inner <- 2048L
 n_col_out <- 512L
@@ -156,7 +190,10 @@ B <- matrix(rnorm(n_inner * n_col_out), nrow = n_inner, ncol = n_col_out)
 ```
 
 ```{r}
-# Check the output of `row_col_dot_matmat`
+# check correctness
+result_mat_rcpp = row_col_dot_matmat(A, B)
+result_mat_base = A %*% B
+are_all_close(result_mat_rcpp, result_mat_base)
 ```
 
 ## Part B: Going one step beyond your linear algebra class
@@ -167,15 +204,72 @@ Recalling from lecture that "column-oriented" matrix-vector multiplication is mo
 Then compare performances of `row_col_dot_matmat` and `col_oriented_matmat` (but only after you test your column-oriented implementation).
 Which one is faster and why?
 
+**Answer:** From the benchmark below, we see that `col_oriented_matmat` is faster.
+In `row_col_dot_matmat`, the point loops over one row in matrix A and one column in matrix B to obtain one element in the resulting matrix. Since C++ matrices are column-oriented and the size of the input matrices is relatively large, the looping through a row in matrix A results in many cache misses and requires reloading of the relevant data chunk into the cache. Furthermore, this many cash misses are repeated for the calculation of every element in the resulting matrix, which dramatically slows down the computation. On the other hand, `col_oriented_matmat` only loops through each column, resulting in much fewer cache misses and a faster speed.
+
+Compared with matrix-matrix multiplication via `%*%` in R, `%*%` is the fastest, and the speed of `col_oriented_matmat` is close to `%*%` operation.
+
+As shown below, the current R installation uses the default, unoptimized BLAS library.
+
+sessionInfo() output:
+
+R version 4.3.1 (2023-06-16 ucrt)
+Platform: x86_64-w64-mingw32/x64 (64-bit)
+Running under: Windows 11 x64 (build 22631)
+
+Matrix products: default
+
+
+locale:
+[1] LC_COLLATE=English_United States.utf8  LC_CTYPE=English_United States.utf8    LC_MONETARY=English_United States.utf8 LC_NUMERIC=C                          
+[5] LC_TIME=English_United States.utf8    
+
+time zone: America/New_York
+tzcode source: internal
+
+attached base packages:
+[1] stats     graphics  grDevices utils     datasets  methods   base     
+
+other attached packages:
+[1] RcppEigen_0.3.3.9.4 Rcpp_1.0.11        
+
+loaded via a namespace (and not attached):
+ [1] digest_0.6.33     utf8_1.2.4        fastmap_1.1.1     xfun_0.41         magrittr_2.0.3    glue_1.6.2        tibble_3.2.1      knitr_1.45        htmltools_0.5.6.1
+[10] pkgconfig_2.0.3   rmarkdown_2.25    lifecycle_1.0.3   profmem_0.6.0     cli_3.6.1         bench_1.1.3       fansi_1.0.5       vctrs_0.6.4       compiler_4.3.1   
+[19] rstudioapi_0.15.0 tools_4.3.1       evaluate_0.23     pillar_1.9.0      yaml_2.3.7        rlang_1.1.1      
+
+extSoftVersion() output:
+                     zlib                     bzlib                        xz                      PCRE                       ICU                       TRE 
+                 "1.2.13"      "1.0.8, 13-Jul-2019"                   "5.4.1"        "10.42 2022-12-11"                    "72.1" "TRE 0.8.0 R_fixes (BSD)" 
+                    iconv                  readline                      BLAS 
+              "win_iconv"  
+
 ```{r}
-# Check and benchmark
+# check correctness
+result_mat_rcpp = col_oriented_matmat(A, B)
+result_mat_base = A %*% B
+are_all_close(result_mat_rcpp, result_mat_base)
+```
+
+```{r}
+# benchmark
+bench::mark(
+  row_col_dot_matmat(A, B)
+)
+bench::mark(
+  col_oriented_matmat(A, B)
+)
+bench::mark(
+  A %*% B
+)
 ```
 
 Also compare with performance of the matrix-matrix multiplication via `%*%` in R, which uses whatever the BLAS library your R was configured with.
 (You can find out which BLAS library R is using via `sessionInfo()` or `extSoftVersion()`.) 
 
-```{r}
-# Fill in
+```{r, eval=FALSE}
+sessionInfo()
+extSoftVersion()
 ```
 
 When benchmarking alternative implementations (or alternative algorithms, more generally), keep in mind that the relative performance depends significantly on the size of a test problem.
@@ -239,13 +333,145 @@ You can check supports for AVX and FMA from the output of `lscpu`; try `lscpu | 
 ```{r, warning=FALSE, eval=FALSE}
 # Import `dgemm_eigen()` from lecture
 Rcpp::sourceCpp(file.path("..", "lecture", "src", "gemm_eigen.cpp"))
+Rcpp::sourceCpp(file.path("..", "lecture", "src", "gemv_eigen.cpp"))
+Rcpp::sourceCpp(file.path("src", "matmat.cpp"))
 ```
 
 ```{r, eval=FALSE}
-# Benchmark
-dgemm_eigen(A, B)
+# check correctness for dgemv_eigen
+v <- as.numeric(B[,1])
+result_vec_rcpp = dgemv_eigen(A, v)
+result_vec_base = A %*% v
+are_all_close(result_mat_rcpp, result_mat_base)
 ```
 
+```{r, eval=FALSE}
+n_row_out <- 1024L
+n_inner <- 2048L
+n_col_out <- 512L
+A <- matrix(rnorm(n_row_out * n_inner), nrow = n_row_out, ncol = n_inner)
+B <- matrix(rnorm(n_inner * n_col_out), nrow = n_inner, ncol = n_col_out)
+v <- as.numeric(B[,1])
+
+# Benchmark
+bench::mark(
+  dgemm_eigen(A, B)
+)
+bench::mark(
+  row_col_dot_matmat(A, B)
+)
+bench::mark(
+  col_oriented_matmat(A, B)
+)
+bench::mark(
+  A %*% B
+)
+bench::mark(
+  dgemv_eigen(A, v)
+)
+```
+
+**Results on my PC**
+```{r}
+SSE2 = c("Off", "On", "Off", "Off", "On", "On", "Off", "On")
+AVX2 = c("Off", "Off", "On", "Off", "On", "Off", "On", "On")
+FMA = c("Off", "Off", "Off", "On", "Off", "On", "On", "On")
+dgemm_eigen_t = c("301ms", "159ms", "85.7ms", "48.7ms", "83.8ms", "46.4ms", "47.4ms", "45.7ms")
+row_col_dot_matmat_t = c("43.4s", "42.6s", "42.5s", "43.3s", "44.1s", "43.2s", 
+                         "43.5s", "42s")
+col_oriented_matmat_t = c("882ms", "867ms", "846ms", "835ms", "852ms", "857ms", "835ms", "837ms")
+base_R_t = c("786ms", "809ms", "797ms", "759ms", "766ms", "789ms", "790ms", "792ms")
+dgemv_eigen_t = c("830us", "612us", "606us", "606us", "602us", "615us", "609us", "608us")
+data.frame(`SSE2(default)`=SSE2, AVX2=AVX2, FMA=FMA, 
+           dgemm_eigen=dgemm_eigen_t, row_col_dot_matmat=row_col_dot_matmat_t,
+           col_oriented_matmat=col_oriented_matmat_t, base_R=base_R_t,
+           dgemv_eigen=dgemv_eigen_t)
+```
+
+**Results on JHPCE**
+```{r}
+SSE = c("Off", "On", "Off", "Off", "On", "On", "Off", "On")
+AVX2 = c("Off", "Off", "On", "Off", "On", "Off", "On", "On")
+FMA = c("Off", "Off", "Off", "On", "Off", "On", "On", "On")
+dgemm_eigen_t = c("NA", "122ms", "55.2ms", "49.9ms", "56ms", "49.6ms", "47.8ms", "49.9ms")
+row_col_dot_matmat_t = c("NA", "17.1s", "17.1s", "17s", "17s", "17.1s", "16.9s", "17.1s")
+col_oriented_matmat_t = c("NA", "555ms", "558ms", "542ms", "556ms", "560ms", "549ms", "564ms")
+base_R_t = c("NA", "319ms", "320ms", "305ms", "306ms", "304ms", "329ms", "307ms")
+dgemv_eigen_t = c("NA", "576us", "506us", "459us", "532us", "485us", "466us", "443us")
+data.frame(SSE=SSE, AVX2=AVX2, FMA=FMA, 
+           dgemm_eigen=dgemm_eigen_t, row_col_dot_matmat=row_col_dot_matmat_t,
+           col_oriented_matmat=col_oriented_matmat_t, base_R=base_R_t,
+           dgemv_eigen=dgemv_eigen_t)
+```
+
+**CPU model**
+
+compute-152
+
+Architecture:            x86_64
+  CPU op-mode(s):        32-bit, 64-bit
+  Address sizes:         52 bits physical, 57 bits virtual
+  Byte Order:            Little Endian
+CPU(s):                  48
+  On-line CPU(s) list:   0-47
+Vendor ID:               AuthenticAMD
+  Model name:            AMD EPYC 9224 24-Core Processor
+    CPU family:          25
+    Model:               17
+    Thread(s) per core:  2
+    Core(s) per socket:  24
+    Socket(s):           1
+    Stepping:            1
+    Frequency boost:     enabled
+    CPU max MHz:         3706.0540
+    CPU min MHz:         1500.0000
+    BogoMIPS:            4999.88
+    Flags:               fpu vme de pse tsc msr pae mce cx8 apic sep mtrr pge mca cmov pat pse36 clflush mmx fxsr sse sse2 ht
+                         syscall nx mmxext fxsr_opt pdpe1gb rdtscp lm constant_tsc rep_good nopl nonstop_tsc cpuid extd_apicid
+                          aperfmperf rapl pni pclmulqdq monitor ssse3 fma cx16 pcid sse4_1 sse4_2 x2apic movbe popcnt aes xsav
+                         e avx f16c rdrand lahf_lm cmp_legacy svm extapic cr8_legacy abm sse4a misalignsse 3dnowprefetch osvw
+                         ibs skinit wdt tce topoext perfctr_core perfctr_nb bpext perfctr_llc mwaitx cpb cat_l3 cdp_l3 invpcid
+                         _single hw_pstate ssbd mba perfmon_v2 ibrs ibpb stibp vmmcall fsgsbase bmi1 avx2 smep bmi2 erms invpc
+                         id cqm rdt_a avx512f avx512dq rdseed adx smap avx512ifma clflushopt clwb avx512cd sha_ni avx512bw avx
+                         512vl xsaveopt xsavec xgetbv1 xsaves cqm_llc cqm_occup_llc cqm_mbm_total cqm_mbm_local avx512_bf16 cl
+                         zero irperf xsaveerptr rdpru wbnoinvd amd_ppin cppc arat npt lbrv svm_lock nrip_save tsc_scale vmcb_c
+                         lean flushbyasid decodeassists pausefilter pfthreshold avic v_vmsave_vmload vgif x2avic v_spec_ctrl a
+                         vx512vbmi umip pku ospke avx512_vbmi2 gfni vaes vpclmulqdq avx512_vnni avx512_bitalg avx512_vpopcntdq
+                          la57 rdpid overflow_recov succor smca fsrm flush_l1d
+Virtualization features:
+  Virtualization:        AMD-V
+Caches (sum of all):
+  L1d:                   768 KiB (24 instances)
+  L1i:                   768 KiB (24 instances)
+  L2:                    24 MiB (24 instances)
+  L3:                    64 MiB (4 instances)
+NUMA:
+  NUMA node(s):          1
+  NUMA node0 CPU(s):     0-47
+Vulnerabilities:
+  Itlb multihit:         Not affected
+  L1tf:                  Not affected
+  Mds:                   Not affected
+  Meltdown:              Not affected
+  Mmio stale data:       Not affected
+  Retbleed:              Not affected
+  Spec store bypass:     Mitigation; Speculative Store Bypass disabled via prctl
+  Spectre v1:            Mitigation; usercopy/swapgs barriers and __user pointer sanitization
+  Spectre v2:            Mitigation; Retpolines, IBPB conditional, IBRS_FW, STIBP always-on, RSB filling, PBRSB-eIBRS Not affe
+                         cted
+  Srbds:                 Not affected
+  Tsx async abort:       Not affected
+
+
+**Answer:**
+
+`dgemm_eigen` runs the slowest when no optimization option is set. All options have an effect on the processing speed. The improvement on performance from the most to the least are: FMA, AVX2, and SSE2 (the default SSE version on my PC). Both AVX2 and SSE2 enable the single instruction, multiple data (SIME) processing that allows vectorized computations, which is suitable for the repetitive operations in a matrix-matrix multiplication. Since AVX2 is an extension of SSE2, once AVX2 is set, adding SSE2 does not further improve the performance. FMA combines multiplication and addition operations into a single instruction. Once FMA is set, adding other options does not significantly improve the performance. This dominant effect might due to the fact that matrix multiplication is combinations of multiplications and additions, so adding FMA is most effective in boosting the performance. The same effect holds on JHPCE. 
+
+For the custom matrix-matrix multiplication functions `row_col_dot_matmat` and `col_oriented_matmat`, the optimization options do not have a significant influence on the performance. The same holds on JHPCE. This might due to the fact that unlike the Eigen library which utilizes vectorized instructions, the custom functions are implemented without explicitly using any low-level optimization. Thus, they are less likely to benefit from the SIMD instructions. Thus, the effect of optimization flags, if there are any, are not pronounced. The same holds for `base_R %*%` as the previous section shows that the current R installation uses the default, unoptimized BLAS library.
+
+On my PC, the performance of `dgemv_eigen` improves when any optimization flag is added. Different flags do not have different effects on the processing speed. On JHPCE, the pattern of effect for different flags are similar to those on `dgemm_eigen`. However, the amount of speed improvement for `dgemv_eigen` is much less than that of `dgemm_eigen` for both my PC and JHPCE. The optimization flags have a more pronounced effect on a matrix-matrix than on a matrix-vector multiplication. This is because a matrix-matrix multiplication involves multiple rows and multiple columns during the calculation. It is computationally more intensive and has a higher potential for parallelism. 
+
+On JHPCE, I didn't run the case when all flags are removed due to the error /jhpce/shared/community/core/conda_R/4.3/R/lib64/R/site-library/RcppEigen/include/Eigen/src/Core/AssignEvaluator.h:631:63: error: SSE register return with SSE disabled. It seems like SSE is required for the Eigen library if neither AVX2 nor FMA is set.
 
 # Exercise 3: Continuing development of `hiperglm` &mdash; optimizing its performance via RcppEigen
 
@@ -276,3 +502,5 @@ Below you find tips on how to use Rcpp(Eigen) which, combined with the lecture m
     But then RcppEigen is just an Rcpp wrapper of Eigen, so you might just have to refer to Eigen's documentation for further details. 
 3. Incorporate the least squares solver via Eigen's QR into the IWLS algorithm for finding MLE.
 Make it the default option and check that all the tests still pass when using the QR-based solver.
+
+**Link to the pull requests:** <https://github.com/Wenxuan-Lu/hiperglm/pull/5>
