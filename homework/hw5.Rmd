@@ -3,6 +3,9 @@ title: "Homework: Rcpp & Hardware-optimized computation"
 html_notebook:
   code_folding: none
   highlight: textmate
+editor_options: 
+  markdown: 
+    wrap: sentence
 ---
 
 ```{r setup, include=FALSE}
@@ -12,27 +15,27 @@ required_packages <- c("Rcpp", "RcppEigen")
 install_and_load_packages(required_packages)
 ```
 
-
 # Exercise 0:
 
-Watch the following videos from  Part "The Central Processing Unit (CPU): Crash Course Computer Science" from PBS to better understand how CPU works and what affects its computational performance:
+Watch the following videos from Part "The Central Processing Unit (CPU): Crash Course Computer Science" from PBS to better understand how CPU works and what affects its computational performance:
 
-* [The Central Processing Unit (CPU)](https://youtu.be/FZGugFqdr60?si=Cth8Sw_Z_p7Jwqvg)
-* [Instructions & Programs](https://youtu.be/zltgXvg6r3k?si=1jRqi8x6rfiQ4Gri)
-* [Advanced CPU Designs](https://youtu.be/rtAlC5J1U40?si=VCicsBN-GGMVX4ty)
+-   [The Central Processing Unit (CPU)](https://youtu.be/FZGugFqdr60?si=Cth8Sw_Z_p7Jwqvg)
+-   [Instructions & Programs](https://youtu.be/zltgXvg6r3k?si=1jRqi8x6rfiQ4Gri)
+-   [Advanced CPU Designs](https://youtu.be/rtAlC5J1U40?si=VCicsBN-GGMVX4ty)
 
-**Question:** 
-In class, we have observed that execution speed of the `sign_via_if()` Rcpp function can depend on the value of an input vector.
+**Question:** In class, we have observed that execution speed of the `sign_via_if()` Rcpp function can depend on the value of an input vector.
 What feature(s) of a modern CPU is (are) responsible for this?
 And where in the above videos is this explained?
 Provide a rough starting time point in (e.g. "19:18") of the discussion.
 
+This relates to minute 8 in video 3.
+In `sign_via_diff()`, the operations in the statement can be performed simultaneously as they are unconditional, however, if has a set of conditions that have to be checked first before performing the operation.
 
-# Exercise 1: Coding on the edge &mdash; being responsible for your own safety in the C++ world
+# Exercise 1: Coding on the edge — being responsible for your own safety in the C++ world
 
 ## Part A: Buggy inner product
 
-Below is a (buggy) Rcpp implementation of an inner product calculation. 
+Below is a (buggy) Rcpp implementation of an inner product calculation.
 
 ```{r, comment='', echo=FALSE}
 cat(readLines(file.path("src", "inner_prod.cpp")), sep = '\n')
@@ -51,7 +54,7 @@ inner_prod(v, w)
 
 Still ignoring the bug, run the code below that calculates the same inner product many times and checks whether the output remains the same.
 I mean, whether there is a bug or not, an output of a deterministic calculation should surely be the same each time?
-Try running the code chunk multiple times. 
+Try running the code chunk multiple times.
 
 ```{r, error=TRUE, eval=FALSE}
 first_val <- inner_prod(v, w)
@@ -67,16 +70,25 @@ for (i in 1:10^6) {
 }
 ```
 
-**Questions:**
-What behavior do you observe above? How do you explain it?
+**Questions:** What behavior do you observe above?
+How do you explain it?
 
+The behavior observed is that the calculation isn't deterministic as there was an instance of two runs not giving the same output.
+Subseq val returns the value Inf.
+The error is due to the way the for loop is initiated in C++.
+Indexing starts with 0 in C++, not 1.
+Therefore, wrongly initializing with 1, could lead to accessing memory allocated for a value that is not part of the vector and throw error.
+Additionally, using `i <= v.size()` will also have us accessing an element out of the vector.
+For example, given, length of input vectors = 1023.
+Iterating once more through ++i in the for loop has us accessing the 1024th element since we started at index 0, hence throwing an unexpected answer like Inf or -Inf.
+Once these errors are corrected to `for (int i = 0; i < v.size(); ++i)`, the code works.
 
 ## Part B: Sloppy matrix-matrix multiplication
 
 You have been told by the instructor that error-checking is particularly important in C++ and, in particular, that you should probably check for the dimension compatibility before you multiply two matrices in Rcpp(Eigen).
 But it would be fair enough to wonder: is that dude really worth listening to?
 I'll leave that for you to judge, but for this part of exercise let's consider what might happen if we remove such a safeguard from an Rcpp matrix-matrix multiplication.
-Below is an implementation without the dimension check: 
+Below is an implementation without the dimension check:
 
 ```{r, comment='', echo=FALSE}
 cat(readLines(file.path("src", "gemm_eigen_unprotected.cpp")), sep = '\n')
@@ -93,13 +105,13 @@ B <- matrix(1, nrow = 512, ncol = 2)
 dgemm_eigen(A, B)
 ```
 
-**Questions:**
-What do you get as an output? What if you re-run the code chunk? Explain the observed behavior.
+**Questions:** What do you get as an output?
+I get different results everytime I run it.
 
 ## Part C: Consequence of "tresspassing"
 
 The code below uses the `axpy_c()` function as seen in lecture.
-Run it and see what happens. 
+Run it and see what happens.
 (I am not sure if the behavior is reproducible 100% of time; if you don't observe anything striking, restart the R session and run the code chunk in a fresh state.)
 
 ```{r, eval=FALSE}
@@ -124,21 +136,21 @@ axpy_c(a, x, y)
 
 **Questions/To-do's:**
 
-* What happens when you run the first code chunk above and why? 
-Running the same piece of code from an R console (instead of an RStudio session) should give you more information on what actually happens.
-* Why does the second code chunk run fine?
-* Modify `axpy_c.cpp` to make the function safer to use.
+-   What happens when you run the first code chunk above and why? Running the same piece of code from an R console (instead of an RStudio session) should give you more information on what actually happens.
+-   Why does the second code chunk run fine?
+-   ***Everytime I run the first chunk, RStudio crashes. This could be because, in the first case the length of x was much longer than y. Once our iteration crosses the length of y, similar to exercise 2 part 1, we would be trying to reach memory that is not allocated for vector y hence making the program crash. This is not the case in the second code chunk as we're not accessing elements outside the vector.***
 
+<!-- -->
+
+-   Modify `axpy_c.cpp` to make the function safer to use.
 
 # Exercise 2: Multiplying two matrices ain't quite what you learned in your linear algebra class
 
 ## Part A: Paying homage to your linear algebra teacher
 
-As we all learned in our linear algebra class, the matrix product $\boldsymbol{C} = \boldsymbol{A} \boldsymbol{B}$ of $\boldsymbol{A} \in \mathbb{R}^{n \times k}$ and $\boldsymbol{B} \in \mathbb{R}^{k \times p}$ has its elements defined as
-$$C_{ij} = \sum_{\ell = 1}^k A_{i\ell} B_{\ell j}.$$
-So a conceptually natural way to implement a matrix multiplication is looping through each row of $\boldsymbol{A}$ and column of $\boldsymbol{B}$, taking inner products of the pairs of vectors:
+As we all learned in our linear algebra class, the matrix product $\boldsymbol{C} = \boldsymbol{A} \boldsymbol{B}$ of $\boldsymbol{A} \in \mathbb{R}^{n \times k}$ and $\boldsymbol{B} \in \mathbb{R}^{k \times p}$ has its elements defined as $$C_{ij} = \sum_{\ell = 1}^k A_{i\ell} B_{\ell j}.$$ So a conceptually natural way to implement a matrix multiplication is looping through each row of $\boldsymbol{A}$ and column of $\boldsymbol{B}$, taking inner products of the pairs of vectors:
 
-![](figure/matrix_multi_via_row_col_dot.gif){width=30%}
+![](figure/matrix_multi_via_row_col_dot.gif){width="30%"}
 
 Implement a matrix-matrix multiplication based on this approach as `row_col_dot_matmat` using the starter code provided in the `matmat.cpp` file.
 Then check that its output agrees with the base R matrix multiplication.
@@ -156,50 +168,73 @@ B <- matrix(rnorm(n_inner * n_col_out), nrow = n_inner, ncol = n_col_out)
 ```
 
 ```{r}
-# Check the output of `row_col_dot_matmat`
+identical(A%*%B,row_col_dot_matmat(A, B) )
+identical(A%*%B,col_oriented_matmat(A, B) )
 ```
 
 ## Part B: Going one step beyond your linear algebra class
 
-We now consider an alternative approach to matrix-matrix multiplications, noting that we can think of a matrix product $\boldsymbol{A} \cdot \boldsymbol{B}$ as each column of $\boldsymbol{B}$ multiplied by $\boldsymbol{A}$:
-$$\boldsymbol{A} \cdot \boldsymbol{B} = \big[ \, \boldsymbol{A} \boldsymbol{b}_1 \, | \, \ldots \, | \, \boldsymbol{A} \boldsymbol{b}_p \, \big].$$
-Recalling from lecture that "column-oriented" matrix-vector multiplication is more efficient than "row-oriented" one for R matrices, implement `col_oriented_matmat` (in `matmat.cpp`) that loops through each column of $\boldsymbol{B}$ applying the column-oriented matrix-vector multiplication.
+We now consider an alternative approach to matrix-matrix multiplications, noting that we can think of a matrix product $\boldsymbol{A} \cdot \boldsymbol{B}$ as each column of $\boldsymbol{B}$ multiplied by $\boldsymbol{A}$: $$\boldsymbol{A} \cdot \boldsymbol{B} = \big[ \, \boldsymbol{A} \boldsymbol{b}_1 \, | \, \ldots \, | \, \boldsymbol{A} \boldsymbol{b}_p \, \big].$$ Recalling from lecture that "column-oriented" matrix-vector multiplication is more efficient than "row-oriented" one for R matrices, implement `col_oriented_matmat` (in `matmat.cpp`) that loops through each column of $\boldsymbol{B}$ applying the column-oriented matrix-vector multiplication.
 Then compare performances of `row_col_dot_matmat` and `col_oriented_matmat` (but only after you test your column-oriented implementation).
 Which one is faster and why?
 
+\# expression min median \`itr/sec\` mem_alloc \`gc/sec\` n_itr
+
+\# \<bch:expr\> \<bch:tm\> \<bch:t\> \<dbl\> \<bch:byt\> \<dbl\> \<int\>
+
+\# 1 A %\*% B 351ms 352ms 2.84 4MB 0 2
+
 ```{r}
+bench::mark(row_col_dot_matmat(A, B))
+# A tibble: 1 × 13
+#   expression       min median `itr/sec` mem_alloc `gc/sec` n_itr
+#   <bch:expr>     <bch> <bch:>     <dbl> <bch:byt>    <dbl> <int>
+# 1 row_col_dot_m… 27.9s  27.9s    0.0358       4MB        0     1
+# ℹ 6 more variables: n_gc <dbl>, total_time <bch:tm>,
+#   result <list>, memory <list>, time <list>, gc <list>
+bench::mark(col_oriented_matmat(A, B))
+#  expression       min median `itr/sec` mem_alloc `gc/sec` n_itr
+#   <bch:expr>     <bch> <bch:>     <dbl> <bch:byt>    <dbl> <int>
+# 1 col_oriented_…   17s    17s    0.0589    8.04GB     6.01     1
 # Check and benchmark
+
 ```
 
 Also compare with performance of the matrix-matrix multiplication via `%*%` in R, which uses whatever the BLAS library your R was configured with.
-(You can find out which BLAS library R is using via `sessionInfo()` or `extSoftVersion()`.) 
+(You can find out which BLAS library R is using via `sessionInfo()` or `extSoftVersion()`.)
+
+Matrix products: defaultBLAS: /System/Library/Frameworks/Accelerate.framework/Versions/A/Frameworks/vecLib.framework/Versions/A/libBLAS.dylib
 
 ```{r}
 # Fill in
+
+bench::mark(A%*%B)
+#   expression      min  median `itr/sec` mem_alloc `gc/sec` n_itr
+#   <bch:expr> <bch:tm> <bch:t>     <dbl> <bch:byt>    <dbl> <int>
+# 1 A %*% B       351ms   352ms      2.84       4MB        0     2
 ```
 
 When benchmarking alternative implementations (or alternative algorithms, more generally), keep in mind that the relative performance depends significantly on the size of a test problem.
-It is important, therefore, to benchmark your implementation/algorithm on problems of realistic size. 
+It is important, therefore, to benchmark your implementation/algorithm on problems of realistic size.
 See the benchmark results of linear algebra libraries from [the Eigen development team](https://eigen.tuxfamily.org/index.php?title=Benchmark) and the results under "Gcbd benchmark" in [this github repository](https://github.com/andre-wojtowicz/blas-benchmarks), for example.
-
 
 ## Part C: Doing it the right way
 
 Part A & B are meant to get you some practice writing Rcpp code and to illustrate how much an algorithm's performance depends on whether or not it respects an underlying representation of data.
 Neither of the approaches we've discussed, however, is the most effective way to multiply two matrices on modern hardware.
 
-Dedicated linear algebra libraries typically deploy _blocking_, dividing the matrices $\boldsymbol{A}$ and $\boldsymbol{B}$ into sub-matrices of appropriate size and carrying out multiplications block-wise.
+Dedicated linear algebra libraries typically deploy *blocking*, dividing the matrices $\boldsymbol{A}$ and $\boldsymbol{B}$ into sub-matrices of appropriate size and carrying out multiplications block-wise.
 This approach is designed to minimize the data motion between CPU and RAM by re-using the same pieces of data as much as possible once they travel all the way from RAM to L1 cache.
 In practice, we of course shouldn't try to implement, let alone optimize, an operation ourselves when there already are efficient software libraries available.
-(But, if you are interested in learning more about how the optimized matrix multiplication works, Sec 1.5.4. of Golub and Van Loan (2013) is a good place to start. Also, I found nice lecture slides on this topic [here](https://cs.brown.edu/courses/cs033/lecture/18cacheX.pdf).)
+(But, if you are interested in learning more about how the optimized matrix multiplication works, Sec 1.5.4. of Golub and Van Loan (2013) is a good place to start.
+Also, I found nice lecture slides on this topic [here](https://cs.brown.edu/courses/cs033/lecture/18cacheX.pdf).)
 
 ### Rcpp, Eigen, and compiler options
+
 With the interface provided by RcppEigen, the C++ linear algebra library [Eigen](https://eigen.tuxfamily.org/) is one obvious choice for dealing with computationally intensive numerical linear algebra tasks in R.
-But the optimized C++ code provided by Eigen is _only one part of the equation_:
-in order to achieve the best performance, we have to provide appropriate instructions to the compilers on how to translate the C++ code into machine code specific to each hardware and operating system.
-These instructions are given in terms of _compiler flags_. 
-I am far from an expert on compiler flags, so the rest of discussion is accurate only to the best of my knowledge 
-&mdash; let me know if you find out any part of it to be inaccurate.
+But the optimized C++ code provided by Eigen is *only one part of the equation*: in order to achieve the best performance, we have to provide appropriate instructions to the compilers on how to translate the C++ code into machine code specific to each hardware and operating system.
+These instructions are given in terms of *compiler flags*.
+I am far from an expert on compiler flags, so the rest of discussion is accurate only to the best of my knowledge — let me know if you find out any part of it to be inaccurate.
 
 Rcpp by default applies the level 2 optimization via flag `-O2` when compiling your Rcpp code.
 This flag is a shorthand for turning on a collection of more specific flags and generally leads to efficient machine code without any major drawbacks.
@@ -209,18 +244,15 @@ Generally speaking, however, the level 2 optimization misses some of the importa
 SSE's 128-bit vectorization seems to be activated by `-O2` with Clang (the default compiler for macOS) as of version 12.0.0, but I am not sure how to confirm it and [their documentation is not particularly helpful](https://clang.llvm.org/docs/CommandGuide/clang.html#cmdoption-o0).
 If you are on Linux and using GCC (GNU Compiler Collection), then you can run `gcc -O2 -Q --help=target` to find out which exact options are enabled by the `-O2` option.
 
-In compiling Rcpp code, you can turn on and off these additional options by modifying the R version of a [Makefile](https://en.wikipedia.org/wiki/Make_(software)#Makefiles) called `Makevars` and `Makevars.win` for Unix and Windows respectively. 
+In compiling Rcpp code, you can turn on and off these additional options by modifying the R version of a [Makefile](https://en.wikipedia.org/wiki/Make_(software)#Makefiles) called `Makevars` and `Makevars.win` for Unix and Windows respectively.
 To specify the compiler options for a specific R package, you can place such an Makevars file under the `src/` directory.
 To specify the global options that affect all Rcpp code compilations on your computer, you can edit the Makevars file at the location given by `tools::makevars_user()`, which is typically `~/.R/Makevars` in Unix.
-For example, to turn on AVX(2) and FMA, you would add a line `CXXFLAGS += -mavx2 -mfma` in the Makevars file; 
-to turn off SSE, you woud add `CXXFLAGS += -mno-sse`.
+For example, to turn on AVX(2) and FMA, you would add a line `CXXFLAGS += -mavx2 -mfma` in the Makevars file; to turn off SSE, you woud add `CXXFLAGS += -mno-sse`.
 You can read more about the role of Makevars files [here](https://stackoverflow.com/questions/43597632/understanding-the-contents-of-the-makevars-file-in-r-macros-variables-r-ma).
 
-**To-do's:**
-Using the `dgemm_eigen()` function from lecture, compare the performances of Eigen's and your custom matrix-matrix multiplication compiled under different optimization options.
-Selectively turn on and off SSE, AVX2, and FMA to see how each option affects the performances. 
-(SSE should be turned on by `-O2` unless explicitly turned off, but if `-mno-sse` makes no performance difference, then try `-msse` or `-msse4`.)
-Finally, turn on both AVX2 and FMA and check the resulting performances.
+**To-do's:** Using the `dgemm_eigen()` function from lecture, compare the performances of Eigen's and your custom matrix-matrix multiplication compiled under different optimization options.
+Selectively turn on and off SSE, AVX2, and FMA to see how each option affects the performances.
+(SSE should be turned on by `-O2` unless explicitly turned off, but if `-mno-sse` makes no performance difference, then try `-msse` or `-msse4`.) Finally, turn on both AVX2 and FMA and check the resulting performances.
 Report what you find.
 
 Next, implement an RcppEigen function `dgemv_eigen()` that computes the matrix-vector product $A v$ given the input matrix $A$ and vector $v$ of compatible sizes.
@@ -230,49 +262,39 @@ Explain why these hardware optimization options may have the different degrees o
 
 Run the above experiment both on your own computer and on a JHPCE node.
 In case you have a Mac computer with Apple silicon, then the experiment won't work on your computer, so just use JHPCE.
-In addition to the results, report the CPU model on the JHPCE node you ran the experiment on;
-you can check this via the `lscpu` command. 
+In addition to the results, report the CPU model on the JHPCE node you ran the experiment on; you can check this via the `lscpu` command.
 The few really old nodes on JHPCE do not support AVX and FMA, so switch to another node in case you get assigned to those nodes.
 You can check supports for AVX and FMA from the output of `lscpu`; try `lscpu | grep avx` and `lscpu | grep fma`.
 
-
 ```{r, warning=FALSE, eval=FALSE}
 # Import `dgemm_eigen()` from lecture
-Rcpp::sourceCpp(file.path("..", "lecture", "src", "gemm_eigen.cpp"))
+
+
+# Rcpp::sourceCpp(file.path("..", "lecture", "src", "gemm_eigen.cpp"))
 ```
 
 ```{r, eval=FALSE}
 # Benchmark
-dgemm_eigen(A, B)
+bench::mark(dgemm_eigen(A, B))
+
+#   expression       min median `itr/sec` mem_alloc `gc/sec` n_itr
+#   <bch:expr>    <bch:> <bch:>     <dbl> <bch:byt>    <dbl> <int>
+# 1 dgemm_eigen(… 59.2ms   60ms      16.6       4MB        0     9
+
 ```
 
-
-# Exercise 3: Continuing development of `hiperglm` &mdash; optimizing its performance via RcppEigen
+# Exercise 3: Continuing development of `hiperglm` — optimizing its performance via RcppEigen
 
 In the previous assignment, you improved the numerical stability of the `hiperglm` package by replacing the pseudo-inverse within Newton's method with the QR-based weighted least-square solver.
 In this assignment, you will improve the computational speed by interfacing the package with RcppEigen.
 
-Before you start this assignment, remember to first address all the feedback from the previous assignment and merge your previous work to the main branch. 
+Before you start this assignment, remember to first address all the feedback from the previous assignment and merge your previous work to the main branch.
 Then create a new `rcpp-eigen` branch from there, check it out, and commit all your work for this assignment there.
 Finally, open a pull request into your main branch after completing the assignment and request a review from the TA.
 
-1. Use `usethis::use_rcpp_eigen()` to set up the use of Rcpp(Eigen) within the package.<br>
-_Remark:_
-Within an R package, Rcpp code needs to be placed in `.cpp` files under the `src/` directory. 
-After you've written Rcpp functions, you need run `Rcpp::compileAttributes()` to make those functions available to the rest of the package.
-See the ["Using Rcpp in a package"](https://adv-r.hadley.nz/rcpp.html#rcpp-package) section in _Advanced R_ and references therein if you want to learn more. 
-2. Replace base R's QR functions with RcppEigen's and test that their outputs agree.
-Don't forget to run `Rcpp::compileAttributes()` after writing Rcpp functions. 
-Below you find tips on how to use Rcpp(Eigen) which, combined with the lecture materials, should be sufficient for completing this step:
-    * Calling the constructor function `Eigen::HouseholderQR<Eigen::MatrixXd> qr(A);` computes the QR decomposition of a given `A` of type `Eigen::MatrixXd` and assigns it to the variable `qr`. 
-    In other words, this is a shorthand for initializing the variable `qr` by first calling `Eigen::HouseholderQR<Eigen::MatrixXd> qr(A.rows(), A.cols());` and then actually computing and assigning to `    qr` the output of QR decomposition by calling `qr.compute(A);`.
-    You can then call `qr.solve(y);` to compute the least squares solution $\hat{\boldsymbol{\beta}} = \boldsymbol{R}^{-1} \boldsymbol{Q}^\intercal \boldsymbol{y}$.
-    * If you want to use `using ...;` within a package, you have to place these statements within a header file called `pkgname_types.h` under `src/` and include it in the `.cpp` files via `#include "pkgname_types.h"`.
-    For example, the name of the header file should be `hiperglm_types.h` in our case.
-    *  _Remark:_ You can find more about Eigen's HouseholderQR class  [here](https://eigen.tuxfamily.org/dox/classEigen_1_1HouseholderQR.html).
-    Note that, as typical of many cutting-edge open-source technologies, their documentations are generally adequate but not particularly user-friendly.
-    Some of the details might just require educated guesses and trial-and-errors. 
-    You can find useful examples in Dirk Eddelbuettel's [page on RcppEigen](https://dirk.eddelbuettel.com/code/rcpp.eigen.html).
-    But then RcppEigen is just an Rcpp wrapper of Eigen, so you might just have to refer to Eigen's documentation for further details. 
-3. Incorporate the least squares solver via Eigen's QR into the IWLS algorithm for finding MLE.
-Make it the default option and check that all the tests still pass when using the QR-based solver.
+1.  Use `usethis::use_rcpp_eigen()` to set up the use of Rcpp(Eigen) within the package.<br> *Remark:* Within an R package, Rcpp code needs to be placed in `.cpp` files under the `src/` directory. After you've written Rcpp functions, you need run `Rcpp::compileAttributes()` to make those functions available to the rest of the package. See the ["Using Rcpp in a package"](https://adv-r.hadley.nz/rcpp.html#rcpp-package) section in *Advanced R* and references therein if you want to learn more.
+2.  Replace base R's QR functions with RcppEigen's and test that their outputs agree. Don't forget to run `Rcpp::compileAttributes()` after writing Rcpp functions. Below you find tips on how to use Rcpp(Eigen) which, combined with the lecture materials, should be sufficient for completing this step:
+    -   Calling the constructor function `Eigen::HouseholderQR<Eigen::MatrixXd> qr(A);` computes the QR decomposition of a given `A` of type `Eigen::MatrixXd` and assigns it to the variable `qr`. In other words, this is a shorthand for initializing the variable `qr` by first calling `Eigen::HouseholderQR<Eigen::MatrixXd> qr(A.rows(), A.cols());` and then actually computing and assigning to `qr` the output of QR decomposition by calling `qr.compute(A);`. You can then call `qr.solve(y);` to compute the least squares solution $\hat{\boldsymbol{\beta}} = \boldsymbol{R}^{-1} \boldsymbol{Q}^\intercal \boldsymbol{y}$.
+    -   If you want to use `using ...;` within a package, you have to place these statements within a header file called `pkgname_types.h` under `src/` and include it in the `.cpp` files via `#include "pkgname_types.h"`. For example, the name of the header file should be `hiperglm_types.h` in our case.
+    -   *Remark:* You can find more about Eigen's HouseholderQR class [here](https://eigen.tuxfamily.org/dox/classEigen_1_1HouseholderQR.html). Note that, as typical of many cutting-edge open-source technologies, their documentations are generally adequate but not particularly user-friendly. Some of the details might just require educated guesses and trial-and-errors. You can find useful examples in Dirk Eddelbuettel's [page on RcppEigen](https://dirk.eddelbuettel.com/code/rcpp.eigen.html). But then RcppEigen is just an Rcpp wrapper of Eigen, so you might just have to refer to Eigen's documentation for further details.
+3.  Incorporate the least squares solver via Eigen's QR into the IWLS algorithm for finding MLE. Make it the default option and check that all the tests still pass when using the QR-based solver.
