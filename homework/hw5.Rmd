@@ -27,6 +27,9 @@ What feature(s) of a modern CPU is (are) responsible for this?
 And where in the above videos is this explained?
 Provide a rough starting time point in (e.g. "19:18") of the discussion.
 
+**Answer**: The feature responsible for the execution speed of `sign_via_if()` Rcpp function is the feature called `Instruction Pipeline` in the last video `Advanced CPU Designs` (starting at around "5:34", actual pipelining explained at around "7:07"). `sign_via_if()` is slower due to jump instruction ("7:51"). The instructions can change the flow of program depending on the whether the if statement outputs true or false, meaning the pipelined process is stalled and waiting for the boolean value to come, instead of starting to perform fetching and decoding the next instructions.
+
+\
 
 # Exercise 1: Coding on the edge &mdash; being responsible for your own safety in the C++ world
 
@@ -40,7 +43,7 @@ cat(readLines(file.path("src", "inner_prod.cpp")), sep = '\n')
 
 Ignoring the bug for the moment, run the code below and see what you get.
 
-```{r, eval=FALSE}
+```{r}
 Rcpp::sourceCpp(file.path("src", "inner_prod.cpp"))
 
 vec_size <- 1023L
@@ -65,10 +68,15 @@ for (i in 1:10^6) {
     stop("The last inner prod result disagrees with the previous ones.")
   }
 }
+print(i)
 ```
 
 **Questions:**
 What behavior do you observe above? How do you explain it?
+
+*Observation*: inner product can output many different values: 1022, Inf, and weird numbers like 5.469326e+205, 4.29225e+136, etc. `Error: The last inner prod result disagrees with the previous ones.` always occurs, and the for loop is stuck at the first iteration, meaning every time we run this inner_prod, we get different results.
+
+*Explanation*: The bug in the code causes this problem. While in R indexes start from 1, in Cpp indexes start from 0. So technically the Rcpp code above access vector from position 1 (ignoring the number on position 0). In this example of `inner_prod`, while our vectors only have numbers from position 0 to 1022, the for loop wants to access numbers from position 1 to position 1023, which technically the number on position 1023 does not exist. So if the c++ wants to force calculating the inner product, the first 1022 additions are fine, giving us the answer 1022 sometimes. When accessing position 1023, which does not exist in the input vector, c++ might end up grabbing some garbage value at that position, or not even some values but index numbers at that position, or anything unpredictable, resulting in the output of inner product function being the weird answers like Inf
 
 
 ## Part B: Sloppy matrix-matrix multiplication
@@ -93,8 +101,14 @@ B <- matrix(1, nrow = 512, ncol = 2)
 dgemm_eigen(A, B)
 ```
 
+
+
 **Questions:**
 What do you get as an output? What if you re-run the code chunk? Explain the observed behavior.
+
+*Observation*: The first time I run, I get a vector of 1024 for first column, and `NaN` for the second column; re-runing give me a vector of 8.019783e+289 (or some other large number) for the second column, while first column is still a vector of 1024
+
+*Explanation*: $A$ is a $4 \times 1024$ matrix, while $B$ is a $512 \times 2$ matrix. Note that in R and Rcpp, matrix are stored as long vector. So in order to continue performing matrix multiplication with this invalid dimension combination, each row of $A$ of length 1024 performs inner product with the entire $B$ long vector of length 1024, giving us the first column of a vector of 1024. In this way, matrix $B$'s "second column" no longer exists (since we considered the entire 1024 values as one column), forcing continuing matrix multiplication with the second column of $B$ gives `NaN` values. When running again, c++ might grab some garbage values or do something unpredictable, resulting in the weird numbers in the second column
 
 ## Part C: Consequence of "tresspassing"
 
@@ -130,6 +144,16 @@ Running the same piece of code from an R console (instead of an RStudio session)
 * Modify `axpy_c.cpp` to make the function safer to use.
 
 
+**Answer**:
+
+- My R session crushes when the first code chunk is run
+  - One important thing to note is that this `axpy_c()` function iterate over length of vector $x$, perform multiplication of scalar $a$ with each $x[i]$, and assign this value to the corresponding position on vector $y$.
+  - When attempting to run the first code chunk, we are iterating over length of $x$ which is 1e7, far exceeding the length of $y$, which is 1e3. So positions beyond 1e3L does not exist in the vector $y$, attempting to accessing values that do not exist or are are positions not accessible causes my R session to crash
+- The second code chunk works fine
+  - This is because we are only accessing vector $y$ until its 1e3-th position's value, which does not exceed its length 1e7. There is no issue with that with iterating over length shorter than itself. In the output vector the values beyond after 1e3 will just remain the same as $y$
+- `axpy_c.cpp` has been modified
+
+
 # Exercise 2: Multiplying two matrices ain't quite what you learned in your linear algebra class
 
 ## Part A: Paying homage to your linear algebra teacher
@@ -143,11 +167,11 @@ So a conceptually natural way to implement a matrix multiplication is looping th
 Implement a matrix-matrix multiplication based on this approach as `row_col_dot_matmat` using the starter code provided in the `matmat.cpp` file.
 Then check that its output agrees with the base R matrix multiplication.
 
-```{r, eval=FALSE}
+```{r}
 Rcpp::sourceCpp(file.path("src", "matmat.cpp"))
 ```
 
-```{r, eval=FALSE}
+```{r}
 n_row_out <- 1024L
 n_inner <- 2048L
 n_col_out <- 512L
@@ -155,9 +179,17 @@ A <- matrix(rnorm(n_row_out * n_inner), nrow = n_row_out, ncol = n_inner)
 B <- matrix(rnorm(n_inner * n_col_out), nrow = n_inner, ncol = n_col_out)
 ```
 
+
 ```{r}
 # Check the output of `row_col_dot_matmat`
+prod_baseR <- A %*% B
+prod_row_col_dot <- row_col_dot_matmat(A, B)
+diff_1 <- prod_baseR - prod_row_col_dot
+all(abs(diff_1) < 1e-2)
 ```
+
+
+The output agrees with base R matrix multiplication
 
 ## Part B: Going one step beyond your linear algebra class
 
@@ -167,21 +199,48 @@ Recalling from lecture that "column-oriented" matrix-vector multiplication is mo
 Then compare performances of `row_col_dot_matmat` and `col_oriented_matmat` (but only after you test your column-oriented implementation).
 Which one is faster and why?
 
+
 ```{r}
 # Check and benchmark
+prod_col_oriented <- col_oriented_matmat(A, B)
+diff_2 <- prod_baseR - prod_col_oriented
+all(abs(diff_2) < 1e-2)
 ```
+
 
 Also compare with performance of the matrix-matrix multiplication via `%*%` in R, which uses whatever the BLAS library your R was configured with.
 (You can find out which BLAS library R is using via `sessionInfo()` or `extSoftVersion()`.) 
 
 ```{r}
 # Fill in
+bench::mark(row_col_dot_matmat(A, B))
+bench::mark(col_oriented_matmat(A, B))
+bench::mark(A %*% B)
 ```
+
 
 When benchmarking alternative implementations (or alternative algorithms, more generally), keep in mind that the relative performance depends significantly on the size of a test problem.
 It is important, therefore, to benchmark your implementation/algorithm on problems of realistic size. 
 See the benchmark results of linear algebra libraries from [the Eigen development team](https://eigen.tuxfamily.org/index.php?title=Benchmark) and the results under "Gcbd benchmark" in [this github repository](https://github.com/andre-wojtowicz/blas-benchmarks), for example.
 
+\ 
+
+
+**Answer**:
+
+The output of `col_oriented_matmat` agrees with base R matrix multiplication
+
+*Observation*: `col_oriented_matmat` is the fastest, followed by `%*%` in R and at last `row_col_dot_matmat`. More specifically, `col_oriented_matmat` and `%*%` only differs by 100ms, but `col_oriented_matmat` is about 12 times faster than `row_col_dot_matmat`
+
+*Explanation*: 
+
+- `col_oriented_matmat` is faster because it makes full use of the column-major order storage of matrix in Rcpp and data motion efficiency. The idea of faster computation is that I want to keep CPU busy computing by fully utilizing all the numbers that get fetched to L1 cache, called cache hit. In this example, each time the numbers fetched to L1 cache together are columns of matrix, since matrix are stored in column-major order. In `col_oriented_matmat`, I follow this exact rule by always accessing numbers from columns of A and numbers columns of B in nearby for-loop iterations. 
+  - As an example, the first iteration of the most inner for loop is doing: $a_{11}b_{11}$, $a_{21}b_{11}$, ..., $a_{n1}b_{11}$, then the second iteration of the inner most for loop is doing: $a_{12}b_{21}$, $a_{22}b_{12}$, ..., $a_{n2}b_{21}$ and add these numbers to the corresponding position in result. In these operations, I am only accessing column 1 of $A$, column 2 of $A$, and column 1 of $B$. column 1 of $A$ and column 1 of $B$ get fetched to L1 cache, fully used; then column 1 of $A$ can be thrown, and column 2 of $A$ gets fetched to L1 cache and fully used. No redundant information and very efficient
+- So we can see here that whenever a column of A matrix and a column of B matrix is taken to L1 cache, the CPU is able to keep itself busy in consecutive for-loop iterations by doing multiplication just using these two vectors. 
+- In contrast, in `row_col_dot_matmat`, the first iteration inner most for loop is doing: $a_{11}b_{11} + a_{12}b_{21} + ... + a_{1n}b_{n1}$. In just one iteration, every column of $A$ needs to be fetched into L1 cache, meaning in just one iteration, CPU needs to experience n times cache miss: CPU needs to wait for column 1 of $A$ to enter L1 cache, compute $a_{11}b_{11}$, then wait for column 2 of $A$ to enter L1 cache, compute $a_{12}b_{21}$, etc. Remember that this is just one inner most for loop iteration. Doing the three layes of for loop with each iteration waiting extensive amount of time just for columns of $A$ gets fetched to L1 cache slows down the function.
+- My `col_oriented_matmat` is faster than base R's $A %*% B$
+
+\
 
 ## Part C: Doing it the right way
 
@@ -205,7 +264,7 @@ Rcpp by default applies the level 2 optimization via flag `-O2` when compiling y
 This flag is a shorthand for turning on a collection of more specific flags and generally leads to efficient machine code without any major drawbacks.
 I've been told that the more aggressive level 3 optimization via `-O3` can sometimes hurt performance or even break things.
 Which specific flags `-O2` activates to some extent depends on which (version of) compiler you are using.
-Generally speaking, however, the level 2 optimization misses some of the important optimization opportunities for scientific computation, such as fused multiply-add (FMA) and AVX's 256-bit vectorized operation discussed in class.
+Generally speaking, however, the level 2 optimization misses some of the important optimization opportunities for scientific computation, such as **fused multiply-add (FMA) and AVX's 256-bit vectorized operation discussed in class.**
 SSE's 128-bit vectorization seems to be activated by `-O2` with Clang (the default compiler for macOS) as of version 12.0.0, but I am not sure how to confirm it and [their documentation is not particularly helpful](https://clang.llvm.org/docs/CommandGuide/clang.html#cmdoption-o0).
 If you are on Linux and using GCC (GNU Compiler Collection), then you can run `gcc -O2 -Q --help=target` to find out which exact options are enabled by the `-O2` option.
 
@@ -213,7 +272,7 @@ In compiling Rcpp code, you can turn on and off these additional options by modi
 To specify the compiler options for a specific R package, you can place such an Makevars file under the `src/` directory.
 To specify the global options that affect all Rcpp code compilations on your computer, you can edit the Makevars file at the location given by `tools::makevars_user()`, which is typically `~/.R/Makevars` in Unix.
 For example, to turn on AVX(2) and FMA, you would add a line `CXXFLAGS += -mavx2 -mfma` in the Makevars file; 
-to turn off SSE, you woud add `CXXFLAGS += -mno-sse`.
+to turn off SSE, you would add `CXXFLAGS += -mno-sse`.
 You can read more about the role of Makevars files [here](https://stackoverflow.com/questions/43597632/understanding-the-contents-of-the-makevars-file-in-r-macros-variables-r-ma).
 
 **To-do's:**
@@ -238,12 +297,105 @@ You can check supports for AVX and FMA from the output of `lscpu`; try `lscpu | 
 
 ```{r, warning=FALSE, eval=FALSE}
 # Import `dgemm_eigen()` from lecture
-Rcpp::sourceCpp(file.path("..", "lecture", "src", "gemm_eigen.cpp"))
+Rcpp::sourceCpp(file.path("..", "lecture", "src", "gemm_eigen.cpp")) # dgemm_eigen
+Rcpp::sourceCpp(file.path("src", "gemm_eigen.cpp"))                  # dgemv_eigen
+Rcpp::sourceCpp(file.path("src", "matmat.cpp"))                      # row_col_dot_matmat, col_oriented_matmat
+```
+
+```{r, eval=FALSE, echo=FALSE}
+n_row_out <- 1024L
+n_inner <- 2048L
+n_col_out <- 512L
+A <- matrix(rnorm(n_row_out * n_inner), nrow = n_row_out, ncol = n_inner)
+B <- matrix(rnorm(n_inner * n_col_out), nrow = n_inner, ncol = n_col_out)
+
+v <- rnorm(n_inner)
 ```
 
 ```{r, eval=FALSE}
 # Benchmark
-dgemm_eigen(A, B)
+bench::mark(dgemm_eigen(A, B))
+bench::mark(row_col_dot_matmat(A, B))
+bench::mark(col_oriented_matmat(A, B))
+bench::mark(A %*% B)
+bench::mark(dgemv_eigen(A, v))
+bench::mark(A %*% v)
+```
+
+
+**Answer**:
+
+Overall, the option `CXXFLAGS += -mno-sse -mavx2 -mfma` (turning off SSE, turning on AVX and FMA) is able to improve performance for Rcpp functions
+
+Note: `dgemv_eigen()` is defined in `homework/src/gemm_eigen.cpp`
+
+*Observation*:
+
+On my computer
+
+- turning off SSE slows down `dgemm_eigen` and `dgemv_eigen` by significant amount, and turning on AVX and FMA speeds up `dgemm_eigen` and `dgemv_eigen` by significant amount as well, especially dgemm_eigen with SSE off and AVX FMA on is about 3 times faster than default, and 9 times faster than just with SSE off.
+- Modifying the optimization opportunities does not affect the functions I wrote and Base R multiplication. My `col_oriented_matmat(A, B)` with SSE off and AVX FMA on does improve a bit compared to default and just SSE off, but not as significant as the Rcpp functions
+
+
+| | Default| `CXXFLAGS += -mno-sse` | `CXXFLAGS += -mno-sse -mavx2 -mfma` | `CXXFLAGS += -mavx2 -mfma`|
+| - | - | - | - | - | 
+|`dgemm_eigen(A, B)`| 163ms | 479ms | 55.5ms | 54.2ms |
+|`row_col_dot_matmat(A, B)`| 6.98s | 6.91s | 7.05s | 7.49s|
+|`col_oriented_matmat(A, B)`| 684ms | 787ms | 520ms | 594ms |
+|`A %*% B`| 755ms | 737ms | 747ms | 743ms |
+|`dgemv_eigen(A, v)`|  914µs   | 1.39ms |  908µs | 800µs |
+|`A %*% v`|  2.66ms  | 2.85ms | 2.75ms  | 2.77ms |
+
+
+
+On JHPCE
+
+- We observe similar trend that turning off SSE slows down `dgemm_eigen` and `dgemv_eigen` a bit, and turning on AVX and FMA speeds up `dgemm_eigen` and `dgemv_eigen`
+- turning off SSE does also slow down my `row_col_dot_matmat(A, B)` and `col_oriented_matmat(A, B)`, but not as obvious as Rcpp either
+- turning off SSE does slow down base R multiplication. Turning on AVX and FMA can bring back some speed, but only back to the level comparable to default.
+
+| | Default| `CXXFLAGS += -mno-msse4.1` | `CXXFLAGS += -mno-msse4.1 -mavx2 -mfma` | `CXXFLAGS += -mavx2 -mfma`|
+| - | - | - | - | - | 
+|`dgemm_eigen(A, B)`| 237ms | 228ms | 71.7ms | 78.6ms |
+|`row_col_dot_matmat(A, B)`| 4.46s | 5.53s | 4.67s  | 5.27s |
+|`col_oriented_matmat(A, B)`| 1s| 1.24s | 1.07s | 1.24s |
+|`A %*% B`| 562ms | 982ms | 678ms | 960ms |
+|`dgemv_eigen(A, v)`|  649µs   | 1.37ms | 725µs  | 1.04ms |
+|`A %*% v`| 3.91ms   | 4.81ms | 4.54ms  | 5.06ms |
+
+
+**Explanation**: 
+
+- In general, from what we have discussed in class, SSE uses 128-bit register, AVX uses 256 registers, where the latter has longer registers, allowing for better vectorization opportunity (more addition can be done concurrently) and explains why turning off SSE and turning on FMA helps get back some speed; fused multiply-add (FMA) allows addition and multiplication done in one shot.
+- Therefore, we can see that SSE, FMA, and AVX tries to speed up matrix multiplication by vectorization and efficient operation. These optimization techniques can help speed up C++ codes when C++ compiler spots for optimization opportunities and allow some vectorization to happen. For example, by turning on FMA, at the compile stage the compiler can figure out where it can do multiplication and addition at the same time (multiply two values from $A$ and $B$ and add the number to the location on the result matrix concurrently), so as to reduce number of FLOPS to do.
+- Base R function $%*%$ for matrix-matrix and matrix-vector multiplication is already defined in the BLAS library and thus not taking advantage of the optimization opportunities.
+- My self-defined Rcpp functions basically used three layers of for loops, so there is not much space for vectorization to happen
+
+My JHPCE CPU is **Intel(R) Xeon(R) Gold 6338 CPU @ 2.00GHz**
+
+```
+Architecture:            x86_64
+  CPU op-mode(s):        32-bit, 64-bit
+  Address sizes:         46 bits physical, 57 bits virtual
+  Byte Order:            Little Endian
+CPU(s):                  128
+  On-line CPU(s) list:   0-127
+Vendor ID:               GenuineIntel
+  Model name:            Intel(R) Xeon(R) Gold 6338 CPU @ 2.00GHz
+    CPU family:          6
+    Model:               106
+    Thread(s) per core:  2
+    Core(s) per socket:  32
+    Socket(s):           2
+    Stepping:            6
+    CPU max MHz:         3200.0000
+    CPU min MHz:         800.0000
+    BogoMIPS:            4000.00
+Caches (sum of all):
+  L1d:                   3 MiB (64 instances)
+  L1i:                   2 MiB (64 instances)
+  L2:                    80 MiB (64 instances)
+  L3:                    96 MiB (2 instances)
 ```
 
 
@@ -276,3 +428,7 @@ Below you find tips on how to use Rcpp(Eigen) which, combined with the lecture m
     But then RcppEigen is just an Rcpp wrapper of Eigen, so you might just have to refer to Eigen's documentation for further details. 
 3. Incorporate the least squares solver via Eigen's QR into the IWLS algorithm for finding MLE.
 Make it the default option and check that all the tests still pass when using the QR-based solver.
+
+\
+
+Link to pull request: https://github.com/yanxiliu230/hiperglm/pull/7
